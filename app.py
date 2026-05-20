@@ -107,11 +107,20 @@ persons_per_household = st.sidebar.number_input(
 
 basics = accessor.city_basics(pref_code, city_code)
 
+# 表示用の地域名を構築
+_pref_name = ALL_PREFECTURES.get(pref_code, "")
+_city_name = ""
+if census_cities:
+    for _code, _name in city_options:
+        _cc = int(_code) if _code.isdigit() else 0
+        if _cc == city_code:
+            _city_name = _name
+            break
+else:
+    _city_name = cities.get(city_code, "")
+
 st.title("📊 CCIM CI102 市場分析ダッシュボード（日本版）")
-st.markdown(
-    f"### 対象: {sample_data.PREFECTURES[pref_code]} "
-    f"{cities[city_code]}"
-)
+st.markdown(f"### 対象: {_pref_name} {_city_name}")
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("総人口", f"{basics['population']:,}")
