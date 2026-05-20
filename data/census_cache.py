@@ -54,6 +54,20 @@ DS_EMPLOYMENT_MAJOR = DatasetConfig(
     value_column="employees",
 )
 
+# --- 1b. 産業大分類別従業者数 2016年（シフトシェア t0 用） ---
+# 注意: 2016年テーブルは cat01=経営組織, cat02=産業分類（2021年と軸が逆）
+DS_EMPLOYMENT_MAJOR_2016 = DatasetConfig(
+    table_id="0003218721",
+    csv_name="census_employment_major_2016.csv",
+    description="産業大分類別従業者数 2016年（シフトシェア t0）",
+    tab_filter="812",               # 従業者数
+    cat_filters={"cdCat01": "000"},  # 経営組織: 総数
+    skip_categories={"00010", "00020", "00800"},  # 集約カテゴリ
+    name_map_id="cat02",             # 2016年は cat02 が産業分類
+    name_resolver="raw",             # メタ情報から名称解決
+    value_column="employees",
+)
+
 # --- 2. 産業中分類別従業者数 ---
 DS_EMPLOYMENT_MID = DatasetConfig(
     table_id="0004005686",
@@ -109,6 +123,7 @@ DS_ESTABLISHMENTS = DatasetConfig(
 # 全データセット（ダウンロード順序）
 ALL_DATASETS = [
     DS_EMPLOYMENT_MAJOR,
+    DS_EMPLOYMENT_MAJOR_2016,
     DS_EMPLOYMENT_MID,
     DS_POPULATION,
     DS_RETAIL_SALES,

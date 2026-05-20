@@ -388,6 +388,22 @@ class MarketDataAccessor:
         national_emp = _parse_employment("00000")
         return local_emp, national_emp
 
+    @staticmethod
+    def _normalize_2016_industry_name(name: str) -> str:
+        """2016年経済センサスの産業名を2021年形式に正規化。
+
+        2016年は "D建設業" 形式、2021年は "建設業" 形式。
+        また G1/G2, O1/O2 等の細分を親カテゴリに集約する。
+        """
+        # 細分カテゴリは親に集約（スキップして親で合算）
+        skip_prefixes = ("G1", "G2", "O1", "O2", "Q1", "Q2", "R1", "R2")
+        if any(name.startswith(p) for p in skip_prefixes):
+            return ""  # 空文字→集約時にスキップ
+        # 先頭のJSICコード文字を除去: "D建設業" → "建設業"
+        if len(name) > 1 and name[0].isalpha():
+            return name[1:]
+        return name
+
     def shift_share_inputs(
         self, pref_code: int, city_code: int
     ) -> tuple[
@@ -397,10 +413,62 @@ class MarketDataAccessor:
         Mapping[str, float],
         str,
     ]:
-        """シフトシェア分析用の t0/t1 雇用データを返す。
+        """シフトシェア分析用の 2016→2021 雇用データを返す。
 
         Returns (local_t0, local_t1, national_t0, national_t1, source_label)
         """
+        try:
+            from config import get_settings
+            from data.census_cache import (
+                load_cached_dataset, DS_EMPLOYMENT_MAJOR, DS_EMPLOYMENT_MAJOR_2016,
+                get_area_employment,
+            )
+            settings = get_settings()
+            area_code = self._build_area_code(pref_code, city_code)
+
+            df_2016 = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MAJOR_2016.csv_name)
+            df_2021 = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
+
+            if df_2016 is not None and df_2021 is not None:
+                # 2016年データを正規化
+                def _get_normalized_2016(df, area):
+                    raw = get_area_employment(df, area)
+                    normalized: dict[str, float] = {}
+                    for name, val in raw.items():
+                        clean = self._normalize_2016_industry_name(name)
+                        if clean:
+                            normalized[clean] = normalized.get(clean, 0.0) + val
+                    return normalized
+
+                local_t0 = _get_normalized_2016(df_2016, area_code)
+
+                # 2016年テーブルには全国(00000)がない → 47都道府県合計で算出
+                national_t0: dict[str, float] = {}
+                for pc in range(1, 48):
+                    pref_data = _get_normalized_2016(df_2016, f"{pc:02d}000")
+                    for ind, val in pref_data.items():
+                        national_t0[ind] = national_t0.get(ind, 0.0) + val
+
+                local_t1 = get_area_employment(df_2021, area_code)
+                national_t1 = get_area_employment(df_2021, "00000")
+
+                # 共通産業のみ使用
+                common = set(local_t0.keys()) & set(local_t1.keys()) & set(national_t1.keys())
+                if national_t0:
+                    common &= set(national_t0.keys())
+
+                if len(common) >= 5:
+                    return (
+                        {k: local_t0[k] for k in common},
+                        {k: local_t1[k] for k in common},
+                        {k: national_t0[k] for k in common} if national_t0 else {},
+                        {k: national_t1[k] for k in common},
+                        "e-Stat 経済センサス 2016→2021",
+                    )
+        except Exception:
+            pass
+
+        # フォールバック
         return (
             sample_data.TAKAMATSU_EMP_T0,
             sample_data.TAKAMATSU_EMP_T1,
@@ -410,13 +478,92 @@ class MarketDataAccessor:
         )
 
     def retail_sectors(self, pref_code: int, city_code: int):
-        """小売ギャップ分析用のセクターデータを返す。"""
+        """小売ギャップ分析用のセクターデータを返す。
+
+        Supply: 経済センサス小売販売額キャッシュ
+        Demand: 人口 × 全国平均1人あたり小売支出額（推計）
+        """
+        try:
+            from config import get_settings
+            from data.census_cache import (
+                load_cached_dataset, DS_RETAIL_SALES, DS_POPULATION,
+                get_area_retail_sales, get_area_population,
+            )
+            settings = get_settings()
+            area_code = self._build_area_code(pref_code, city_code)
+
+            df_retail = load_cached_dataset(settings.cache_dir, DS_RETAIL_SALES.csv_name)
+            df_pop = load_cached_dataset(settings.cache_dir, DS_POPULATION.csv_name)
+
+            if df_retail is not None and df_pop is not None:
+                supply = get_area_retail_sales(df_retail, area_code)
+                pop_data = get_area_population(df_pop, area_code)
+
+                # 人口から需要推計（全国平均の1人あたり消費支出で按分）
+                population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
+
+                if supply and population > 0:
+                    # 全国の小売販売総額と人口から1人あたり販売額を推計
+                    national_supply = get_area_retail_sales(df_retail, "00000")
+                    national_pop = get_area_population(df_pop, "00000")
+                    nat_population = national_pop.get("2015年（平成27年）の人口（組替）", 0)
+
+                    if nat_population > 0 and national_supply:
+                        sectors = []
+                        for sector_name, sales in supply.items():
+                            nat_sales = national_supply.get(sector_name, 0)
+                            if nat_sales > 0:
+                                # 需要 = 地域人口 × (全国販売額/全国人口)
+                                per_capita = nat_sales / nat_population
+                                demand = population * per_capita
+                                sectors.append({
+                                    "sector": sector_name,
+                                    "demand": demand,
+                                    "supply": sales,
+                                })
+                        if sectors:
+                            return sectors, "e-Stat 経済センサス 2021（小売販売額 + 人口按分需要推計）"
+        except Exception:
+            pass
+
         return sample_data.TAKAMATSU_RETAIL_SECTORS, "sample_data"
 
     def city_basics(self, pref_code: int, city_code: int) -> dict:
         """対象都市の人口・世帯・総雇用などの基本指標を返す。"""
-        # 将来的に e-Stat 国勢調査から人口データを取得予定。
-        # 現状は sample_data を返す。
+        try:
+            from config import get_settings
+            from data.census_cache import (
+                load_cached_dataset, DS_POPULATION, DS_EMPLOYMENT_MAJOR,
+                get_area_population, get_area_employment,
+            )
+            settings = get_settings()
+            area_code = self._build_area_code(pref_code, city_code)
+
+            df_pop = load_cached_dataset(settings.cache_dir, DS_POPULATION.csv_name)
+            df_emp = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
+
+            if df_pop is not None and df_emp is not None:
+                pop_data = get_area_population(df_pop, area_code)
+                emp_data = get_area_employment(df_emp, area_code)
+
+                # 国勢調査2020テーブル: 「2015年の人口(組替)」が2020年基準での人口値
+                # 「世帯数」は2020年の世帯数
+                population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                households = pop_data.get("世帯数", 0)
+
+                total_emp = sum(emp_data.values()) if emp_data else 0
+                pph = population / households if households > 0 else 2.21
+
+                if population > 0 and total_emp > 0:
+                    return {
+                        "population": int(population),
+                        "households": int(households),
+                        "total_employment": int(total_emp),
+                        "persons_per_household": round(pph, 2),
+                    }
+        except Exception:
+            pass
+
         return sample_data.TAKAMATSU
 
     def api_status(self) -> dict:
