@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.streamlit/secrets.toml
+.pytest_cache/
+data/cache/
+*.log
+
+# Claude Code の個人設定（共有しない）
+.claude/settings.local.json
+
+# CCIM公式教材（著作物）は公開リポジトリに含めない
+*.pdf
+
+# ローカル参照のロードマップ（必要なら個別に許可）
+不動産市場分析アプリ開発ロードマップ.docx
