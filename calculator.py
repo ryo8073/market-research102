@@ -266,10 +266,15 @@ def gap_analysis_table(
 
 
 def _verdict(factor: float) -> str:
+    """漏損/余剰の判定ラベル。
+
+    CI102日本語テキストでは Leakage を「漏損」と訳している。
+    「漏出」も同義で使われる。いずれも商圏外への購買力流出を意味する。
+    """
     if factor >= 50:
-        return "深刻な漏出（出店余地大）"
+        return "深刻な漏損（出店余地大）"
     if factor >= 10:
-        return "漏出（出店余地あり）"
+        return "漏損（出店余地あり）"
     if factor > -10:
         return "均衡状態"
     if factor > -50:

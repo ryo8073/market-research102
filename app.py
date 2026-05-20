@@ -140,10 +140,27 @@ tab_lq, tab_ebm, tab_ss, tab_gap, tab_re = st.tabs(
 
 with tab_lq:
     st.header("特化係数（Location Quotient, LQ）と基盤雇用")
-    st.markdown(
-        "LQ > 1.0 の産業は全国平均より高い集積度を持ち、地域経済を域外に向けて"
-        "牽引する **基盤産業** とみなされます。"
-    )
+
+    with st.expander("この指標の意味（CI102 Module 4: Demand Analysis）", expanded=False):
+        st.markdown("""
+**特化係数（LQ）** は、ある地域の特定産業の雇用割合を全国平均と比較する指標です。
+
+$$LQ = \\frac{\\text{地域の産業}i\\text{の従業者数} / \\text{地域の総従業者数}}{\\text{全国の産業}i\\text{の従業者数} / \\text{全国の総従業者数}}$$
+
+| LQ の値 | 意味 |
+|---------|------|
+| **LQ > 1.0** | 全国平均より高い集積度 → **基盤産業（Basic / Export Sector）** と推定 |
+| **LQ = 1.0** | 全国平均と同じ割合 → 地域内需要を自給している水準 |
+| **LQ < 1.0** | 全国平均より低い集積度 → **非基盤産業（Non-basic / Service Sector）** |
+
+**基盤産業**とは、地域外に財やサービスを「輸出」し、地域外から資金を流入させる産業です。
+この外部資金の流入こそが地域経済を駆動し、将来の不動産需要を創出する根源的な力となります。
+
+**基盤雇用の推計**: LQ > 1.0 の産業について、全国平均を超える部分の雇用を
+「域外向け輸出に必要な雇用（基盤雇用）」と推定します。
+
+$$\\text{基盤雇用} = \\text{地域の従業者数} \\times \\frac{LQ - 1}{LQ}$$
+        """)
 
     local_emp, national_emp, src_label = accessor.industry_employment(pref_code, city_code)
     df_lq = lq_table(local_emp, national_emp)
@@ -191,6 +208,35 @@ with tab_lq:
 with tab_ebm:
     st.header("経済基盤乗数（EBM）と人口雇用比率（PER）")
 
+    with st.expander("この指標の意味（CI102 Module 4: Activity 4-3〜4-5）", expanded=False):
+        st.markdown("""
+**経済基盤乗数（EBM: Economic Base Multiplier）** は、基盤雇用1人が地域経済全体で
+何人の雇用を支えているかを示す波及効果の指標です。
+
+$$EBM = \\frac{\\text{総雇用}}{\\text{基盤雇用}}$$
+
+例えば EBM = 5.0 の場合、基盤産業の雇用が1人増えると、非基盤部門（地元の小売店、
+飲食店、医療機関など）で追加的に4人の雇用が生まれ、地域全体で5人の雇用増加を意味します。
+逆に基盤産業の工場が閉鎖され100人の雇用が失われれば、地域全体で500人の雇用が消失するリスクがあります。
+
+---
+
+**人口雇用比率（PER: Population to Employment Ratio）** は、就業者1人に対して
+地域に何人の総人口が存在しているかを示します。
+
+$$PER = \\frac{\\text{総人口}}{\\text{総雇用}}$$
+
+PER = 1.8 の場合、就業者1人の背後に子供、高齢者、非就業の配偶者などを含めて
+1.8人の人口基盤が存在していることを意味します。
+
+---
+
+**需要予測カスケード（CI102の核心）**: この2つの指標を組み合わせることで、
+基盤雇用の変動から住宅需要までを論理的に予測できます。
+
+$$\\text{基盤雇用増} \\xrightarrow{\\times EBM} \\text{総雇用増} \\xrightarrow{\\times PER} \\text{人口増} \\xrightarrow{\\div \\text{世帯人員}} \\text{住戸需要}$$
+        """)
+
     local_emp, national_emp, _ = accessor.industry_employment(pref_code, city_code)
     df_lq = lq_table(local_emp, national_emp)
     basic_total = total_basic_employment(df_lq)
@@ -230,11 +276,27 @@ with tab_ebm:
 # ---------------------------------------------------------------------------
 
 with tab_ss:
-    st.header("シフトシェア分析")
-    st.markdown(
-        "雇用変動を **国家成長要因 / 産業ミックス要因 / 地域シフト要因** に分解し、"
-        "地域固有の競争力（Regional Shift）を可視化します。"
-    )
+    st.header("シフトシェア分析（Shift-Share Analysis）")
+
+    with st.expander("この指標の意味（CI102 Module 4: Shift-Share Analysis）", expanded=False):
+        st.markdown("""
+**シフトシェア分析**は、地域の産業別雇用変動を3つの要因に分解し、
+その地域が持つ本質的な競争力を明らかにする統計手法です。
+
+$$\\text{雇用変動} = \\text{NS（国家成長）} + \\text{IM（産業ミックス）} + \\text{RS（地域シフト）}$$
+
+| 要因 | 英語名 | 意味 |
+|------|--------|------|
+| **NS** | National Growth Share | 国全体の経済成長率と同じペースで成長したと仮定した場合の雇用変動分。マクロ経済の波に乗った自然成長分。 |
+| **IM** | Industry Mix Effect | その産業セクター自体の全国的な成長トレンドに起因する要因。例: IT産業が全国的に成長していれば、IT企業が多い地域は恩恵を受ける。 |
+| **RS** | Regional Shift / Competitive Share | **最も重要な要因。** 地域の特定産業が全国の同産業をどれだけ上回ったか（下回ったか）を示す。正の値は**競争的優位性（Competitive Advantage）**を意味する。 |
+
+**投資判断への活用**: RS（地域シフト）が大きく正の産業 = その地域に固有の競争力がある
+「スター産業」です。この産業のテナントが入居するオフィスや物流施設は、安定した需要が
+見込めるため、投資対象として有望です。
+
+逆に RS が大きく負の産業は、その地域で衰退しつつあり、関連不動産の空室リスクが高まります。
+        """)
 
     l0, l1, n0, n1, src = accessor.shift_share_inputs(pref_code, city_code)
     st.caption(f"データソース: {src}")
@@ -287,11 +349,29 @@ with tab_ss:
 # ---------------------------------------------------------------------------
 
 with tab_gap:
-    st.header("小売ギャップ分析（漏出・余剰）")
-    st.markdown(
-        "商圏内の **潜在需要（家計支出ベース）** と **実供給（小売販売額）** の差から、"
-        "出店機会（漏出）と競争過多（余剰）を判定します。"
-    )
+    st.header("小売ギャップ分析（漏損/余剰分析）")
+
+    with st.expander("この指標の意味（CI102 Module 5: Retail Properties）", expanded=False):
+        st.markdown("""
+**ギャップ分析（Gap Analysis）** は、商圏内の消費者の潜在的な購買力（需要）と、
+実際の小売店舗の販売額（供給）の差分を測定する手法です。
+
+$$\\text{Leakage/Surplus Factor} = \\frac{\\text{Demand} - \\text{Supply}}{\\text{Demand} + \\text{Supply}} \\times 100$$
+
+| 係数の範囲 | 状態 | 意味 |
+|-----------|------|------|
+| **+100 〜 +10** | **漏損（Leakage）** | 商圏内の購買力が域外に流出している。新規出店の**機会**がある。 |
+| **+10 〜 -10** | **均衡** | 需要と供給がほぼ釣り合っている。 |
+| **-10 〜 -100** | **余剰（Surplus）** | 商圏内の店舗売上が住民の需要を上回っている。広域集客力がある一方、同業種の追加出店は**カニバリゼーション**のリスクが高い。 |
+
+> **用語について**: CI102の日本語テキストでは Leakage を「**漏損**」と訳しています。
+> 本アプリでは「漏損」「漏出」を同義で使用しています。いずれも商圏外への購買力流出を意味します。
+
+**需要（Demand）の推計方法**: 地域人口 × 全国平均の1人あたり業種別小売支出額で按分推計。
+家計調査の個票データが利用可能になれば、より精緻な地域別推計が可能です。
+
+**供給（Supply）**: 経済センサス活動調査の業種別年間商品販売額を使用。
+        """)
 
     sectors, src = accessor.retail_sectors(pref_code, city_code)
     st.caption(f"データソース: {src}")
@@ -305,7 +385,7 @@ with tab_gap:
         color="factor",
         color_continuous_scale=["#d62728", "#dddddd", "#2ca02c"],
         color_continuous_midpoint=0,
-        title="漏出・余剰係数（+100 完全漏出 〜 -100 完全余剰）",
+        title="漏損/余剰係数（+100 = 完全漏損 〜 -100 = 完全余剰）",
         labels={"factor": "Leakage/Surplus Factor", "sector": "小売セクター"},
     )
     fig.add_vline(x=0, line_dash="dash", line_color="gray")
@@ -345,10 +425,22 @@ with tab_gap:
 
 with tab_re:
     st.header("不動産取引価格分析")
-    st.markdown(
-        "国土交通省「不動産情報ライブラリ」の取引価格データを可視化します。"
-        "経済基盤分析の結果と不動産価格の相関を確認できます。"
-    )
+
+    with st.expander("この指標の意味（CI102: Market Analysis drives Financial Analysis）", expanded=False):
+        st.markdown("""
+CI102 の基本理念は **「市場分析が財務分析を牽引する（Market analysis drives financial analysis）」** です。
+
+Tab ①〜④ で分析した経済基盤の強さ（LQ、EBM、シフトシェアの競争優位）が、
+実際の不動産価格やキャップレートの変動にどう反映されているかを確認するのがこのタブの役割です。
+
+**確認すべきポイント**:
+- 基盤産業（LQ > 1.0）が強い地域は、取引価格が安定または上昇傾向にあるか？
+- シフトシェアで RS（地域シフト）が正の産業が集積するエリアで、㎡単価は上がっているか？
+- ギャップ分析で漏損が大きい業種がある地域は、商業不動産の投資機会があるか？
+
+**データソース**: 国土交通省「不動産情報ライブラリ」の実取引価格データ（四半期更新）。
+        """)
+
 
     mlit_client = accessor.mlit
     if mlit_client.available:
@@ -418,8 +510,7 @@ with tab_re:
 
 st.divider()
 st.caption(
-    "本アプリは CCIM CI102（市場分析）の数理モデル "
-    "（LQ・EBM・PER・シフトシェア・ギャップ分析）を日本のオープンデータで再現する "
-    "PoC 実装です。サンプルデータは検証用近似値。商用利用には RESAS/e-Stat/"
-    "不動産情報ライブラリ API への接続を推奨。"
+    "本アプリは CCIM CI102（Market Analysis for Commercial Investment Real Estate）の "
+    "数理モデル（LQ・EBM・PER・シフトシェア・ギャップ分析）を "
+    "日本の公的統計（e-Stat 経済センサス・国勢調査・国土交通省不動産情報ライブラリ）で再現しています。"
 )
