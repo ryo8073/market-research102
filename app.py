@@ -92,11 +92,15 @@ new_basic_jobs = st.sidebar.number_input(
     help="新工場・物流拠点誘致等で増加（または喪失）する基盤雇用数を入力すると、"
          "総雇用・人口・住戸需要への波及効果が EBM/PER から自動算出されます。",
 )
+
+# city_basics を先に取得し、平均世帯人員のデフォルト値に反映
+basics = accessor.city_basics(pref_code, city_code)
+
 persons_per_household = st.sidebar.number_input(
     "平均世帯人員",
     min_value=1.0,
     max_value=5.0,
-    value=float(sample_data.TAKAMATSU["persons_per_household"]),
+    value=float(basics["persons_per_household"]),
     step=0.05,
 )
 
@@ -104,8 +108,6 @@ persons_per_household = st.sidebar.number_input(
 # ---------------------------------------------------------------------------
 # Header
 # ---------------------------------------------------------------------------
-
-basics = accessor.city_basics(pref_code, city_code)
 
 # 表示用の地域名を構築
 _pref_name = ALL_PREFECTURES.get(pref_code, "")
