@@ -650,7 +650,6 @@ class MarketDataAccessor:
     def api_status(self) -> dict:
         """各 API の接続状況を返す（UIサイドバー表示用）。"""
         return {
-            "RESAS API": self.resas.available,
             "e-Stat API": self.estat.available,
             "不動産情報ライブラリ API": self.mlit.available,
         }

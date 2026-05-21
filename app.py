@@ -46,7 +46,7 @@ pref_code = st.sidebar.selectbox(
     "都道府県",
     options=list(ALL_PREFECTURES.keys()),
     format_func=lambda c: f"{c:02d} {ALL_PREFECTURES[c]}",
-    index=list(ALL_PREFECTURES.keys()).index(37),  # デフォルト: 香川県
+    index=list(ALL_PREFECTURES.keys()).index(13),  # デフォルト: 東京都
 )
 
 # 市区町村: キャッシュから動的取得、なければ sample_data フォールバック

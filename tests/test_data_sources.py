@@ -199,12 +199,11 @@ class TestFallbackPath:
 # ---------------------------------------------------------------------------
 
 class TestApiStatus:
-    def test_returns_dict_with_three_keys(self, accessor):
+    def test_returns_dict_with_two_keys(self, accessor):
         status = accessor.api_status()
-        assert "RESAS API" in status
         assert "e-Stat API" in status
         assert "不動産情報ライブラリ API" in status
-        # 各値は bool
+        assert "RESAS API" not in status  # RESAS は終了済み
         for v in status.values():
             assert isinstance(v, bool)
 
