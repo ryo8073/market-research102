@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,9 +64,51 @@ function KpiSkeletonGrid() {
   );
 }
 
+const VALID_TABS = ["scorecard", "lq", "ebm", "shift", "gap", "realestate", "map", "cross"] as const;
+type TabValue = (typeof VALID_TABS)[number];
+
+function isValidTab(v: string | null): v is TabValue {
+  return v !== null && (VALID_TABS as readonly string[]).includes(v);
+}
+
+function isValidPrefCode(v: number): boolean {
+  return v >= 1 && v <= 47;
+}
+
 export default function Dashboard() {
-  const [prefCode, setPrefCode] = useState(13);
-  const [cityCode, setCityCode] = useState<string>("");
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F8F9FA] dark:bg-gray-950 flex items-center justify-center">
+        <p className="text-muted-foreground">読み込み中...</p>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const [prefCode, setPrefCode] = useState<number>(() => {
+    const p = Number(searchParams.get("pref"));
+    return isValidPrefCode(p) ? p : 13;
+  });
+  const [cityCode, setCityCode] = useState<string>(() => searchParams.get("city") ?? "");
+  const [activeTab, setActiveTab] = useState<TabValue>(() => {
+    const t = searchParams.get("tab");
+    return isValidTab(t) ? t : "scorecard";
+  });
+
+  // Sync state -> URL (replaceState, no history entry)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set("pref", String(prefCode));
+    if (cityCode) params.set("city", cityCode);
+    if (activeTab !== "scorecard") params.set("tab", activeTab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [prefCode, cityCode, activeTab, router]);
   const { data: pref, allData, loading, error: prefError } = usePrefectureData(prefCode);
   const { data: municipalities, error: muniError } = useMunicipalityData(prefCode);
   const selectedCity = cityCode ? municipalities.find((m) => m.area_code === cityCode) ?? null : null;
@@ -174,7 +217,7 @@ export default function Dashboard() {
         ) : !pref ? (
           <div className="text-center py-20 text-muted-foreground">データが見つかりません</div>
         ) : (
-          <Tabs defaultValue="scorecard" className="w-full">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)} className="w-full">
             <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
               <TabsTrigger value="scorecard" className="text-xs md:text-sm">
                 <span className="md:hidden">⓪</span>
@@ -402,10 +445,15 @@ export default function Dashboard() {
       </main>
 
       <footer className="border-t mt-auto px-4 py-3 md:px-6">
-        <p className="text-xs text-muted-foreground text-center max-w-7xl mx-auto">
-          分析手法: 経済基盤分析（LQ/EBM/PER）、シフトシェア分析、ギャップ分析 |
-          データ: e-Stat 経済センサス活動調査 2021 / 国勢調査 2020 / 国土交通省不動産情報ライブラリ
-        </p>
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground text-center sm:text-left">
+            分析手法: 経済基盤分析（LQ/EBM/PER）、シフトシェア分析、ギャップ分析 |
+            データ: e-Stat 経済センサス活動調査 2021 / 国勢調査 2020 / 国土交通省不動産情報ライブラリ
+          </p>
+          <a href="/learn" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
+            分析手法を学ぶ &rarr;
+          </a>
+        </div>
       </footer>
     </div>
   );
