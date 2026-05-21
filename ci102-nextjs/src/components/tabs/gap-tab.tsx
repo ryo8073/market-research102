@@ -5,6 +5,14 @@ import PlotlyChart from "@/components/plotly-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { gap_analysis_table, type GapRow } from "@/lib/calculator";
 
+/** Format yen values with appropriate unit (万 or 億) */
+function formatYen(val: number): string {
+  const abs = Math.abs(val);
+  if (abs >= 1e8) return `${(val / 1e8).toLocaleString(undefined, { maximumFractionDigits: 1 })}億`;
+  if (abs >= 1e4) return `${(val / 1e4).toLocaleString(undefined, { maximumFractionDigits: 0 })}万`;
+  return `${val.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
 interface Props {
   sectors: Array<{ sector: string; demand: number; supply: number }>;
 }
@@ -83,8 +91,8 @@ export default function GapTab({ sectors }: Props) {
           <thead className="bg-slate-100">
             <tr>
               <th className="text-left p-2">セクター</th>
-              <th className="text-right p-2">需要（円）</th>
-              <th className="text-right p-2">供給（円）</th>
+              <th className="text-right p-2">需要</th>
+              <th className="text-right p-2">供給</th>
               <th className="text-right p-2">ギャップ</th>
               <th className="text-right p-2">係数</th>
               <th className="text-left p-2">判定</th>
@@ -94,9 +102,9 @@ export default function GapTab({ sectors }: Props) {
             {[...gapData].sort((a, b) => b.factor - a.factor).map((r) => (
               <tr key={r.sector} className="border-b hover:bg-slate-50">
                 <td className="p-2">{r.sector}</td>
-                <td className="text-right p-2">{(r.demand / 1e8).toFixed(0)}億</td>
-                <td className="text-right p-2">{(r.supply / 1e8).toFixed(0)}億</td>
-                <td className="text-right p-2">{((r.demand - r.supply) / 1e8).toFixed(0)}億</td>
+                <td className="text-right p-2">{formatYen(r.demand)}</td>
+                <td className="text-right p-2">{formatYen(r.supply)}</td>
+                <td className="text-right p-2">{formatYen(r.demand - r.supply)}</td>
                 <td className="text-right p-2 font-mono">{r.factor > 0 ? "+" : ""}{r.factor.toFixed(1)}</td>
                 <td className="p-2">{r.verdict}</td>
               </tr>

@@ -17,6 +17,8 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import pandas as pd
+
 import map_data
 from calculator import (
     economic_base_multiplier,
@@ -31,6 +33,24 @@ from calculator import (
 )
 from data.codes import PREFECTURES
 from data_sources import MarketDataAccessor
+
+
+def _get_median_unit_price(accessor: MarketDataAccessor, pref_code: int) -> float | None:
+    """Fetch MLIT median unit price (yen/m2) for a prefecture."""
+    mlit = accessor.mlit
+    if mlit is None or not getattr(mlit, "available", False):
+        return None
+    for year, quarter in [(2024, 3), (2024, 2), (2024, 1), (2023, 4)]:
+        try:
+            df = mlit.transaction_prices(year=year, quarter=quarter, pref_code=pref_code)
+            if df is not None and not df.empty:
+                prices = pd.to_numeric(df.get("UnitPrice", pd.Series(dtype=float)), errors="coerce")
+                valid = prices[prices > 0]
+                if not valid.empty:
+                    return float(valid.median())
+        except Exception:
+            continue
+    return None
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "ci102-nextjs" / "public" / "data"
 MUNI_DIR = OUTPUT_DIR / "municipalities"
@@ -107,6 +127,9 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
         # Daytime population
         daytime = estimate_daytime_population(basics["population"], basic)
 
+        # MLIT median unit price
+        median_price = _get_median_unit_price(accessor, pref_code)
+
         # LQ full table for charts
         lq_records = df_lq.to_dict("records")
 
@@ -131,6 +154,7 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             "num_surplus_sectors": n_surplus,
             "suitability_score": score,
             "daytime_population": round(daytime, 0),
+            "median_unit_price": round(median_price, 0) if median_price else None,
             "lq_table": lq_records,
             "shift_share_table": ss_records,
             "gap_table": gap_records,
@@ -140,12 +164,90 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
         return None
 
 
+def _classify_municipality(
+    emp_data: dict[str, float],
+    total_emp: float,
+    persons_per_hh: float,
+) -> str:
+    """Classify a single municipality into a segment (inline, no streamlit dep)."""
+    if total_emp <= 0:
+        return "均衡型"
+
+    primary = sum(emp_data.get(k, 0) for k in [
+        "農業，林業", "漁業", "鉱業，採石業，砂利採取業",
+    ])
+    secondary = sum(emp_data.get(k, 0) for k in ["製造業", "建設業"])
+    tertiary_service = sum(emp_data.get(k, 0) for k in [
+        "情報通信業", "金融業，保険業", "不動産業，物品賃貸業",
+        "学術研究，専門・技術サービス業",
+    ])
+    retail_tourism = sum(emp_data.get(k, 0) for k in [
+        "卸売業，小売業", "宿泊業，飲食サービス業", "生活関連サービス業，娯楽業",
+    ])
+    public_edu_med = sum(emp_data.get(k, 0) for k in [
+        "公務（他に分類されるものを除く）", "教育，学習支援業", "医療，福祉",
+    ])
+
+    primary_ratio = primary / total_emp
+    manufacturing = secondary / total_emp
+    service_ratio = tertiary_service / total_emp
+    retail_ratio = retail_tourism / total_emp
+    public_ratio = public_edu_med / total_emp
+
+    if service_ratio > 0.20:
+        return "都市サービス集積型"
+    if manufacturing > 0.25:
+        return "工業基盤型"
+    if retail_ratio > 0.30:
+        return "商業・観光型"
+    if public_ratio > 0.35:
+        return "公務・教育型"
+    if primary_ratio > 0.10 or persons_per_hh < 2.0:
+        return "高齢縮小型"
+    return "均衡型"
+
+
 def compute_municipalities(accessor: MarketDataAccessor, pref_code: int) -> list[dict]:
-    """Compute LQ summary for all municipalities in a prefecture."""
+    """Compute LQ summary + segment for all municipalities in a prefecture."""
     try:
         df = map_data.compute_municipality_lq(pref_code)
-        if df is not None and not df.empty:
-            return df.to_dict("records")
+        if df is None or df.empty:
+            return []
+
+        records = df.to_dict("records")
+
+        # Load census cache for segmentation classification
+        from data.census_cache import (
+            load_cached_dataset, DS_EMPLOYMENT_MAJOR, DS_POPULATION,
+            get_area_employment, get_area_population,
+        )
+        cache_dir = Path(__file__).resolve().parent.parent / "data" / "cache"
+        df_emp = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
+        df_pop = load_cached_dataset(cache_dir, DS_POPULATION.csv_name)
+
+        for rec in records:
+            area_code = rec["area_code"]
+            segment = "均衡型"  # default
+
+            if df_emp is not None:
+                emp_data = get_area_employment(df_emp, area_code)
+                if emp_data:
+                    total_emp = sum(emp_data.values())
+                    # Get persons_per_household from population data
+                    persons_per_hh = 2.0  # default
+                    if df_pop is not None:
+                        pop_data = get_area_population(df_pop, area_code)
+                        if pop_data:
+                            population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                            households = pop_data.get("世帯数", 0)
+                            if households > 0:
+                                persons_per_hh = population / households
+
+                    segment = _classify_municipality(emp_data, total_emp, persons_per_hh)
+
+            rec["segment"] = segment
+
+        return records
     except Exception:
         pass
     return []

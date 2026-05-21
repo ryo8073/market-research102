@@ -1,32 +1,62 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PREFECTURES } from "@/lib/codes";
-import { lq_table, total_basic_employment } from "@/lib/calculator";
-import { TAKAMATSU_EMP, NATIONAL_EMP } from "@/lib/sample-data";
+import type { PrefectureData } from "@/lib/use-prefecture-data";
+import { useMunicipalityData } from "@/lib/use-municipality-data";
 
 // Dynamic import to avoid SSR issues with MapLibre
 const MapView = dynamic(() => import("@/components/maplibre-map"), { ssr: false });
 
 // Prefecture centers for zoom
 const PREF_CENTERS: Record<number, [number, number]> = {
-  1: [141.35, 43.06], 13: [139.69, 35.69], 14: [139.64, 35.45],
-  23: [136.91, 35.18], 27: [135.52, 34.69], 37: [134.04, 34.34],
-  40: [130.42, 33.59], 47: [127.68, 26.34],
+  1: [143.21, 43.06],  2: [140.74, 40.82],  3: [141.15, 39.70],
+  4: [140.87, 38.27],  5: [140.10, 39.72],  6: [140.34, 38.24],
+  7: [140.47, 37.75],  8: [140.45, 36.34],  9: [139.88, 36.57],
+  10: [139.06, 36.39], 11: [139.65, 35.86], 12: [140.12, 35.60],
+  13: [139.69, 35.69], 14: [139.64, 35.45], 15: [139.02, 37.90],
+  16: [137.21, 36.70], 17: [136.63, 36.59], 18: [136.22, 35.99],
+  19: [138.57, 35.66], 20: [138.18, 36.23], 21: [136.72, 35.39],
+  22: [138.38, 34.98], 23: [136.91, 35.18], 24: [136.51, 34.73],
+  25: [136.07, 35.00], 26: [135.76, 35.02], 27: [135.52, 34.69],
+  28: [135.18, 34.69], 29: [135.83, 34.37], 30: [135.17, 33.95],
+  31: [134.24, 35.50], 32: [133.05, 35.47], 33: [133.93, 34.66],
+  34: [132.46, 34.40], 35: [131.47, 34.19], 36: [134.56, 34.07],
+  37: [134.04, 34.34], 38: [132.77, 33.84], 39: [133.53, 33.56],
+  40: [130.42, 33.59], 41: [130.30, 33.25], 42: [129.87, 32.95],
+  43: [130.74, 32.79], 44: [131.61, 33.24], 45: [131.42, 31.91],
+  46: [130.56, 31.56], 47: [127.68, 26.34],
+};
+
+type MapMetric = "basic_ratio" | "rs_total" | "suitability";
+
+const METRIC_CONFIG: Record<MapMetric, { label: string; colorScale: [string, string, string]; midpoint: number }> = {
+  basic_ratio: { label: "基盤雇用比率(%)", colorScale: ["#2166ac", "#f7f7f7", "#b2182b"], midpoint: 10 },
+  rs_total: { label: "RS合計(地域シフト)", colorScale: ["#d73027", "#ffffbf", "#1a9850"], midpoint: 0 },
+  suitability: { label: "投資適格スコア", colorScale: ["#d73027", "#fee08b", "#1a9850"], midpoint: 50 },
 };
 
 interface Props {
   prefCode: number;
   prefName: string;
+  allData: Record<string, PrefectureData> | null;
 }
 
-type MapMetric = "lq_summary" | "basic_ratio";
+const SEGMENTS = [
+  { key: "都市サービス集積型", icon: "🏢", color: "#1B2A4A", desc: "第3次産業比率が高く、若年〜生産年齢が多い都市部" },
+  { key: "工業基盤型", icon: "⚙️", color: "#2A9D8F", desc: "製造業・建設業が強く、生産年齢人口が安定" },
+  { key: "商業・観光型", icon: "🛒", color: "#D4A843", desc: "小売・宿泊飲食が突出、昼間人口が多い" },
+  { key: "公務・教育型", icon: "🏛️", color: "#6B7280", desc: "公務・教育・医療が主力、人口安定だが成長力弱" },
+  { key: "高齢縮小型", icon: "📉", color: "#E76F51", desc: "高齢化率が高く、第1次産業依存、人口減少" },
+  { key: "均衡型", icon: "⚖️", color: "#9CA3AF", desc: "特定の偏りがなくバランスの取れた経済構造" },
+] as const;
 
-export default function MapTab({ prefCode, prefName }: Props) {
+export default function MapTab({ prefCode, prefName, allData }: Props) {
   const [metric, setMetric] = useState<MapMetric>("basic_ratio");
   const [muniGeojson, setMuniGeojson] = useState<any>(null);
+  const { data: municipalities } = useMunicipalityData(prefCode);
 
   // Load municipality TopoJSON and convert to GeoJSON
   useEffect(() => {
@@ -42,49 +72,52 @@ export default function MapTab({ prefCode, prefName }: Props) {
       .catch(() => setMuniGeojson(null));
   }, [prefCode]);
 
-  // Compute sample LQ data for all prefectures (demo)
+  // Build real prefecture data for choropleth
   const prefData = useMemo(() => {
-    const lq = lq_table(TAKAMATSU_EMP, NATIONAL_EMP);
-    const basic = total_basic_employment(lq);
-    const totalEmp = lq.reduce((s, r) => s + r.local_emp, 0);
-    const ratio = totalEmp > 0 ? (basic / totalEmp) * 100 : 0;
-
-    // For demo: assign the same ratio to all prefectures with slight variation
-    return Object.keys(PREFECTURES).map((code) => {
-      const pc = Number(code);
-      const variation = ((pc * 7) % 20) - 10; // deterministic pseudo-random
+    if (!allData) return [];
+    return Object.values(allData).map((p) => {
+      let value: number;
+      switch (metric) {
+        case "basic_ratio":
+          value = p.basic_ratio;
+          break;
+        case "rs_total":
+          value = p.rs_total;
+          break;
+        case "suitability":
+          value = p.suitability_score.total_score;
+          break;
+      }
       return {
-        code: String(pc),
-        name: PREFECTURES[pc],
-        value: Math.max(1, ratio + variation),
+        code: String(p.pref_code),
+        name: p.pref_name,
+        value,
       };
     });
-  }, []);
+  }, [allData, metric]);
 
+  const cfg = METRIC_CONFIG[metric];
   const center = PREF_CENTERS[prefCode] ?? [137.0, 37.5];
 
   return (
     <div className="space-y-6">
       {/* Metric selector */}
       <div className="flex gap-2">
-        <button
-          onClick={() => setMetric("basic_ratio")}
-          className={`px-4 py-2 text-sm rounded-lg border ${metric === "basic_ratio" ? "bg-slate-900 text-white" : "bg-white"}`}
-        >
-          基盤雇用比率
-        </button>
-        <button
-          onClick={() => setMetric("lq_summary")}
-          className={`px-4 py-2 text-sm rounded-lg border ${metric === "lq_summary" ? "bg-slate-900 text-white" : "bg-white"}`}
-        >
-          LQサマリ
-        </button>
+        {(Object.keys(METRIC_CONFIG) as MapMetric[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMetric(m)}
+            className={`px-4 py-2 text-sm rounded-lg border ${metric === m ? "bg-slate-900 text-white" : "bg-white"}`}
+          >
+            {METRIC_CONFIG[m].label}
+          </button>
+        ))}
       </div>
 
       {/* National map */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">全国マップ（都道府県別 — {metric === "basic_ratio" ? "基盤雇用比率" : "LQサマリ"}）</CardTitle>
+          <CardTitle className="text-sm">全国マップ（都道府県別 — {cfg.label}）</CardTitle>
         </CardHeader>
         <CardContent>
           <MapView
@@ -92,9 +125,9 @@ export default function MapTab({ prefCode, prefName }: Props) {
             data={prefData}
             featureCodeProperty="pref_code"
             featureNameProperty="nam_ja"
-            valueLabel={metric === "basic_ratio" ? "基盤雇用比率(%)" : "最大LQ"}
-            colorScale={["#2166ac", "#f7f7f7", "#b2182b"]}
-            midpoint={10}
+            valueLabel={cfg.label}
+            colorScale={cfg.colorScale}
+            midpoint={cfg.midpoint}
             height={500}
           />
         </CardContent>
@@ -120,23 +153,62 @@ export default function MapTab({ prefCode, prefName }: Props) {
 
       {/* Segmentation */}
       <Card>
-        <CardHeader><CardTitle className="text-sm">セグメンテーション</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm">{prefName} 市区町村セグメンテーション</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-            {[
-              { icon: "🏢", name: "都市サービス集積型", color: "#1B2A4A" },
-              { icon: "⚙️", name: "工業基盤型", color: "#2A9D8F" },
-              { icon: "🛒", name: "商業・観光型", color: "#D4A843" },
-              { icon: "🏛️", name: "公務・教育型", color: "#6B7280" },
-              { icon: "📉", name: "高齢縮小型", color: "#E76F51" },
-              { icon: "⚖️", name: "均衡型", color: "#9CA3AF" },
-            ].map((seg) => (
-              <div key={seg.name} className="text-center p-3 rounded-lg border">
-                <div className="text-2xl">{seg.icon}</div>
-                <p className="text-xs mt-1 font-medium" style={{ color: seg.color }}>{seg.name}</p>
+          {(() => {
+            const segCounts: Record<string, { count: number; names: string[] }> = {};
+            for (const seg of SEGMENTS) {
+              segCounts[seg.key] = { count: 0, names: [] };
+            }
+            for (const m of municipalities) {
+              const s = m.segment ?? "均衡型";
+              if (!segCounts[s]) segCounts[s] = { count: 0, names: [] };
+              segCounts[s].count++;
+              if (segCounts[s].names.length < 3) segCounts[s].names.push(m.area_name);
+            }
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                  {SEGMENTS.map((seg) => (
+                    <div key={seg.key} className="text-center p-3 rounded-lg border">
+                      <div className="text-2xl">{seg.icon}</div>
+                      <p className="text-xs mt-1 font-medium" style={{ color: seg.color }}>{seg.key}</p>
+                      <p className="text-lg font-bold">{segCounts[seg.key]?.count ?? 0}</p>
+                    </div>
+                  ))}
+                </div>
+                {municipalities.length > 0 && (
+                  <div className="overflow-x-auto max-h-64">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100 sticky top-0">
+                        <tr>
+                          <th className="p-2 text-left">市区町村</th>
+                          <th className="p-2 text-left">セグメント</th>
+                          <th className="p-2 text-right">総雇用</th>
+                          <th className="p-2 text-right">基盤比率</th>
+                          <th className="p-2 text-left">最大LQ産業</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {municipalities.map((m) => {
+                          const seg = SEGMENTS.find((s) => s.key === (m.segment ?? "均衡型"));
+                          return (
+                            <tr key={m.area_code} className="border-b hover:bg-slate-50">
+                              <td className="p-2">{m.area_name}</td>
+                              <td className="p-2" style={{ color: seg?.color }}>{seg?.icon} {m.segment ?? "均衡型"}</td>
+                              <td className="p-2 text-right font-mono">{m.total_emp.toLocaleString()}</td>
+                              <td className="p-2 text-right font-mono">{m.basic_ratio.toFixed(1)}%</td>
+                              <td className="p-2">{m.max_lq_industry} ({m.max_lq.toFixed(2)})</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>

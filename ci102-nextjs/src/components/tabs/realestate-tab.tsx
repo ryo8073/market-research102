@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import PlotlyChart from "@/components/plotly-chart";
+import MuellerCycle from "@/components/mueller-cycle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Props {
@@ -157,6 +158,9 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
               yaxis: { title: { text: "㎡単価（円/㎡）" } },
             }}
           />
+
+          {/* Mueller Market Cycle */}
+          <MuellerCycle prefCode={prefCode} cityCode={cityCode} />
 
           {/* Data table */}
           <div className="overflow-x-auto max-h-96">

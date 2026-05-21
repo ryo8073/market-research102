@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PREFECTURES } from "@/lib/codes";
 import { usePrefectureData } from "@/lib/use-prefecture-data";
+import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
 import LqTab from "@/components/tabs/lq-tab";
 import EbmTab from "@/components/tabs/ebm-tab";
 import ShiftShareTab from "@/components/tabs/shift-share-tab";
@@ -45,7 +46,10 @@ function KpiCard({ title, value, subtitle, trend }: {
 
 export default function Dashboard() {
   const [prefCode, setPrefCode] = useState(13);
+  const [cityCode, setCityCode] = useState<string>("");
   const { data: pref, allData, loading } = usePrefectureData(prefCode);
+  const { data: municipalities } = useMunicipalityData(prefCode);
+  const selectedCity = cityCode ? municipalities.find((m) => m.area_code === cityCode) ?? null : null;
 
   // Proformer state
   const [pfId, setPfId] = useState("");
@@ -71,7 +75,7 @@ export default function Dashboard() {
       localEmp: Object.fromEntries(p.lq_table.map((r) => [r.industry, r.local_emp])),
       nationalEmp: Object.fromEntries(p.lq_table.map((r) => [r.industry, r.national_emp])),
       retailSectors: p.gap_table.map((r) => ({ sector: r.sector, demand: r.demand, supply: r.supply })),
-      medianUnitPrice: undefined, // MLIT data not pre-computed
+      medianUnitPrice: p.median_unit_price ?? undefined,
     }));
   }, [allData]);
 
@@ -110,14 +114,21 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold tracking-tight">CI102 不動産市場分析ダッシュボード</h1>
           <div className="flex items-center gap-3">
-            <select value={prefCode} onChange={(e) => { setPrefCode(Number(e.target.value)); setAiResult(null); }}
+            <select value={prefCode} onChange={(e) => { setPrefCode(Number(e.target.value)); setCityCode(""); setAiResult(null); }}
               className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white">
               {Object.entries(PREFECTURES).map(([code, name]) => (
                 <option key={code} value={code}>{String(code).padStart(2, "0")} {name}</option>
               ))}
             </select>
+            <select value={cityCode} onChange={(e) => setCityCode(e.target.value)}
+              className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white max-w-[180px]">
+              <option value="">全県</option>
+              {municipalities.map((m) => (
+                <option key={m.area_code} value={m.area_code}>{m.area_name}</option>
+              ))}
+            </select>
             <Badge variant="outline" className="text-white border-white/30">
-              {loading ? "読込中..." : pref?.pref_name ?? "—"}
+              {loading ? "読込中..." : selectedCity ? selectedCity.area_name : pref?.pref_name ?? "—"}
             </Badge>
           </div>
         </div>
@@ -162,6 +173,21 @@ export default function Dashboard() {
                     <KpiCard title="昼間人口" value={pref.daytime_population.toLocaleString()} />
                     <KpiCard title="実績雇用変化" value={pref.actual_emp_change.toLocaleString()} subtitle="2016→2021" trend={pref.actual_emp_change > 0 ? "up" : "down"} />
                   </div>
+
+                  {selectedCity && (
+                    <>
+                      <Separator />
+                      <div className="rounded-lg border p-4" style={{ backgroundColor: "#f0f9ff" }}>
+                        <h3 className="font-semibold mb-3">{selectedCity.area_name} — 市区町村データ</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <KpiCard title="総雇用" value={selectedCity.total_emp.toLocaleString()} />
+                          <KpiCard title="基盤雇用" value={Math.round(selectedCity.basic_emp).toLocaleString()} />
+                          <KpiCard title="基盤雇用比率" value={`${selectedCity.basic_ratio.toFixed(1)}%`} />
+                          <KpiCard title="最大LQ産業" value={`${selectedCity.max_lq.toFixed(2)}`} subtitle={selectedCity.max_lq_industry} />
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <Separator />
 
@@ -265,9 +291,7 @@ export default function Dashboard() {
               {/* Tab 3: Shift-Share */}
               <TabsContent value="shift">
                 {pref.shift_share_table.length > 0 ? (
-                  <ShiftShareTab
-                    localT0={{}} localT1={{}} nationalT0={{}} nationalT1={{}}
-                  />
+                  <ShiftShareTab precomputed={pref.shift_share_table} />
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">シフトシェアデータがありません</div>
                 )}
@@ -285,7 +309,7 @@ export default function Dashboard() {
 
               {/* Tab 6: Map */}
               <TabsContent value="map">
-                <MapTab prefCode={prefCode} prefName={pref.pref_name} />
+                <MapTab prefCode={prefCode} prefName={pref.pref_name} allData={allData} />
               </TabsContent>
 
               {/* Tab 7: Cross */}

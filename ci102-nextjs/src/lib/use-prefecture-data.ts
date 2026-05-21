@@ -30,6 +30,7 @@ export interface PrefectureData {
     scale_score: number;
   };
   daytime_population: number;
+  median_unit_price: number | null;
   lq_table: Array<{
     industry: string;
     local_emp: number;
@@ -43,6 +44,7 @@ export interface PrefectureData {
     national_growth: number;
     industry_mix: number;
     regional_shift: number;
+    total_share: number;
   }>;
   gap_table: Array<{
     sector: string;

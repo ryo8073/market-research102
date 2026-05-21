@@ -2,17 +2,14 @@
 
 import { useMemo } from "react";
 import PlotlyChart from "@/components/plotly-chart";
-import { shift_share_table } from "@/lib/calculator";
+import type { ShiftShareResult } from "@/lib/calculator";
 
 interface Props {
-  localT0: Record<string, number>;
-  localT1: Record<string, number>;
-  nationalT0: Record<string, number>;
-  nationalT1: Record<string, number>;
+  precomputed: ShiftShareResult[];
 }
 
-export default function ShiftShareTab({ localT0, localT1, nationalT0, nationalT1 }: Props) {
-  const ssData = useMemo(() => shift_share_table(localT0, localT1, nationalT0, nationalT1), [localT0, localT1, nationalT0, nationalT1]);
+export default function ShiftShareTab({ precomputed }: Props) {
+  const ssData = useMemo(() => [...precomputed].sort((a, b) => b.regional_shift - a.regional_shift), [precomputed]);
 
   const industries = ssData.map((r) => r.industry);
   const stars = ssData.filter((r) => r.regional_shift > 0 && r.actual_change > 0);
