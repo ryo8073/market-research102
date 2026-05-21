@@ -138,23 +138,91 @@ class EStatClient:
 
 @dataclass
 class MlitReinfolibClient:
-    """不動産情報ライブラリ API クライアント。
+    """不動産情報ライブラリ API クライアント（キャッシュ付き）。
 
     https://www.reinfolib.mlit.go.jp/help/apiManual/
     取引価格情報（XIT001）等を取得。
+
+    過去四半期のデータは不変のため CSV キャッシュに保存し、
+    同一クエリの再リクエストを防止する。直近四半期のみ
+    TTL（デフォルト7日）で再取得する。
     """
 
     api_key: Optional[str] = None
     base_url: str = "https://www.reinfolib.mlit.go.jp/ex-api/external"
     timeout: int = 20
+    cache_dir: Optional[str] = None
+    cache_ttl_days: int = 7  # 直近四半期キャッシュの有効期間
 
     def __post_init__(self):
         if self.api_key is None:
             self.api_key = _get_api_key("MLIT_API_KEY")
+        if self.cache_dir is None:
+            try:
+                from config import get_settings
+                self.cache_dir = str(get_settings().cache_dir)
+            except Exception:
+                pass
 
     @property
     def available(self) -> bool:
         return bool(self.api_key)
+
+    def _cache_path(
+        self, year: int, quarter: int, pref_code: int, city_code: Optional[int],
+    ) -> Optional[str]:
+        """キャッシュファイルのパスを返す。"""
+        if not self.cache_dir:
+            return None
+        city_part = f"_{city_code}" if city_code else "_all"
+        name = f"mlit_{pref_code:02d}{city_part}_{year}_q{quarter}.csv"
+        return os.path.join(self.cache_dir, name)
+
+    def _is_current_quarter(self, year: int, quarter: int) -> bool:
+        """指定された年・四半期が直近（データ更新される可能性がある）かを判定。"""
+        from datetime import date
+        today = date.today()
+        current_q = (today.month - 1) // 3 + 1
+        current_y = today.year
+        # 直近2四半期は更新される可能性がある
+        if year == current_y and quarter >= current_q:
+            return True
+        if year == current_y - 1 and quarter == 4 and current_q == 1:
+            return True
+        return False
+
+    def _read_cache(
+        self, year: int, quarter: int, pref_code: int, city_code: Optional[int],
+    ) -> Optional[pd.DataFrame]:
+        """キャッシュから読み込み。TTL超過なら None。"""
+        import time
+        path = self._cache_path(year, quarter, pref_code, city_code)
+        if not path or not os.path.exists(path):
+            return None
+        # 直近四半期はTTLチェック
+        if self._is_current_quarter(year, quarter):
+            age_days = (time.time() - os.path.getmtime(path)) / 86400
+            if age_days > self.cache_ttl_days:
+                return None
+        try:
+            df = pd.read_csv(path, dtype=str)
+            return df if not df.empty else None
+        except Exception:
+            return None
+
+    def _write_cache(
+        self, df: pd.DataFrame,
+        year: int, quarter: int, pref_code: int, city_code: Optional[int],
+    ) -> None:
+        """キャッシュに書き込み。"""
+        path = self._cache_path(year, quarter, pref_code, city_code)
+        if not path:
+            return
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            df.to_csv(path, index=False, encoding="utf-8-sig")
+        except Exception:
+            pass
 
     def transaction_prices(
         self,
@@ -163,7 +231,7 @@ class MlitReinfolibClient:
         pref_code: int,
         city_code: Optional[int] = None,
     ) -> Optional[pd.DataFrame]:
-        """取引価格情報（XIT001）を取得。
+        """取引価格情報（XIT001）を取得（キャッシュ優先）。
 
         Returns DataFrame with columns from MLIT response:
         Type, Region, MunicipalityCode, Prefecture, Municipality, DistrictName,
@@ -171,14 +239,21 @@ class MlitReinfolibClient:
         """
         if not self.available:
             return None
+
+        # 1. キャッシュから読み込み
+        cached = self._read_cache(year, quarter, pref_code, city_code)
+        if cached is not None:
+            return cached
+
+        # 2. API リクエスト
         try:
             params = {
                 "year": year,
                 "quarter": quarter,
-                "area": pref_code,
+                "area": f"{pref_code:02d}",
             }
             if city_code is not None:
-                params["city"] = city_code
+                params["city"] = f"{city_code:05d}"
             r = requests.get(
                 f"{self.base_url}/XIT001",
                 params=params,
@@ -190,7 +265,11 @@ class MlitReinfolibClient:
             data = payload.get("data") or []
             if not data:
                 return None
-            return pd.DataFrame(data)
+            df = pd.DataFrame(data)
+
+            # 3. キャッシュに保存
+            self._write_cache(df, year, quarter, pref_code, city_code)
+            return df
         except requests.RequestException:
             return None
 
