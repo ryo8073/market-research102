@@ -462,3 +462,36 @@ class TestBatonRougeShiftShare:
         edu_row = df[df["industry"] == "Education and Health Services"]
         assert len(edu_row) == 1
         assert edu_row.iloc[0]["regional_shift"] == pytest.approx(7_741, abs=50)
+
+
+# ---------------------------------------------------------------------------
+# Property Scale Conversion
+# ---------------------------------------------------------------------------
+
+class TestPropertyScale:
+    """Tests for forecast_required_floor_area and forecast_building_count."""
+
+    def test_floor_area_basic(self):
+        from calculator import forecast_required_floor_area
+        assert forecast_required_floor_area(100, 65.0) == 6500.0
+
+    def test_floor_area_zero_units(self):
+        from calculator import forecast_required_floor_area
+        assert forecast_required_floor_area(0, 65.0) == 0.0
+
+    def test_building_count_basic(self):
+        from calculator import forecast_building_count
+        assert forecast_building_count(100, 5, 4) == 5.0
+
+    def test_building_count_remainder(self):
+        from calculator import forecast_building_count
+        result = forecast_building_count(50, 5, 4)
+        assert result == pytest.approx(2.5)
+
+    def test_building_count_zero_floors(self):
+        from calculator import forecast_building_count
+        assert forecast_building_count(100, 0, 4) == 0.0
+
+    def test_building_count_zero_units_per_floor(self):
+        from calculator import forecast_building_count
+        assert forecast_building_count(100, 5, 0) == 0.0

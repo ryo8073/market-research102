@@ -39,6 +39,8 @@ class Settings:
         self.resas_api_key: str = os.environ.get("RESAS_API_KEY", "")
         self.estat_app_id: str = os.environ.get("ESTAT_APP_ID", "")
         self.mlit_api_key: str = os.environ.get("MLIT_API_KEY", "")
+        self.anthropic_api_key: str = os.environ.get("ANTHROPIC_API_KEY", "")
+        self.proformer_api_key: str = os.environ.get("PROFORMER_API_KEY", "")
         self.cache_dir: Path = Path(
             os.environ.get("CACHE_DIR", str(DEFAULT_CACHE_DIR))
         )
@@ -57,6 +59,14 @@ class Settings:
     @property
     def has_mlit_key(self) -> bool:
         return bool(self.mlit_api_key)
+
+    @property
+    def has_anthropic_key(self) -> bool:
+        return bool(self.anthropic_api_key)
+
+    @property
+    def has_proformer_key(self) -> bool:
+        return bool(self.proformer_api_key)
 
     def missing_keys(self) -> list[str]:
         """未設定のAPIキー名リストを返す。"""

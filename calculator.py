@@ -280,3 +280,195 @@ def _verdict(factor: float) -> str:
     if factor > -50:
         return "余剰（競争過多）"
     return "深刻な余剰（飽和市場）"
+
+
+# ---------------------------------------------------------------------------
+# Property Scale Conversion
+# ---------------------------------------------------------------------------
+
+
+def office_industrial_gap(
+    local_emp: dict,
+    national_emp: dict,
+    population: float,
+    national_population: float,
+) -> list[dict]:
+    """Estimate office/industrial demand gap by property type.
+
+    Uses employment-based demand estimation:
+    - Office demand: proportional to info-tech, finance, professional services workers
+    - Warehouse demand: proportional to transport, wholesale workers
+    - Retail demand: proportional to retail, food service workers
+    - Factory demand: proportional to manufacturing workers
+
+    Returns list of dicts with: property_type, local_emp, national_share,
+    expected_emp (based on population share), gap, gap_pct
+    """
+    _PROPERTY_INDUSTRIES = {
+        "オフィス": ["情報通信業", "金融業，保険業", "学術研究，専門・技術サービス業",
+                    "不動産業，物品賃貸業"],
+        "倉庫・物流": ["運輸業，郵便業", "卸売業，小売業"],
+        "商業施設": ["宿泊業，飲食サービス業", "生活関連サービス業，娯楽業"],
+        "工場・製造": ["製造業", "建設業"],
+        "医療・福祉": ["医療，福祉"],
+    }
+
+    pop_share = population / national_population if national_population > 0 else 0
+
+    results = []
+    for prop_type, industries in _PROPERTY_INDUSTRIES.items():
+        local_total = sum(local_emp.get(ind, 0) for ind in industries)
+        national_total = sum(national_emp.get(ind, 0) for ind in industries)
+        expected = national_total * pop_share
+        gap = local_total - expected
+        gap_pct = (gap / expected * 100) if expected > 0 else 0.0
+
+        results.append({
+            "property_type": prop_type,
+            "local_emp": local_total,
+            "expected_emp": expected,
+            "gap": gap,
+            "gap_pct": gap_pct,
+        })
+
+    return results
+
+
+def investment_suitability_score(
+    ebm: float,
+    basic_ratio: float,
+    rs_total: float,
+    gap_factor: float,
+    total_emp: float,
+) -> dict:
+    """Compute 0-100 investment suitability score from CI102 metrics.
+
+    Weights: EBM(20%), basic_ratio(20%), RS(25%), gap(20%), scale(15%).
+    Returns dict with total_score and component scores.
+
+    >>> result = investment_suitability_score(4.0, 15.0, 5000, 10.0, 200000)
+    >>> 0 <= result['total_score'] <= 100
+    True
+    """
+
+    def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
+        return max(lo, min(hi, v))
+
+    # EBM score: 2.0→30, 5.0→80, 10.0→100
+    ebm_score = _clamp((ebm - 1.0) / 9.0 * 100)
+
+    # Basic ratio score: 5%→30, 15%→60, 30%→100
+    ratio_score = _clamp(basic_ratio / 30.0 * 100)
+
+    # RS score: -10000→0, 0→50, +10000→100
+    rs_score = _clamp(50 + rs_total / 200)
+
+    # Gap score: high leakage=good for commercial, surplus=bad
+    # -50→0, 0→50, +50→100
+    gap_score = _clamp(50 + gap_factor)
+
+    # Scale score: larger employment base = more stable
+    # 50K→30, 200K→70, 1M→100
+    scale_score = _clamp(total_emp / 10_000)
+
+    total = (
+        ebm_score * 0.20
+        + ratio_score * 0.20
+        + rs_score * 0.25
+        + gap_score * 0.20
+        + scale_score * 0.15
+    )
+
+    return {
+        "total_score": round(total, 1),
+        "ebm_score": round(ebm_score, 1),
+        "ratio_score": round(ratio_score, 1),
+        "rs_score": round(rs_score, 1),
+        "gap_score": round(gap_score, 1),
+        "scale_score": round(scale_score, 1),
+    }
+
+
+def estimate_daytime_population(
+    nighttime_population: float,
+    basic_employment: float,
+) -> float:
+    """Estimate daytime population using basic employment as commuter proxy.
+
+    Daytime pop ≈ nighttime pop + basic employment (workers commuting in
+    for export-oriented industries).
+
+    >>> estimate_daytime_population(400000, 50000)
+    450000.0
+    """
+    return nighttime_population + basic_employment
+
+
+def development_feasibility(
+    housing_demand: float,
+    avg_unit_size_m2: float,
+    land_price_per_m2: float,
+    construction_cost_per_m2: float = 250_000,
+    target_yield: float = 0.05,
+) -> dict:
+    """CI102 Front-door/Back-door feasibility analysis.
+
+    Front-door (demand-side):
+      Required floor area from housing demand.
+
+    Back-door (supply-side):
+      Maximum development cost vs achievable rent.
+
+    Returns dict with front_door and back_door results.
+    """
+    # Front-door: demand -> required development scale
+    required_area = housing_demand * avg_unit_size_m2
+    total_dev_cost = required_area * (construction_cost_per_m2 + land_price_per_m2)
+    required_annual_rent = total_dev_cost * target_yield
+
+    # Back-door: target yield -> maximum affordable price
+    monthly_rent_per_m2 = required_annual_rent / 12 / required_area if required_area > 0 else 0
+    max_price_per_unit = (monthly_rent_per_m2 * 12 * avg_unit_size_m2) / target_yield if target_yield > 0 else 0
+
+    return {
+        "front_door": {
+            "required_area_m2": round(required_area, 0),
+            "total_dev_cost": round(total_dev_cost, 0),
+            "required_annual_rent": round(required_annual_rent, 0),
+        },
+        "back_door": {
+            "monthly_rent_per_m2": round(monthly_rent_per_m2, 0),
+            "max_price_per_unit": round(max_price_per_unit, 0),
+            "land_cost_ratio": round(
+                land_price_per_m2 / (land_price_per_m2 + construction_cost_per_m2) * 100, 1
+            ) if (land_price_per_m2 + construction_cost_per_m2) > 0 else 0,
+        },
+    }
+
+
+def forecast_required_floor_area(
+    housing_units: float,
+    avg_unit_size_m2: float,
+) -> float:
+    """Forecast total required residential floor area in m2.
+
+    >>> forecast_required_floor_area(100, 65.0)
+    6500.0
+    """
+    return housing_units * avg_unit_size_m2
+
+
+def forecast_building_count(
+    housing_units: float,
+    floors_per_building: int,
+    units_per_floor: int,
+) -> float:
+    """Forecast number of buildings needed.
+
+    >>> forecast_building_count(100, 5, 4)
+    5.0
+    """
+    capacity = floors_per_building * units_per_floor
+    if capacity <= 0:
+        return 0.0
+    return housing_units / capacity

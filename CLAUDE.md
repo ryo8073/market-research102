@@ -14,11 +14,18 @@ api/mlit.py            MLIT 不動産情報ライブラリ API
   ↑
 data_sources.py        キャッシュ→API→sample_data の3段フォールバック
   ↑
-app.py                 Streamlit UI（6タブ）
+scorecard.py           全指標集約（ScorecardData dataclass + insights生成）
+cross_analysis.py      ギャップ×価格クロス分析（4象限散布図）
+  ↑
+app.py                 Streamlit UI（8タブ: ⓪スコアカード〜⑦クロス分析）
   ↑
 map_data.py            都道府県別集計（@st.cache_data付き）
 map_charts.py          Plotly choropleth_map 描画
 data/japan_prefectures.geojson  47都道府県境界GeoJSON
+data/industry_property_map.py  産業→物件用途マッピング（テナント戦略）
+  ↑
+ai_analysis.py         Claude API統合（プロンプト構築+API呼出）
+api/proformer.py       Proformer DCF分析 API クライアント
 ```
 
 ## 絶対に守ること
@@ -121,3 +128,50 @@ PER・小売ギャップ需要推計はすべてこの2015年人口を使用し�
 | 経済センサス活動調査 | 2021年6月 | 5年ごと | 2026年 |
 | 国勢調査 | 2020年10月 | 5年ごと | 2025年（結果公表2026〜2027年） |
 | MLIT取引価格 | 四半期更新 | 3ヶ月ごと | 随時 |
+
+## シミュレーションと実績の区別（絶対ルール）
+
+EBM×PERカスケード（基盤雇用N人増→総雇用→人口→住宅需要）は**What-Ifシミュレーション**であり、予測・見通しではない。
+
+- UIでは「シミュレーション: 基盤雇用 +N人の場合」と明記すること
+- AIプロンプトに渡す際は `simulation.is_prediction: false` を含めること
+- AI出力で「需要成長が見込まれる」「人口増加が予測される」と書かせてはならない
+- 正しい表現: 「仮に基盤雇用が+100人増加した場合、…への波及が想定される」
+- 実績データ（`actual_employment_change_2016_2021`）と必ず並置し、実績が減少なら明記
+
+## Streamlit UI の expanderルール
+
+- `st.expander` は操作コントロール（selectbox/radio等）の**間**に配置しない
+- コントロール群をまとめて上部に、expanderは地図/テーブル/チャートの**下**に配置
+- ラベルに `ℹ️` アイコンを付けてドロップダウンと視覚区別する
+- `expanded=True` をデフォルトとする（補足情報は基本開いた状態）
+
+## 外部API統合のパターン
+
+### 認証キーの管理方針
+
+| API | 認証キー管理 | UI入力 |
+|-----|------------|--------|
+| e-Stat | `.env` 固定 | なし |
+| MLIT | `.env` 固定 | なし |
+| Anthropic Claude | `.env` 固定 | なし |
+| Proformer | `.env` 固定（開発者用） | 物件データID（external_id）のみ |
+
+- 開発者（単一ユーザー）用途では全APIキーを `.env` に集約
+- マルチユーザー化時はユーザーDB + 認証でAPIキーを個別管理（Next.js移行時）
+- Proformer APIキーは物件ごとではなくユーザーごと。external_idが物件識別子
+
+### Proformer API
+
+- Endpoint: `https://api.proformer.ai/api/v1/exports/{external_id}`
+- Auth: `Authorization: Bearer {api_key}`
+- レスポンス: property, income, noi_annual, financing (DSCR/LTV), investment_performance (cap_rate/IRR/NPV)
+- クライアント: `api/proformer.py`
+- AI統合分析時は地域経済データ（CI102）+ 物件収益データ（Proformer）を1つのプロンプトに含める
+
+### AI分析（Claude API）
+
+- クライアント: `ai_analysis.py`（`anthropic` パッケージ使用）
+- CLAUDE.md準拠: APIクライアントは `call_claude_api()` 内で生成（モジュールレベル禁止）
+- プロンプトには `SYSTEM_PROMPT`（アナリスト役割+出力フォーマット+データ制約）と `user_message`（ScorecardData JSON）を分離
+- Proformerデータがある場合はプロンプトを拡張し「マクロ×ミクロ統合評価」セクションを追加

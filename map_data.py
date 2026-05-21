@@ -474,3 +474,43 @@ def compute_industry_detail_lq(
         return pd.DataFrame()
 
     return lq_table(local_emp, national_emp)
+
+
+# ---------------------------------------------------------------------------
+# National ranking helper
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_prefecture_rankings(cache_dir_str: str | None = None) -> dict:
+    """Return ranking dicts for key metrics across 47 prefectures.
+
+    Returns dict with keys: ebm_rank, per_rank, basic_ratio_rank,
+    population_rank, total_emp_rank.
+    Each value is a dict mapping pref_code -> rank (1 = highest).
+    Also returns emp_change dict (pref_code -> 2016->2021 total emp change).
+    """
+    df = compute_prefecture_comparison(cache_dir_str)
+    if df.empty:
+        return {}
+
+    result = {}
+    for col in ["ebm", "per", "basic_ratio", "population", "total_emp"]:
+        if col in df.columns:
+            ranked = df.sort_values(col, ascending=False).reset_index(drop=True)
+            result[f"{col}_rank"] = {
+                int(row["pref_code"]): i + 1
+                for i, row in ranked.iterrows()
+            }
+
+    # Employment change (2016->2021) from shift-share data
+    try:
+        df_ss = compute_prefecture_shift_share(cache_dir_str)
+        if not df_ss.empty:
+            result["emp_change"] = {
+                int(row["pref_code"]): int(row["total_actual_change"])
+                for _, row in df_ss.iterrows()
+            }
+    except Exception:
+        pass
+
+    return result
