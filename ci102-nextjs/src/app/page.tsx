@@ -499,9 +499,14 @@ function DashboardContent() {
             分析手法: 経済基盤分析（LQ/EBM/PER）、シフトシェア分析、ギャップ分析 |
             データ: e-Stat 経済センサス活動調査 2021 / 国勢調査 2020 / 国土交通省不動産情報ライブラリ
           </p>
-          <a href="/learn" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
-            分析手法を学ぶ &rarr;
-          </a>
+          <div className="flex gap-4">
+            <a href="/compare" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
+              地域比較 &rarr;
+            </a>
+            <a href="/learn" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
+              分析手法を学ぶ &rarr;
+            </a>
+          </div>
         </div>
       </footer>
     </div>

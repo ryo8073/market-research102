@@ -136,9 +136,17 @@ export default function LearnPage() {
               CI102 分析手法ガイド
             </h1>
           </div>
-          <Badge variant="outline" className="text-white border-white/30 hidden md:inline-flex">
-            CCIM 不動産投資のための市場分析
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/compare"
+              className="text-sm text-white/70 hover:text-white transition-colors hidden md:inline-flex"
+            >
+              地域比較 &rarr;
+            </Link>
+            <Badge variant="outline" className="text-white border-white/30 hidden md:inline-flex">
+              CCIM 不動産投資のための市場分析
+            </Badge>
+          </div>
         </div>
       </header>
 
