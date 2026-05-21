@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import PlotlyChart from "@/components/plotly-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { gap_analysis_table, type GapRow } from "@/lib/calculator";
@@ -20,6 +20,7 @@ interface Props {
 }
 
 export default function GapTab({ sectors, selectedCity }: Props) {
+  const [hoveredSector, setHoveredSector] = useState<string | null>(null);
   const gapData = useMemo(() => gap_analysis_table(sectors), [sectors]);
   const sorted = useMemo(() => [...gapData].sort((a, b) => a.factor - b.factor), [gapData]);
   const leakage = gapData.filter((r) => r.factor >= 10).length;
@@ -107,6 +108,11 @@ export default function GapTab({ sectors, selectedCity }: Props) {
           ],
           xaxis: { title: { text: "Leakage/Surplus Factor" } },
         }}
+        onHover={(event: any) => {
+          const point = event.points?.[0];
+          if (point?.y) setHoveredSector(point.y as string);
+        }}
+        onUnhover={() => setHoveredSector(null)}
       />
 
       {/* Table */}
@@ -124,7 +130,7 @@ export default function GapTab({ sectors, selectedCity }: Props) {
           </thead>
           <tbody>
             {[...gapData].sort((a, b) => b.factor - a.factor).map((r) => (
-              <tr key={r.sector} className="border-b hover:bg-slate-50">
+              <tr key={r.sector} className={`border-b hover:bg-muted/50 cursor-default transition-colors ${hoveredSector === r.sector ? "bg-yellow-50 dark:bg-yellow-950/30" : ""}`}>
                 <td className="p-2">{r.sector}</td>
                 <td className="text-right p-2">{formatYen(r.demand)}</td>
                 <td className="text-right p-2">{formatYen(r.supply)}</td>

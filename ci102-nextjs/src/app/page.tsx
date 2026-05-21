@@ -1,23 +1,52 @@
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PREFECTURES } from "@/lib/codes";
 import { usePrefectureData } from "@/lib/use-prefecture-data";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
-import LqTab from "@/components/tabs/lq-tab";
-import EbmTab from "@/components/tabs/ebm-tab";
-import ShiftShareTab from "@/components/tabs/shift-share-tab";
-import GapTab from "@/components/tabs/gap-tab";
-import RealEstateTab from "@/components/tabs/realestate-tab";
-import MapTab from "@/components/tabs/map-tab";
-import CrossTab from "@/components/tabs/cross-tab";
+
+function TabSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+      </div>
+      <Skeleton className="h-[300px]" />
+    </div>
+  );
+}
+
+const LqTab = dynamic(() => import("@/components/tabs/lq-tab"), {
+  loading: () => <TabSkeleton />,
+});
+const EbmTab = dynamic(() => import("@/components/tabs/ebm-tab"), {
+  loading: () => <TabSkeleton />,
+});
+const ShiftShareTab = dynamic(() => import("@/components/tabs/shift-share-tab"), {
+  loading: () => <TabSkeleton />,
+});
+const GapTab = dynamic(() => import("@/components/tabs/gap-tab"), {
+  loading: () => <TabSkeleton />,
+});
+const RealEstateTab = dynamic(() => import("@/components/tabs/realestate-tab"), {
+  loading: () => <TabSkeleton />,
+});
+const MapTab = dynamic(() => import("@/components/tabs/map-tab"), {
+  loading: () => <TabSkeleton />,
+});
+const CrossTab = dynamic(() => import("@/components/tabs/cross-tab"), {
+  loading: () => <TabSkeleton />,
+});
 
 const COLORS = {
   primary: "#1B2A4A",
@@ -28,13 +57,14 @@ const COLORS = {
   bg: "#F8F9FA",
 };
 
-function KpiCard({ title, value, subtitle, trend }: {
+function KpiCard({ title, value, subtitle, trend, tooltip }: {
   title: string; value: string; subtitle?: string;
   trend?: "up" | "down" | "flat";
+  tooltip?: string;
 }) {
   const arrow = trend === "up" ? "↑" : trend === "down" ? "↓" : trend === "flat" ? "→" : "";
   const color = trend === "up" ? COLORS.positive : trend === "down" ? COLORS.negative : COLORS.neutral;
-  return (
+  const card = (
     <Card className="text-center">
       <CardHeader className="pb-2">
         <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</CardTitle>
@@ -44,6 +74,15 @@ function KpiCard({ title, value, subtitle, trend }: {
         {subtitle && <p className="text-xs text-muted-foreground mt-1">{arrow && <span style={{ color }} className="mr-1">{arrow}</span>}{subtitle}</p>}
       </CardContent>
     </Card>
+  );
+  if (!tooltip) return card;
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<div />}>
+        {card}
+      </TooltipTrigger>
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -171,6 +210,11 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-gray-950">
+      {/* Skip navigation */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-4 focus:text-blue-600">
+        メインコンテンツへスキップ
+      </a>
+
       {/* Header */}
       <header className="text-white px-4 py-3 shadow-md md:px-6 md:py-4 bg-[#1B2A4A] dark:bg-gray-900">
         <div className="max-w-7xl mx-auto">
@@ -178,13 +222,15 @@ function DashboardContent() {
             <h1 className="text-lg font-bold tracking-tight md:text-xl">CI102 不動産市場分析ダッシュボード</h1>
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <select value={prefCode} onChange={(e) => { setPrefCode(Number(e.target.value)); setCityCode(""); setAiResult(null); }}
-                className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 max-w-full md:max-w-[180px]">
+                aria-label="都道府県を選択"
+                className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 max-w-full md:max-w-[180px] focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 {Object.entries(PREFECTURES).map(([code, name]) => (
                   <option key={code} value={code}>{String(code).padStart(2, "0")} {name}</option>
                 ))}
               </select>
               <select value={cityCode} onChange={(e) => setCityCode(e.target.value)}
-                className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 max-w-full md:max-w-[180px]">
+                aria-label="市区町村を選択"
+                className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 max-w-full md:max-w-[180px] focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 <option value="">全県</option>
                 {municipalities.map((m) => (
                   <option key={m.area_code} value={m.area_code}>{m.area_name}</option>
@@ -199,7 +245,7 @@ function DashboardContent() {
       </header>
 
       {/* Main */}
-      <main className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6">
+      <main id="main-content" className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6">
         {(prefError || muniError) && (
           <div className="mb-4 rounded-lg border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950 p-3 text-sm text-red-800 dark:text-red-300">
             {prefError && <p>都道府県データ読込エラー: {prefError}</p>}
@@ -218,7 +264,7 @@ function DashboardContent() {
           <div className="text-center py-20 text-muted-foreground">データが見つかりません</div>
         ) : (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)} className="w-full">
-            <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+            <TabsList className="w-full justify-start overflow-x-auto flex-nowrap" aria-label="分析タブ">
               <TabsTrigger value="scorecard" className="text-xs md:text-sm">
                 <span className="md:hidden">⓪</span>
                 <span className="hidden md:inline">⓪ スコアカード</span>
@@ -266,13 +312,13 @@ function DashboardContent() {
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                    <KpiCard title="EBM" value={pref.ebm.toFixed(2)} subtitle="経済基盤乗数" />
-                    <KpiCard title="PER" value={pref.per.toFixed(2)} subtitle="人口雇用比率" />
-                    <KpiCard title="基盤雇用比率" value={`${pref.basic_ratio.toFixed(1)}%`} />
-                    <KpiCard title="RS合計" value={pref.rs_total.toLocaleString()} trend={pref.rs_total > 0 ? "up" : pref.rs_total < 0 ? "down" : "flat"} />
-                    <KpiCard title="漏損/余剰" value={pref.aggregate_gap_factor.toFixed(1)} />
-                    <KpiCard title="昼間人口" value={pref.daytime_population.toLocaleString()} />
-                    <KpiCard title="実績雇用変化" value={pref.actual_emp_change.toLocaleString()} subtitle="2016→2021" trend={pref.actual_emp_change > 0 ? "up" : "down"} />
+                    <KpiCard title="EBM" value={pref.ebm.toFixed(2)} subtitle="経済基盤乗数" tooltip="基盤雇用1人が支える総雇用数。値が大きいほど波及効果が大きい" />
+                    <KpiCard title="PER" value={pref.per.toFixed(2)} subtitle="人口雇用比率" tooltip="就業者1人あたりの総人口。住戸需要の推計に使用" />
+                    <KpiCard title="基盤雇用比率" value={`${pref.basic_ratio.toFixed(1)}%`} tooltip="LQ>1.0の産業の超過雇用が総雇用に占める割合" />
+                    <KpiCard title="RS合計" value={pref.rs_total.toLocaleString()} trend={pref.rs_total > 0 ? "up" : pref.rs_total < 0 ? "down" : "flat"} tooltip="地域シフト合計。正=全国を上回る競争力、負=劣位" />
+                    <KpiCard title="漏損/余剰" value={pref.aggregate_gap_factor.toFixed(1)} tooltip="小売購買力の流出入度合い。正=漏損(出店機会)、負=余剰(供給過多)" />
+                    <KpiCard title="昼間人口" value={pref.daytime_population.toLocaleString()} tooltip="通勤・通学で流入する人口を含む日中の人口" />
+                    <KpiCard title="実績雇用変化" value={pref.actual_emp_change.toLocaleString()} subtitle="2016→2021" trend={pref.actual_emp_change > 0 ? "up" : "down"} tooltip="2016年→2021年の実際の雇用増減（経済センサス）" />
                   </div>
 
                   {selectedCity && (
@@ -326,9 +372,11 @@ function DashboardContent() {
                     <h3 className="font-semibold mb-2">Proformer 物件データ連携</h3>
                     <div className="flex gap-2 items-end">
                       <input value={pfId} onChange={(e) => setPfId(e.target.value)} placeholder="物件データID (external_id)"
-                        className="flex-1 rounded border px-3 py-1.5 text-sm bg-background text-foreground" />
+                        aria-label="Proformer 物件データID"
+                        className="flex-1 rounded border px-3 py-1.5 text-sm bg-background text-foreground focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                       <button onClick={fetchProformer} disabled={pfLoading || !pfId}
-                        className="rounded bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-1.5 text-sm disabled:opacity-50">
+                        aria-label="Proformer データを取得"
+                        className="rounded bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-1.5 text-sm disabled:opacity-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         {pfLoading ? "取得中..." : "取得"}
                       </button>
                     </div>
@@ -346,7 +394,8 @@ function DashboardContent() {
                   <div className="rounded-lg border p-4">
                     <h3 className="font-semibold mb-2">AI分析（Claude）</h3>
                     <button onClick={runAiAnalysis} disabled={aiLoading}
-                      className="rounded bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-1.5 text-sm disabled:opacity-50">
+                      aria-label="AI分析を生成"
+                      className="rounded bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-1.5 text-sm disabled:opacity-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
                       {aiLoading ? "分析中..." : pfData ? "AI統合分析を生成（地域+物件）" : "AI分析を生成"}
                     </button>
                     {aiResult && (

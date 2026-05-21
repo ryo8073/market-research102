@@ -102,12 +102,13 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
   return (
     <div className="space-y-6">
       {/* Metric selector */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="地図指標の切り替え">
         {(Object.keys(METRIC_CONFIG) as MapMetric[]).map((m) => (
           <button
             key={m}
             onClick={() => setMetric(m)}
-            className={`px-3 py-1.5 text-xs md:px-4 md:py-2 md:text-sm rounded-lg border ${metric === m ? "bg-slate-900 text-white" : "bg-white"}`}
+            aria-pressed={metric === m}
+            className={`px-3 py-1.5 text-xs md:px-4 md:py-2 md:text-sm rounded-lg border focus:ring-2 focus:ring-blue-500 focus:outline-none ${metric === m ? "bg-slate-900 text-white" : "bg-white"}`}
           >
             {METRIC_CONFIG[m].label}
           </button>

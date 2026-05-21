@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import PlotlyChart from "@/components/plotly-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,6 +22,7 @@ interface Props {
 }
 
 export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationalT0, nationalT1, selectedCity }: Props) {
+  const [selectedSignalIndustries, setSelectedSignalIndustries] = useState<Set<string> | null>(null);
   const lqData = useMemo(() => lq_table(localEmp, nationalEmp), [localEmp, nationalEmp]);
   const basicTotal = useMemo(() => total_basic_employment(lqData), [lqData]);
   const totalEmp = useMemo(() => lqData.reduce((s, r) => s + r.local_emp, 0), [lqData]);
@@ -135,27 +136,37 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
               const caution = lqData.filter((r) => r.lq > 1 && (rsMap.get(r.industry) ?? 0) <= 0);
               const growing = lqData.filter((r) => r.lq <= 1 && (rsMap.get(r.industry) ?? 0) > 0);
               const declining = lqData.filter((r) => r.lq <= 1 && (rsMap.get(r.industry) ?? 0) <= 0);
+
+              const handleSignalClick = (industries: typeof best) => {
+                const names = new Set(industries.map((r) => r.industry));
+                if (selectedSignalIndustries && [...names].every((n) => selectedSignalIndustries.has(n)) && names.size === selectedSignalIndustries.size) {
+                  setSelectedSignalIndustries(null);
+                } else {
+                  setSelectedSignalIndustries(names);
+                }
+              };
+
               return (
                 <>
-                  <Card className="border-l-4" style={{ borderLeftColor: "#2A9D8F" }}>
+                  <Card className="border-l-4 cursor-pointer hover:shadow-md transition-shadow" style={{ borderLeftColor: "#2A9D8F" }} onClick={() => handleSignalClick(best)}>
                     <CardContent className="pt-4">
                       <div className="text-2xl font-bold">{best.length}</div>
                       <p className="text-xs text-muted-foreground">最優良（LQ&gt;1 &amp; RS&gt;0）</p>
                     </CardContent>
                   </Card>
-                  <Card className="border-l-4" style={{ borderLeftColor: "#D4A843" }}>
+                  <Card className="border-l-4 cursor-pointer hover:shadow-md transition-shadow" style={{ borderLeftColor: "#D4A843" }} onClick={() => handleSignalClick(caution)}>
                     <CardContent className="pt-4">
                       <div className="text-2xl font-bold">{caution.length}</div>
                       <p className="text-xs text-muted-foreground">要警戒（LQ&gt;1 &amp; RS&lt;0）</p>
                     </CardContent>
                   </Card>
-                  <Card className="border-l-4" style={{ borderLeftColor: "#6B7280" }}>
+                  <Card className="border-l-4 cursor-pointer hover:shadow-md transition-shadow" style={{ borderLeftColor: "#6B7280" }} onClick={() => handleSignalClick(growing)}>
                     <CardContent className="pt-4">
                       <div className="text-2xl font-bold">{growing.length}</div>
                       <p className="text-xs text-muted-foreground">成長中（LQ&lt;1 &amp; RS&gt;0）</p>
                     </CardContent>
                   </Card>
-                  <Card className="border-l-4" style={{ borderLeftColor: "#E76F51" }}>
+                  <Card className="border-l-4 cursor-pointer hover:shadow-md transition-shadow" style={{ borderLeftColor: "#E76F51" }} onClick={() => handleSignalClick(declining)}>
                     <CardContent className="pt-4">
                       <div className="text-2xl font-bold">{declining.length}</div>
                       <p className="text-xs text-muted-foreground">衰退（LQ&lt;1 &amp; RS&lt;0）</p>
@@ -182,7 +193,7 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
           </thead>
           <tbody>
             {[...lqData].sort((a, b) => b.lq - a.lq).map((r) => (
-              <tr key={r.industry} className="border-b hover:bg-slate-50">
+              <tr key={r.industry} className={`border-b hover:bg-muted/50 cursor-default transition-colors ${selectedSignalIndustries?.has(r.industry) ? "bg-yellow-50 dark:bg-yellow-950/30" : ""}`}>
                 <td className="p-2">{r.industry}</td>
                 <td className="text-right p-2">{r.local_emp.toLocaleString()}</td>
                 <td className="text-right p-2">{r.national_emp.toLocaleString()}</td>

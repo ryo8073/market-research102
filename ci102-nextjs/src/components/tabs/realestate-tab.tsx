@@ -72,18 +72,20 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
       {/* Year/Quarter selectors */}
       <div className="flex flex-wrap gap-4 items-end">
         <div>
-          <label className="text-sm font-medium">年度</label>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))}
-            className="ml-2 rounded border px-3 py-1.5 text-sm">
+          <label htmlFor="year-select" className="text-sm font-medium">年度</label>
+          <select id="year-select" value={year} onChange={(e) => setYear(Number(e.target.value))}
+            aria-label="年度を選択"
+            className="ml-2 rounded border px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
             {[2024, 2023, 2022, 2021, 2020, 2019].map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium">四半期</label>
-          <select value={quarter} onChange={(e) => setQuarter(Number(e.target.value))}
-            className="ml-2 rounded border px-3 py-1.5 text-sm">
+          <label htmlFor="quarter-select" className="text-sm font-medium">四半期</label>
+          <select id="quarter-select" value={quarter} onChange={(e) => setQuarter(Number(e.target.value))}
+            aria-label="四半期を選択"
+            className="ml-2 rounded border px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
             {[1, 2, 3, 4].map((q) => (
               <option key={q} value={q}>Q{q}</option>
             ))}
@@ -176,7 +178,7 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
               </thead>
               <tbody>
                 {numericData.slice(0, 100).map((d, i) => (
-                  <tr key={i} className="border-b hover:bg-slate-50">
+                  <tr key={i} className="border-b hover:bg-muted/50 cursor-default transition-colors">
                     <td className="p-2">{d.Type}</td>
                     <td className="p-2 text-right font-mono">{d.TradePrice > 0 ? `${(d.TradePrice / 10000).toLocaleString(undefined, { maximumFractionDigits: 0 })}万` : "—"}</td>
                     <td className="p-2 text-right font-mono">{d.UnitPrice > 0 ? d.UnitPrice.toLocaleString() : "—"}</td>

@@ -103,7 +103,7 @@ export default function ShiftShareTab({ precomputed, selectedCity }: Props) {
           </thead>
           <tbody>
             {ssData.sort((a, b) => b.regional_shift - a.regional_shift).map((r) => (
-              <tr key={r.industry} className="border-b hover:bg-slate-50">
+              <tr key={r.industry} className="border-b hover:bg-muted/50 cursor-default transition-colors">
                 <td className="p-2">{r.industry}</td>
                 <td className="text-right p-2 font-mono">{r.actual_change.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })}</td>
                 <td className="text-right p-2 font-mono">{r.national_growth.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })}</td>

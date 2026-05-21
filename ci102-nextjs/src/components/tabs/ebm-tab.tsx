@@ -88,9 +88,10 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
       <div className="rounded-lg border p-4">
         <h3 className="font-semibold mb-3">シミュレーション（What-If）</h3>
         <p className="text-xs text-muted-foreground mb-3">基盤雇用が変動した場合の波及効果。予測ではありません。</p>
-        <label className="text-sm">新規基盤雇用</label>
-        <input type="number" value={newBasicJobs} onChange={(e) => setNewBasicJobs(Number(e.target.value))}
-          className="ml-2 rounded border px-3 py-1 w-28 text-sm" />
+        <label htmlFor="new-basic-jobs" className="text-sm">新規基盤雇用</label>
+        <input id="new-basic-jobs" type="number" value={newBasicJobs} onChange={(e) => setNewBasicJobs(Number(e.target.value))}
+          aria-label="新規基盤雇用の人数"
+          className="ml-2 rounded border px-3 py-1 w-28 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
       </div>
 
       {/* Cascade Results */}
