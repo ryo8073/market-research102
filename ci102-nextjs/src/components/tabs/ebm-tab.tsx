@@ -138,6 +138,33 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
           </CardContent></Card>
         </div>
       </div>
+
+      {/* Educational content */}
+      <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <summary className="font-medium cursor-pointer">ℹ️ 投資判断への活用</summary>
+        <div className="mt-2 space-y-2">
+          <p>
+            経済基盤乗数（EBM）は基盤雇用1人が地域全体で何人の雇用を支えているかを示します。
+            EBM = 5.0 なら、基盤産業の雇用が1人増えると地域全体で5人の雇用増加を意味します。
+          </p>
+          <p>
+            人口雇用比率（PER）は就業者1人あたりの総人口です。
+          </p>
+          <p className="font-medium">需要予測の流れ:</p>
+          <p>基盤雇用の変動 → ×EBM → 総雇用変動 → ×PER → 人口変動 → ÷世帯人員 → 住戸需要</p>
+          <div className="font-mono text-xs mt-2 space-y-1">
+            <p>計算式:</p>
+            <ul className="list-disc list-inside">
+              <li>EBM = 総雇用 ÷ 基盤雇用</li>
+              <li>PER = 人口 ÷ 総雇用</li>
+              <li>住戸需要 = 新規基盤雇用 × EBM × PER ÷ 世帯人員</li>
+            </ul>
+          </div>
+          <p>
+            基盤産業の工場誘致・撤退が地域の不動産需要にどう波及するかを定量予測できます。
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

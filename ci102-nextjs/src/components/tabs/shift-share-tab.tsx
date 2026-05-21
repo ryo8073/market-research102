@@ -116,6 +116,42 @@ export default function ShiftShareTab({ precomputed, selectedCity }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Educational content */}
+      <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <summary className="font-medium cursor-pointer">ℹ️ 投資判断への活用</summary>
+        <div className="mt-2 space-y-2">
+          <p>シフトシェア分析は、地域の雇用変動を3つの要因に分解します。</p>
+          <table className="w-full text-sm border-collapse mt-1">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-1">要因</th>
+                <th className="text-left p-1">意味</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b">
+                <td className="p-1 font-medium">NS（国家成長）</td>
+                <td className="p-1">全国経済の成長に乗った自然成長分</td>
+              </tr>
+              <tr className="border-b">
+                <td className="p-1 font-medium">IM（産業ミックス）</td>
+                <td className="p-1">成長産業が多い/少ないことによる有利・不利</td>
+              </tr>
+              <tr className="border-b">
+                <td className="p-1 font-medium">RS（地域シフト）</td>
+                <td className="p-1">最重要。同じ産業の全国平均をどれだけ上回ったか</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            投資判断: RS &gt; 0 の産業 = その地域に固有の競争力がある「スター産業」。関連不動産は安定需要が見込めます。RS &lt; 0 の産業は衰退リスクがあり、関連不動産の空室率上昇に注意が必要です。
+          </p>
+          <p className="font-mono text-xs">
+            恒等式: 実際の雇用変化 = NS + IM + RS（必ず一致します）
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

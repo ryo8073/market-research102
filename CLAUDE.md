@@ -46,7 +46,7 @@ RESAS API は **2025年3月24日にサービス終了済み**。コードに `ap
 - Denver MSA Self-Assessment 1b
 - Baton Rouge Shift-Share (NS/IM/RS 恒等式検証)
 
-変更後は `pytest tests/test_calculator.py -v` で 55 テスト全合格を確認すること。
+変更後は `pytest tests/test_calculator.py -v` で 61 テスト全合格を確認すること。
 
 ### e-Stat 経済センサスのテーブル構造
 
@@ -175,3 +175,41 @@ EBM×PERカスケード（基盤雇用N人増→総雇用→人口→住宅需�
 - CLAUDE.md準拠: APIクライアントは `call_claude_api()` 内で生成（モジュールレベル禁止）
 - プロンプトには `SYSTEM_PROMPT`（アナリスト役割+出力フォーマット+データ制約）と `user_message`（ScorecardData JSON）を分離
 - Proformerデータがある場合はプロンプトを拡張し「マクロ×ミクロ統合評価」セクションを追加
+
+## Next.js版 UIルール
+
+### 親のstateは必ず子コンポーネントにpropsで渡す
+
+```tsx
+// ❌ NG: page.tsx で cityCode/selectedCity を管理するが、タブに渡さない
+<LqTab prefData={pref} allData={allData} />
+
+// ✅ OK: 選択状態を全タブに渡す
+<LqTab prefData={pref} allData={allData} selectedCity={selectedCity} />
+```
+
+**理由**: React の state は暗黙に子に伝わらない。ドロップダウンで市区町村を選択しても、propsで渡さなければタブ側は反応しない。
+
+### データフックのfetch失敗を握りつぶさない
+
+```tsx
+// ❌ NG: エラーの原因が不明
+.catch(() => setData([]))
+
+// ✅ OK: エラーを可視化
+.catch((err) => {
+  console.error(`fetch failed:`, err);
+  setError(err.message);
+  setData([]);
+})
+```
+
+UIにはエラーバナー（赤背景）を表示し、ユーザーが問題を認識できるようにする。
+
+## Vercelデプロイ情報
+
+- プロジェクト名: `ci102-market-analysis`
+- 本番URL: https://ci102-market-analysis.vercel.app
+- Root Directory: `ci102-nextjs`（Build and Deployment設定）
+- GitHub連携: `ryo8073/market-research102` → push自動デプロイ
+- 環境変数: ESTAT_APP_ID, MLIT_API_KEY, ANTHROPIC_API_KEY, PROFORMER_API_KEY

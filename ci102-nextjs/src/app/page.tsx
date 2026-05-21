@@ -264,10 +264,15 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div className="rounded-lg bg-slate-50 p-4 text-xs text-muted-foreground">
-                    <p className="font-medium mb-1">データの時点と制限</p>
-                    <p>経済センサス: 2021年6月 / 国勢調査: 2020年10月（人口は2015年組替値） / すべて過去のスナップショット</p>
-                  </div>
+                  <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
+                    <summary className="font-medium cursor-pointer">ℹ️ データの時点と制限</summary>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>経済センサス: 2021年6月時点（5年ごと更新、次回2026年）</li>
+                      <li>国勢調査: 2020年10月時点（人口は2015年の値を2020年境界に組替）</li>
+                      <li>MLIT取引価格: 選択した四半期の実績（リアルタイムではない）</li>
+                      <li>これらは過去のスナップショットであり、現在の市場状況と異なる可能性があります</li>
+                    </ul>
+                  </details>
                 </div>
               </TabsContent>
 

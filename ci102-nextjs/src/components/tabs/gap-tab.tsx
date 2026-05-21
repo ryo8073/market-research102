@@ -136,6 +136,42 @@ export default function GapTab({ sectors, selectedCity }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Educational content */}
+      <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <summary className="font-medium cursor-pointer">ℹ️ 投資判断への活用</summary>
+        <div className="mt-2 space-y-2">
+          <p>
+            漏損（Leakage）は、地域住民の購買力が域外に流出している状態です。
+            漏損が大きいセクターは新規出店により購買力を取り戻せる可能性があり、商業不動産の投資機会を示唆します。
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs mt-1">
+              <thead className="bg-slate-100">
+                <tr>
+                  <th className="p-2 text-left">係数</th>
+                  <th className="p-2 text-left">状態</th>
+                  <th className="p-2 text-left">投資判断</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b"><td className="p-2">+10以上</td><td className="p-2">漏損（出店機会）</td><td className="p-2">需要 &gt; 供給。新規出店の余地あり</td></tr>
+                <tr className="border-b"><td className="p-2">&plusmn;10以内</td><td className="p-2">均衡</td><td className="p-2">需給がほぼ釣り合い</td></tr>
+                <tr className="border-b"><td className="p-2">-10以下</td><td className="p-2">余剰（供給過多）</td><td className="p-2">同業種の追加出店はカニバリゼーションのリスク</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs">
+            「漏損」「漏出」はいずれも購買力の域外流出を意味します。
+          </p>
+          <p className="font-medium">計算方法:</p>
+          <ul className="list-disc list-inside text-xs space-y-1">
+            <li>需要 = 地域人口 × 全国平均の1人あたり小売支出額で按分推計</li>
+            <li>供給 = 経済センサスの業種別年間商品販売額</li>
+            <li>係数 = (需要 - 供給) ÷ (需要 + 供給) × 100</li>
+          </ul>
+        </div>
+      </details>
     </div>
   );
 }

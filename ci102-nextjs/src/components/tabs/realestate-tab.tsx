@@ -193,6 +193,25 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
         </>
       )}
 
+      {/* Educational content */}
+      <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <summary className="font-medium cursor-pointer">ℹ️ 投資判断への活用</summary>
+        <div className="mt-2 space-y-2">
+          <p>
+            経済基盤分析（Tab 1）で特定した基盤産業の強さが、実際の不動産価格にどう反映されているかを確認します。
+          </p>
+          <p className="font-medium">着目ポイント:</p>
+          <ul className="list-disc list-inside text-xs space-y-1">
+            <li>基盤産業が強い地域は、取引価格が安定・上昇傾向にあるか？</li>
+            <li>シフトシェアでRS（競争要因）が正の産業が集積するエリアで、㎡単価は上がっているか？</li>
+            <li>物件タイプ別の㎡単価分布から、割安なセグメントはどこか？</li>
+          </ul>
+          <p className="text-xs">
+            データソース: 国土交通省 不動産情報ライブラリAPI（四半期ごとの実取引データ）
+          </p>
+        </div>
+      </details>
+
       {!loading && data.length === 0 && !error && (
         <div className="text-center py-12 text-muted-foreground">
           指定期間の取引データがありません。年度・四半期を変更してください。

@@ -5,7 +5,7 @@ CI102 の計算ロジック（calculator.py）が教科書の数値と一致す�
 ## 検証手順
 
 1. `pytest tests/test_calculator.py -v` を実行
-2. 全55テスト（Orlando MSA / Denver MSA / Baton Rouge / Gwinnett County）が合格することを確認
+2. 全61テスト（Orlando MSA / Denver MSA / Baton Rouge / Gwinnett County）が合格することを確認
 3. 失敗テストがあれば、教科書の数値と calculator.py の実装を照合し、差異を報告
 
 ## 検証対象の教科書データ

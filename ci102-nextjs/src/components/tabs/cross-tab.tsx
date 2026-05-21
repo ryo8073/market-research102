@@ -110,6 +110,37 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
           showlegend: false,
         }}
       />
+
+      {/* Educational content */}
+      <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <summary className="font-medium cursor-pointer">ℹ️ この分析の読み方</summary>
+        <div className="mt-2 space-y-2">
+          <p>
+            47都道府県を「小売漏損/余剰係数」（横軸）と「㎡単価中央値」（縦軸）の2軸にプロットし、投資機会を4象限で分類します。
+          </p>
+          <div className="space-y-1 text-xs">
+            <p className="p-1.5 rounded" style={{ backgroundColor: "rgba(42,157,143,0.1)" }}>
+              <strong>右下: 需要あり × 安い → 最優先投資候補</strong><br />
+              漏損が大きい（購買力が流出）のに不動産が安い地域。出店の好機。
+            </p>
+            <p className="p-1.5 rounded" style={{ backgroundColor: "rgba(212,168,67,0.1)" }}>
+              <strong>右上: 需要あり × 高い → エントリーコスト注意</strong><br />
+              需要はあるが不動産が高い。利回りの精査が必要。
+            </p>
+            <p className="p-1.5 rounded" style={{ backgroundColor: "rgba(107,114,128,0.1)" }}>
+              <strong>左下: 余剰 × 安い → 様子見</strong><br />
+              供給過多で不動産も安い。構造的な問題の可能性。
+            </p>
+            <p className="p-1.5 rounded" style={{ backgroundColor: "rgba(231,111,81,0.1)" }}>
+              <strong>左上: 余剰 × 高い → 回避</strong><br />
+              供給過多なのに不動産が高い。最もリスクが高い象限。
+            </p>
+          </div>
+          <p className="text-xs">
+            バブルサイズは総雇用規模、色はEBM（経済基盤乗数）を示します。色が明るいほど乗数効果が大きい地域です。
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

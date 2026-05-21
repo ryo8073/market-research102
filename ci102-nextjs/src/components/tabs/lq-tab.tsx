@@ -193,6 +193,25 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
           </tbody>
         </table>
       </div>
+
+      {/* Educational content */}
+      <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <summary className="font-medium cursor-pointer">ℹ️ 投資判断への活用</summary>
+        <div className="mt-2 space-y-2">
+          <p>
+            特化係数（LQ）が1.0を超える産業は、この地域から域外へ財やサービスを「輸出」し、外部資金を流入させる基盤産業です。この外部資金の流入がテナント需要を生み、不動産価値を支える根源的な力です。
+          </p>
+          <p className="font-medium">着目ポイント:</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>LQ &gt; 1.5 の産業が複数ある → 経済基盤が多様で投資リスクが低い</li>
+            <li>LQ &gt; 2.0 の産業が1つだけ → 一極集中リスクに注意</li>
+            <li>基盤雇用の推計: LQ &gt; 1.0 の産業について、全国平均を超える部分の雇用を「域外向け輸出に必要な雇用（基盤雇用）」と推定します</li>
+          </ul>
+          <p className="font-mono text-xs mt-2">
+            計算式: LQ = (地域の産業i雇用 / 地域の総雇用) ÷ (全国の産業i雇用 / 全国の総雇用)
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

@@ -211,6 +211,30 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
           })()}
         </CardContent>
       </Card>
+      {/* Educational content */}
+      <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <summary className="font-medium cursor-pointer">ℹ️ 地図の見方</summary>
+        <div className="mt-2 space-y-2">
+          <p>
+            <strong>【基盤雇用比率】</strong>色が濃いほど基盤産業の雇用比率が高い地域。外部資金の流入基盤が強い。
+          </p>
+          <p>
+            <strong>【RS合計】</strong>緑 = 地域シフト(RS)合計が正 → 全国トレンドを上回る競争優位。赤 = RS合計が負 → 全国の同産業と比べ雇用が減少傾向。期間: 2016年→2021年。
+          </p>
+          <p>
+            <strong>【投資スコア】</strong>複合指標（EBM・基盤比率・RS・ギャップ・規模）を100点満点でスコアリング。
+          </p>
+          <p className="font-medium">市区町村セグメント:</p>
+          <ul className="list-disc list-inside text-xs space-y-1">
+            <li><strong>都市サービス集積型:</strong> 情報・金融等のサービス産業が集積</li>
+            <li><strong>工業基盤型:</strong> 製造業が域外輸出の柱</li>
+            <li><strong>商業・観光型:</strong> 小売・宿泊・飲食が中心</li>
+            <li><strong>公務・教育型:</strong> 公的セクターが雇用の柱</li>
+            <li><strong>高齢縮小型:</strong> 基盤産業が少なく人口減少リスクが高い</li>
+            <li><strong>均衡型:</strong> 特定産業への偏りが少ない</li>
+          </ul>
+        </div>
+      </details>
     </div>
   );
 }
