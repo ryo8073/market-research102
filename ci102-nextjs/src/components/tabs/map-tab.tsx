@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PREFECTURES } from "@/lib/codes";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
-import { useMunicipalityData } from "@/lib/use-municipality-data";
+import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
 
 // Dynamic import to avoid SSR issues with MapLibre
 const MapView = dynamic(() => import("@/components/maplibre-map"), { ssr: false });
@@ -142,7 +142,7 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
         <CardContent>
           {muniGeojson ? (
             <div style={{ height: 500 }} className="rounded-lg overflow-hidden border">
-              <MuniMap geojson={muniGeojson} center={center} />
+              <MuniMap geojson={muniGeojson} center={center} municipalities={municipalities} metric={metric} />
             </div>
           ) : (
             <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
@@ -240,14 +240,75 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
   );
 }
 
-/** Municipality map using inline GeoJSON (already converted from TopoJSON) */
-function MuniMap({ geojson, center }: { geojson: any; center: [number, number] }) {
+/** Municipality map with data-driven coloring */
+function MuniMap({ geojson, center, municipalities, metric }: {
+  geojson: any; center: [number, number];
+  municipalities: MunicipalityData[]; metric: MapMetric;
+}) {
+  // Merge municipality data into GeoJSON features
+  const enrichedGeojson = useMemo(() => {
+    if (!geojson?.features) return geojson;
+    const muniMap = new Map(municipalities.map((m) => [m.area_code, m]));
+    return {
+      ...geojson,
+      features: geojson.features.map((f: any) => {
+        const code = f.properties?.N03_007;
+        const m = code ? muniMap.get(code) : null;
+        return {
+          ...f,
+          properties: {
+            ...f.properties,
+            basic_ratio: m?.basic_ratio ?? 0,
+            segment: m?.segment ?? "均衡型",
+            area_name: m?.area_name ?? f.properties?.N03_004 ?? f.properties?.N03_003 ?? "",
+            total_emp: m?.total_emp ?? 0,
+            max_lq: m?.max_lq ?? 0,
+            max_lq_industry: m?.max_lq_industry ?? "",
+          },
+        };
+      }),
+    };
+  }, [geojson, municipalities]);
+
+  // Build fill-color expression based on metric
+  const fillColor = useMemo(() => {
+    if (metric === "basic_ratio") {
+      // Interpolate: 0% → light blue, 15% → mid, 30%+ → dark red
+      return [
+        "interpolate", ["linear"], ["get", "basic_ratio"],
+        0, "#f7fbff",
+        5, "#c6dbef",
+        10, "#6baed6",
+        20, "#2171b5",
+        35, "#08306b",
+      ] as any;
+    }
+    // For rs_total / suitability, color by segment
+    const segColors: Record<string, string> = {
+      "都市サービス集積型": "#1B2A4A",
+      "工業基盤型": "#2A9D8F",
+      "商業・観光型": "#D4A843",
+      "公務・教育型": "#6B7280",
+      "高齢縮小型": "#E76F51",
+      "均衡型": "#9CA3AF",
+    };
+    return [
+      "match", ["get", "segment"],
+      ...Object.entries(segColors).flat(),
+      "#9CA3AF",
+    ] as any;
+  }, [metric]);
+
   const MapInner = dynamic(
     () =>
       import("react-map-gl/maplibre").then((mod) => {
         const { default: MapGL, Source, Layer, Popup } = mod;
         return function MuniMapInner() {
-          const [hover, setHover] = useState<{ lng: number; lat: number; name: string } | null>(null);
+          const [hover, setHover] = useState<{
+            lng: number; lat: number; name: string;
+            basicRatio?: number; segment?: string; totalEmp?: number;
+            maxLq?: number; maxLqIndustry?: string;
+          } | null>(null);
 
           return (
             <MapGL
@@ -261,7 +322,12 @@ function MuniMap({ geojson, center }: { geojson: any; center: [number, number] }
                   setHover({
                     lng: e.lngLat.lng,
                     lat: e.lngLat.lat,
-                    name: f.properties?.N03_004 ?? f.properties?.N03_003 ?? "",
+                    name: f.properties?.area_name ?? f.properties?.N03_004 ?? "",
+                    basicRatio: f.properties?.basic_ratio,
+                    segment: f.properties?.segment,
+                    totalEmp: f.properties?.total_emp,
+                    maxLq: f.properties?.max_lq,
+                    maxLqIndustry: f.properties?.max_lq_industry,
                   });
                 } else {
                   setHover(null);
@@ -269,13 +335,13 @@ function MuniMap({ geojson, center }: { geojson: any; center: [number, number] }
               }}
               onMouseLeave={() => setHover(null)}
             >
-              <Source id="muni" type="geojson" data={geojson}>
+              <Source id="muni" type="geojson" data={enrichedGeojson}>
                 <Layer
                   id="muni-fill"
                   type="fill"
                   paint={{
-                    "fill-color": "#2A9D8F",
-                    "fill-opacity": 0.4,
+                    "fill-color": fillColor,
+                    "fill-opacity": 0.6,
                   }}
                 />
                 <Layer
@@ -289,7 +355,13 @@ function MuniMap({ geojson, center }: { geojson: any; center: [number, number] }
               </Source>
               {hover && (
                 <Popup longitude={hover.lng} latitude={hover.lat} closeButton={false} anchor="top">
-                  <span className="text-xs font-bold">{hover.name}</span>
+                  <div className="text-xs">
+                    <p className="font-bold">{hover.name}</p>
+                    {hover.basicRatio != null && <p>基盤比率: {hover.basicRatio.toFixed(1)}%</p>}
+                    {hover.segment && <p>セグメント: {hover.segment}</p>}
+                    {hover.totalEmp != null && hover.totalEmp > 0 && <p>総雇用: {hover.totalEmp.toLocaleString()}</p>}
+                    {hover.maxLqIndustry && <p>最大LQ: {hover.maxLqIndustry} ({hover.maxLq?.toFixed(2)})</p>}
+                  </div>
                 </Popup>
               )}
             </MapGL>

@@ -25,13 +25,15 @@ interface Props {
   highlightPrefCode?: number;
 }
 
-/** Map EBM value to a color gradient (blue=low, teal=mid, orange=high) */
+/** Map EBM value to a color gradient (blue=low, teal=mid, red=high)
+ * Real data range: ~4 (low basic ratio) to ~25 (high basic ratio)
+ * e.g. Tokyo=5.79, Hokkaido=11.34, Osaka=20.57 */
 function ebmColor(ebm: number): string {
-  if (ebm <= 1.5) return "#3B82F6";
-  if (ebm <= 2.0) return "#2A9D8F";
-  if (ebm <= 2.5) return "#D4A843";
-  if (ebm <= 3.0) return "#E76F51";
-  return "#DC2626";
+  if (ebm <= 5) return "#3B82F6";   // blue: low EBM
+  if (ebm <= 8) return "#2A9D8F";   // teal
+  if (ebm <= 12) return "#D4A843";  // gold
+  if (ebm <= 18) return "#E76F51";  // orange
+  return "#DC2626";                  // red: very high EBM
 }
 
 interface CrossDatum {
@@ -118,11 +120,11 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-1">
         <span className="font-medium">EBM:</span>
         {[
-          { label: "~1.5", color: "#3B82F6" },
-          { label: "~2.0", color: "#2A9D8F" },
-          { label: "~2.5", color: "#D4A843" },
-          { label: "~3.0", color: "#E76F51" },
-          { label: "3.0+", color: "#DC2626" },
+          { label: "~5", color: "#3B82F6" },
+          { label: "~8", color: "#2A9D8F" },
+          { label: "~12", color: "#D4A843" },
+          { label: "~18", color: "#E76F51" },
+          { label: "18+", color: "#DC2626" },
         ].map((item) => (
           <span key={item.label} className="flex items-center gap-1">
             <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
