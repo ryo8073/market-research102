@@ -1,4 +1,4 @@
-"""CCIM CI102 準拠 不動産市場分析アプリ（Streamlit MVP）。
+"""不動産市場分析ダッシュボード（Streamlit MVP）。
 
 実行:
     streamlit run app.py
@@ -26,7 +26,7 @@ from data_sources import MarketDataAccessor
 
 
 st.set_page_config(
-    page_title="CCIM CI102 市場分析 - 日本版",
+    page_title="不動産市場分析ダッシュボード",
     page_icon="📊",
     layout="wide",
 )
@@ -121,7 +121,7 @@ if census_cities:
 else:
     _city_name = cities.get(city_code, "")
 
-st.title("📊 CCIM CI102 市場分析ダッシュボード（日本版）")
+st.title("📊 不動産市場分析ダッシュボード")
 st.markdown(f"### 対象: {_pref_name} {_city_name}")
 
 c1, c2, c3, c4 = st.columns(4)
@@ -144,25 +144,14 @@ tab_lq, tab_ebm, tab_ss, tab_gap, tab_re, tab_map = st.tabs(
 with tab_lq:
     st.header("特化係数（Location Quotient, LQ）と基盤雇用")
 
-    with st.expander("この指標の意味（CI102 Module 4: Demand Analysis）", expanded=False):
+    with st.expander("投資判断への活用", expanded=False):
         st.markdown("""
-**特化係数（LQ）** は、ある地域の特定産業の雇用割合を全国平均と比較する指標です。
+特化係数（LQ）が1.0を超える産業は、この地域から域外へ財やサービスを「輸出」し、外部資金を流入させる基盤産業です。この外部資金の流入がテナント需要を生み、不動産価値を支える根源的な力です。
 
-$$LQ = \\frac{\\text{地域の産業}i\\text{の従業者数} / \\text{地域の総従業者数}}{\\text{全国の産業}i\\text{の従業者数} / \\text{全国の総従業者数}}$$
-
-| LQ の値 | 意味 |
-|---------|------|
-| **LQ > 1.0** | 全国平均より高い集積度 → **基盤産業（Basic / Export Sector）** と推定 |
-| **LQ = 1.0** | 全国平均と同じ割合 → 地域内需要を自給している水準 |
-| **LQ < 1.0** | 全国平均より低い集積度 → **非基盤産業（Non-basic / Service Sector）** |
-
-**基盤産業**とは、地域外に財やサービスを「輸出」し、地域外から資金を流入させる産業です。
-この外部資金の流入こそが地域経済を駆動し、将来の不動産需要を創出する根源的な力となります。
-
-**基盤雇用の推計**: LQ > 1.0 の産業について、全国平均を超える部分の雇用を
-「域外向け輸出に必要な雇用（基盤雇用）」と推定します。
-
-$$\\text{基盤雇用} = \\text{地域の従業者数} \\times \\frac{LQ - 1}{LQ}$$
+**着目ポイント**:
+- LQ > 1.5 の産業が複数ある → 経済基盤が多様で投資リスクが低い
+- LQ > 2.0 の産業が1つだけ → 一極集中リスクに注意
+- 基盤雇用の推計: LQ > 1.0 の産業について、全国平均を超える部分の雇用を「域外向け輸出に必要な雇用（基盤雇用）」と推定します
         """)
 
     local_emp, national_emp, src_label = accessor.industry_employment(pref_code, city_code)
@@ -211,33 +200,15 @@ $$\\text{基盤雇用} = \\text{地域の従業者数} \\times \\frac{LQ - 1}{LQ
 with tab_ebm:
     st.header("経済基盤乗数（EBM）と人口雇用比率（PER）")
 
-    with st.expander("この指標の意味（CI102 Module 4: Activity 4-3〜4-5）", expanded=False):
+    with st.expander("投資判断への活用", expanded=False):
         st.markdown("""
-**経済基盤乗数（EBM: Economic Base Multiplier）** は、基盤雇用1人が地域経済全体で
-何人の雇用を支えているかを示す波及効果の指標です。
+**経済基盤乗数（EBM）** は基盤雇用1人が地域全体で何人の雇用を支えているかを示します。EBM = 5.0 なら、基盤産業の雇用が1人増えると地域全体で5人の雇用増加を意味します。
 
-$$EBM = \\frac{\\text{総雇用}}{\\text{基盤雇用}}$$
+**人口雇用比率（PER）** は就業者1人あたりの総人口です。
 
-例えば EBM = 5.0 の場合、基盤産業の雇用が1人増えると、非基盤部門（地元の小売店、
-飲食店、医療機関など）で追加的に4人の雇用が生まれ、地域全体で5人の雇用増加を意味します。
-逆に基盤産業の工場が閉鎖され100人の雇用が失われれば、地域全体で500人の雇用が消失するリスクがあります。
+**需要予測の流れ**: 基盤雇用の変動 → ×EBM → 総雇用変動 → ×PER → 人口変動 → ÷世帯人員 → 住戸需要
 
----
-
-**人口雇用比率（PER: Population to Employment Ratio）** は、就業者1人に対して
-地域に何人の総人口が存在しているかを示します。
-
-$$PER = \\frac{\\text{総人口}}{\\text{総雇用}}$$
-
-PER = 1.8 の場合、就業者1人の背後に子供、高齢者、非就業の配偶者などを含めて
-1.8人の人口基盤が存在していることを意味します。
-
----
-
-**需要予測カスケード（CI102の核心）**: この2つの指標を組み合わせることで、
-基盤雇用の変動から住宅需要までを論理的に予測できます。
-
-$$\\text{基盤雇用増} \\xrightarrow{\\times EBM} \\text{総雇用増} \\xrightarrow{\\times PER} \\text{人口増} \\xrightarrow{\\div \\text{世帯人員}} \\text{住戸需要}$$
+基盤産業の工場誘致・撤退が地域の不動産需要にどう波及するかを定量予測できます。
         """)
 
     local_emp, national_emp, _ = accessor.industry_employment(pref_code, city_code)
@@ -281,24 +252,17 @@ $$\\text{基盤雇用増} \\xrightarrow{\\times EBM} \\text{総雇用増} \\xrig
 with tab_ss:
     st.header("シフトシェア分析（Shift-Share Analysis）")
 
-    with st.expander("この指標の意味（CI102 Module 4: Shift-Share Analysis）", expanded=False):
+    with st.expander("投資判断への活用", expanded=False):
         st.markdown("""
-**シフトシェア分析**は、地域の産業別雇用変動を3つの要因に分解し、
-その地域が持つ本質的な競争力を明らかにする統計手法です。
+シフトシェア分析は、地域の雇用変動を3つの要因に分解します。
 
-$$\\text{雇用変動} = \\text{NS（国家成長）} + \\text{IM（産業ミックス）} + \\text{RS（地域シフト）}$$
+| 要因 | 意味 |
+|------|------|
+| **NS（国家成長）** | 全国経済の成長に乗った自然成長分 |
+| **IM（産業ミックス）** | 成長産業が多い/少ないことによる有利・不利 |
+| **RS（地域シフト）** | **最重要。** 同じ産業の全国平均をどれだけ上回ったか |
 
-| 要因 | 英語名 | 意味 |
-|------|--------|------|
-| **NS** | National Growth Share | 国全体の経済成長率と同じペースで成長したと仮定した場合の雇用変動分。マクロ経済の波に乗った自然成長分。 |
-| **IM** | Industry Mix Effect | その産業セクター自体の全国的な成長トレンドに起因する要因。例: IT産業が全国的に成長していれば、IT企業が多い地域は恩恵を受ける。 |
-| **RS** | Regional Shift / Competitive Share | **最も重要な要因。** 地域の特定産業が全国の同産業をどれだけ上回ったか（下回ったか）を示す。正の値は**競争的優位性（Competitive Advantage）**を意味する。 |
-
-**投資判断への活用**: RS（地域シフト）が大きく正の産業 = その地域に固有の競争力がある
-「スター産業」です。この産業のテナントが入居するオフィスや物流施設は、安定した需要が
-見込めるため、投資対象として有望です。
-
-逆に RS が大きく負の産業は、その地域で衰退しつつあり、関連不動産の空室リスクが高まります。
+**投資判断**: RS > 0 の産業 = その地域に固有の競争力がある「スター産業」。関連不動産は安定需要が見込めます。RS < 0 の産業は衰退リスクがあり、関連不動産の空室率上昇に注意が必要です。
         """)
 
     l0, l1, n0, n1, src = accessor.shift_share_inputs(pref_code, city_code)
@@ -354,45 +318,48 @@ $$\\text{雇用変動} = \\text{NS（国家成長）} + \\text{IM（産業ミッ
 with tab_gap:
     st.header("小売ギャップ分析（漏損/余剰分析）")
 
-    with st.expander("この指標の意味（CI102 Module 5: Retail Properties）", expanded=False):
+    with st.expander("投資判断への活用", expanded=False):
         st.markdown("""
-**ギャップ分析（Gap Analysis）** は、商圏内の消費者の潜在的な購買力（需要）と、
-実際の小売店舗の販売額（供給）の差分を測定する手法です。
+漏損（Leakage）は、地域住民の購買力が域外に流出している状態です。漏損が大きいセクターは新規出店により購買力を取り戻せる可能性があり、商業不動産の投資機会を示唆します。
 
-$$\\text{Leakage/Surplus Factor} = \\frac{\\text{Demand} - \\text{Supply}}{\\text{Demand} + \\text{Supply}} \\times 100$$
+| 係数 | 状態 | 投資判断 |
+|------|------|---------|
+| **+10以上** | 漏損（出店機会） | 需要 > 供給。新規出店の余地あり |
+| **±10以内** | 均衡 | 需給がほぼ釣り合い |
+| **-10以下** | 余剰（供給過多） | 同業種の追加出店はカニバリゼーションのリスク |
 
-| 係数の範囲 | 状態 | 意味 |
-|-----------|------|------|
-| **+100 〜 +10** | **漏損（Leakage）** | 商圏内の購買力が域外に流出している。新規出店の**機会**がある。 |
-| **+10 〜 -10** | **均衡** | 需要と供給がほぼ釣り合っている。 |
-| **-10 〜 -100** | **余剰（Surplus）** | 商圏内の店舗売上が住民の需要を上回っている。広域集客力がある一方、同業種の追加出店は**カニバリゼーション**のリスクが高い。 |
+> 「漏損」「漏出」はいずれも購買力の域外流出を意味します。
 
-> **用語について**: CI102の日本語テキストでは Leakage を「**漏損**」と訳しています。
-> 本アプリでは「漏損」「漏出」を同義で使用しています。いずれも商圏外への購買力流出を意味します。
-
-**需要（Demand）の推計方法**: 地域人口 × 全国平均の1人あたり業種別小売支出額で按分推計。
-家計調査の個票データが利用可能になれば、より精緻な地域別推計が可能です。
-
-**供給（Supply）**: 経済センサス活動調査の業種別年間商品販売額を使用。
+需要は地域人口 × 全国平均の1人あたり小売支出額で按分推計しています。供給は経済センサスの業種別年間商品販売額です。
         """)
 
     sectors, src = accessor.retail_sectors(pref_code, city_code)
     st.caption(f"データソース: {src}")
     df_gap = gap_analysis_table(sectors)
 
-    fig = px.bar(
-        df_gap.sort_values("factor"),
-        x="factor",
-        y="sector",
+    fig = go.Figure()
+    sorted_gap = df_gap.sort_values("factor")
+    fig.add_trace(go.Bar(
+        x=sorted_gap["factor"],
+        y=sorted_gap["sector"],
         orientation="h",
-        color="factor",
-        color_continuous_scale=["#d62728", "#dddddd", "#2ca02c"],
-        color_continuous_midpoint=0,
-        title="漏損/余剰係数（+100 = 完全漏損 〜 -100 = 完全余剰）",
-        labels={"factor": "Leakage/Surplus Factor", "sector": "小売セクター"},
+        marker_color="#D4A843",  # STDBスタイル: 全バー同一色（アンバー）
+        hovertemplate="%{y}: %{x:+.1f}<extra></extra>",
+    ))
+    fig.add_vline(x=0, line_dash="solid", line_color="#6B7280", line_width=2)
+    fig.add_annotation(x=-50, y=1.05, text="← 余剰（供給過多）",
+                       showarrow=False, xref="x", yref="paper",
+                       font=dict(color="#6B7280", size=12))
+    fig.add_annotation(x=50, y=1.05, text="漏損（出店機会）→",
+                       showarrow=False, xref="x", yref="paper",
+                       font=dict(color="#6B7280", size=12))
+    fig.update_layout(
+        height=500,
+        title="漏損/余剰係数",
+        xaxis_title="Leakage/Surplus Factor",
+        yaxis_title="",
+        showlegend=False,
     )
-    fig.add_vline(x=0, line_dash="dash", line_color="gray")
-    fig.update_layout(height=500)
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("詳細テーブル")
@@ -429,21 +396,25 @@ $$\\text{Leakage/Surplus Factor} = \\frac{\\text{Demand} - \\text{Supply}}{\\tex
 with tab_re:
     st.header("不動産取引価格分析")
 
-    with st.expander("この指標の意味（CI102: Market Analysis drives Financial Analysis）", expanded=False):
+    with st.expander("投資判断への活用", expanded=False):
         st.markdown("""
-CI102 の基本理念は **「市場分析が財務分析を牽引する（Market analysis drives financial analysis）」** です。
+経済基盤分析（Tab①）で特定した基盤産業の強さが、実際の不動産価格にどう反映されているかを確認します。
 
-Tab ①〜④ で分析した経済基盤の強さ（LQ、EBM、シフトシェアの競争優位）が、
-実際の不動産価格やキャップレートの変動にどう反映されているかを確認するのがこのタブの役割です。
-
-**確認すべきポイント**:
-- 基盤産業（LQ > 1.0）が強い地域は、取引価格が安定または上昇傾向にあるか？
-- シフトシェアで RS（地域シフト）が正の産業が集積するエリアで、㎡単価は上がっているか？
-- ギャップ分析で漏損が大きい業種がある地域は、商業不動産の投資機会があるか？
-
-**データソース**: 国土交通省「不動産情報ライブラリ」の実取引価格データ（四半期更新）。
+**着目ポイント**:
+- 基盤産業が強い地域は、取引価格が安定・上昇傾向にあるか？
+- シフトシェアでRS（競争要因）が正の産業が集積するエリアで、㎡単価は上がっているか？
+- 物件タイプ別の㎡単価分布から、割安なセグメントはどこか？
         """)
 
+
+    # MLIT APIカラム名の日本語化マッピング
+    _MLIT_COLS = {
+        "Type": "物件種別", "TradePrice": "取引価格", "UnitPrice": "㎡単価",
+        "Area": "面積", "DistrictName": "地区名", "BuildingYear": "建築年",
+        "Structure": "構造", "Use": "用途", "CityPlanning": "都市計画",
+        "FloorPlan": "間取り", "TotalFloorArea": "延床面積",
+        "Period": "取引時期", "PricePerUnit": "坪単価",
+    }
 
     mlit_client = accessor.mlit
     if mlit_client.available:
@@ -454,38 +425,99 @@ Tab ①〜④ で分析した経済基盤の強さ（LQ、EBM、シフトシェ�
             re_quarter = st.selectbox("四半期", options=[1, 2, 3, 4], index=0, key="re_quarter")
 
         try:
-            # MLIT API は都道府県全体(XX000/0)の場合 city_code=None が必要
             _mlit_city = city_code if city_code and city_code % 1000 != 0 else None
             df_re = mlit_client.transaction_prices(
                 year=re_year, quarter=re_quarter,
                 pref_code=pref_code, city_code=_mlit_city,
             )
             if df_re is not None and not df_re.empty:
-                st.metric("取引件数", f"{len(df_re):,}")
+                # --- 数値カラムの前処理 ---
+                for col in ["TradePrice", "UnitPrice", "Area", "TotalFloorArea", "PricePerUnit"]:
+                    if col in df_re.columns:
+                        df_re[col] = pd.to_numeric(df_re[col], errors="coerce")
 
-                if "TradePrice" in df_re.columns:
-                    df_re["TradePrice"] = pd.to_numeric(df_re["TradePrice"], errors="coerce")
-                    valid = df_re.dropna(subset=["TradePrice"])
-                    if not valid.empty:
-                        fig_hist = px.histogram(
-                            valid, x="TradePrice",
-                            title="取引価格分布",
-                            labels={"TradePrice": "取引価格（円）"},
-                            nbins=30,
-                        )
-                        st.plotly_chart(fig_hist, use_container_width=True)
-
+                # --- 物件種別フィルタ ---
                 if "Type" in df_re.columns:
-                    type_counts = df_re["Type"].value_counts().reset_index()
-                    type_counts.columns = ["物件種別", "件数"]
-                    fig_type = px.pie(
-                        type_counts, names="物件種別", values="件数",
-                        title="物件種別構成",
+                    all_types = sorted(df_re["Type"].dropna().unique().tolist())
+                    selected_types = st.multiselect(
+                        "物件種別フィルタ", options=all_types, default=all_types, key="re_type_filter",
                     )
-                    st.plotly_chart(fig_type, use_container_width=True)
+                    if selected_types:
+                        df_re = df_re[df_re["Type"].isin(selected_types)]
 
-                st.subheader("取引データ（先頭50件）")
-                st.dataframe(df_re.head(50), use_container_width=True)
+                # --- KPIカード ---
+                kpi1, kpi2, kpi3 = st.columns(3)
+                kpi1.metric("取引件数", f"{len(df_re):,}")
+                if "TradePrice" in df_re.columns:
+                    med_price = df_re["TradePrice"].median()
+                    if pd.notna(med_price):
+                        kpi2.metric("価格中央値", f"{med_price / 10000:,.0f} 万円")
+                if "UnitPrice" in df_re.columns:
+                    valid_up = df_re.loc[df_re["UnitPrice"] > 0, "UnitPrice"]
+                    if not valid_up.empty:
+                        kpi3.metric("㎡単価中央値", f"{valid_up.median():,.0f} 円/㎡")
+
+                # --- 2カラムチャート ---
+                chart_left, chart_right = st.columns(2)
+
+                with chart_left:
+                    if "TradePrice" in df_re.columns:
+                        valid = df_re.dropna(subset=["TradePrice"])
+                        if not valid.empty:
+                            fig_hist = px.histogram(
+                                valid, x="TradePrice",
+                                title="取引価格分布",
+                                labels={"TradePrice": "取引価格（円）"},
+                                nbins=30,
+                            )
+                            fig_hist.update_layout(height=400)
+                            st.plotly_chart(fig_hist, use_container_width=True)
+
+                with chart_right:
+                    if "UnitPrice" in df_re.columns and "Type" in df_re.columns:
+                        valid_unit = df_re.dropna(subset=["UnitPrice"])
+                        valid_unit = valid_unit[valid_unit["UnitPrice"] > 0]
+                        if not valid_unit.empty:
+                            fig_box = px.box(
+                                valid_unit, x="Type", y="UnitPrice",
+                                title="物件種別ごとの㎡単価分布",
+                                labels={"Type": "物件種別", "UnitPrice": "㎡単価（円/㎡）"},
+                            )
+                            fig_box.update_layout(height=400)
+                            st.plotly_chart(fig_box, use_container_width=True)
+
+                # --- 散布図: 面積 × ㎡単価 ---
+                if "Area" in df_re.columns and "UnitPrice" in df_re.columns:
+                    scatter_data = df_re.dropna(subset=["Area", "UnitPrice"])
+                    scatter_data = scatter_data[(scatter_data["Area"] > 0) & (scatter_data["UnitPrice"] > 0)]
+                    if not scatter_data.empty:
+                        fig_scatter = px.scatter(
+                            scatter_data, x="Area", y="UnitPrice", color="Type",
+                            title="面積 × ㎡単価（物件タイプ別）",
+                            labels={"Area": "面積（㎡）", "UnitPrice": "㎡単価（円/㎡）", "Type": "物件種別"},
+                            hover_data=["DistrictName", "TradePrice"],
+                            opacity=0.7,
+                        )
+                        fig_scatter.update_layout(height=500)
+                        st.plotly_chart(fig_scatter, use_container_width=True)
+
+                # --- 地区別クロス集計 ---
+                if "DistrictName" in df_re.columns and "UnitPrice" in df_re.columns:
+                    cross = df_re.dropna(subset=["UnitPrice"])
+                    cross = cross[cross["UnitPrice"] > 0]
+                    if not cross.empty:
+                        pivot = cross.pivot_table(
+                            values="UnitPrice", index="DistrictName", columns="Type",
+                            aggfunc="median",
+                        ).fillna(0).astype(int)
+                        if not pivot.empty:
+                            st.subheader("地区別 × 物件種別 ㎡単価中央値")
+                            st.dataframe(pivot.style.format("{:,.0f}"), use_container_width=True)
+
+                # --- 取引データテーブル（日本語カラム名） ---
+                st.subheader("取引データ")
+                display_df = df_re.rename(columns={k: v for k, v in _MLIT_COLS.items() if k in df_re.columns})
+                st.dataframe(display_df, use_container_width=True)
             else:
                 st.info("指定期間の取引データがありません。")
         except Exception as e:
@@ -495,18 +527,6 @@ Tab ①〜④ で分析した経済基盤の強さ（LQ、EBM、シフトシェ�
             "MLIT API キーを `.env` に設定すると不動産取引価格データを表示できます。\n\n"
             "取得先: https://www.reinfolib.mlit.go.jp/ex-api/"
         )
-
-        st.markdown("""
-### このタブで表示される情報（API接続後）
-
-- **取引価格分布**: ヒストグラム
-- **物件種別構成**: 宅地、宅地+建物、中古マンション等
-- **地区別・用途別の㎡単価**: 中央値と分布
-- **時系列推移**: 複数四半期の価格トレンド
-
-経済基盤分析（Tab ①②）で特定した基盤産業の成長が、
-実際の不動産価格にどう反映されているかを確認できます。
-        """)
 
 
 # ---------------------------------------------------------------------------
@@ -797,7 +817,6 @@ LQ = 1.0（白）が全国平均水準。特定の産業を選択すると、
 
 st.divider()
 st.caption(
-    "本アプリは CCIM CI102（Market Analysis for Commercial Investment Real Estate）の "
-    "数理モデル（LQ・EBM・PER・シフトシェア・ギャップ分析）を "
-    "日本の公的統計（e-Stat 経済センサス・国勢調査・国土交通省不動産情報ライブラリ）で再現しています。"
+    "分析手法: 経済基盤分析（LQ/EBM/PER）、シフトシェア分析、ギャップ分析 | "
+    "データ: e-Stat 経済センサス活動調査 2021 / 国勢調査 2020 / 国土交通省不動産情報ライブラリ"
 )
