@@ -1,17 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import dynamic from "next/dynamic";
+import {
+  ScatterChart, Scatter, XAxis, YAxis, Tooltip,
+  ReferenceLine, ResponsiveContainer, Cell,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const PlotlyChart = dynamic(() => import("@/components/plotly-chart"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[550px] flex items-center justify-center text-muted-foreground animate-pulse">
-      チャート読込中...
-    </div>
-  ),
-});
 
 const COLORS = {
   primary: "#1B2A4A",
@@ -53,6 +47,46 @@ function classifyCyclePhase(
   }
 }
 
+/** Viridis-like color scale for sequential data points */
+function viridisColor(t: number): string {
+  // Simplified 5-stop viridis
+  const stops = [
+    [68, 1, 84],
+    [59, 82, 139],
+    [33, 145, 140],
+    [94, 201, 98],
+    [253, 231, 37],
+  ];
+  const idx = Math.min(t, 0.999) * (stops.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.min(lo + 1, stops.length - 1);
+  const f = idx - lo;
+  const r = Math.round(stops[lo][0] + (stops[hi][0] - stops[lo][0]) * f);
+  const g = Math.round(stops[lo][1] + (stops[hi][1] - stops[lo][1]) * f);
+  const b = Math.round(stops[lo][2] + (stops[hi][2] - stops[lo][2]) * f);
+  return `rgb(${r},${g},${b})`;
+}
+
+interface PlotDatum {
+  period: string;
+  priceChangePct: number;
+  volumeChangePct: number;
+  index: number;
+  isLatest: boolean;
+}
+
+function MuellerTooltip({ active, payload }: any) {
+  if (!active || !payload?.[0]) return null;
+  const d: PlotDatum = payload[0].payload;
+  return (
+    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+      <p className="font-semibold">{d.period}{d.isLatest ? " (最新)" : ""}</p>
+      <p>価格変化: {d.priceChangePct.toFixed(1)}%</p>
+      <p>取引量変化: {d.volumeChangePct.toFixed(1)}%</p>
+    </div>
+  );
+}
+
 interface Props {
   prefCode: number;
   cityCode?: number;
@@ -68,7 +102,6 @@ export default function MuellerCycle({ prefCode, cityCode }: Props) {
     setLoading(true);
     setError(null);
 
-    // Fetch 8 quarters going backwards from 2024Q1
     const baseYear = 2024;
     const baseQuarter = 1;
     const periods: { year: number; quarter: number }[] = [];
@@ -82,7 +115,6 @@ export default function MuellerCycle({ prefCode, cityCode }: Props) {
         y -= 1;
       }
     }
-    // Reverse so oldest first
     periods.reverse();
 
     const fetchAll = async () => {
@@ -136,10 +168,8 @@ export default function MuellerCycle({ prefCode, cityCode }: Props) {
         }
       }
 
-      // Filter to rows with valid median price
       const valid = rows.filter((r) => r.medianPrice !== null);
 
-      // Compute quarter-over-quarter changes
       for (let i = 1; i < valid.length; i++) {
         const prev = valid[i - 1];
         const curr = valid[i];
@@ -171,36 +201,26 @@ export default function MuellerCycle({ prefCode, cityCode }: Props) {
     };
   }, [prefCode, cityCode]);
 
-  // Quarters with both changes computed (skip the first which has no previous)
-  const plotData = useMemo(
-    () =>
-      quarters.filter(
+  const plotData = useMemo<PlotDatum[]>(
+    () => {
+      const valid = quarters.filter(
         (q) => q.priceChangePct !== null && q.volumeChangePct !== null
-      ),
+      );
+      return valid.map((q, i) => ({
+        period: q.period,
+        priceChangePct: q.priceChangePct!,
+        volumeChangePct: q.volumeChangePct!,
+        index: i,
+        isLatest: i === valid.length - 1,
+      }));
+    },
     [quarters]
   );
 
   const latestQuarter = plotData.length > 0 ? plotData[plotData.length - 1] : null;
   const phase = latestQuarter
-    ? classifyCyclePhase(
-        latestQuarter.priceChangePct!,
-        latestQuarter.volumeChangePct!
-      )
+    ? classifyCyclePhase(latestQuarter.priceChangePct, latestQuarter.volumeChangePct)
     : null;
-
-  // Compute axis ranges
-  const xValues = plotData.map((q) => q.priceChangePct!);
-  const yValues = plotData.map((q) => q.volumeChangePct!);
-  const xRange = Math.max(
-    Math.abs(Math.max(...xValues, 0)),
-    Math.abs(Math.min(...xValues, 0)),
-    10
-  );
-  const yRange = Math.max(
-    Math.abs(Math.max(...yValues, 0)),
-    Math.abs(Math.min(...yValues, 0)),
-    10
-  );
 
   if (loading) {
     return (
@@ -263,129 +283,75 @@ export default function MuellerCycle({ prefCode, cityCode }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <PlotlyChart
-          data={[
-            // Trail line with gradient markers
-            {
-              type: "scatter" as const,
-              mode: "text+lines+markers" as const,
-              x: xValues,
-              y: yValues,
-              text: plotData.map((q) => q.period),
-              textposition: "top center" as const,
-              textfont: { size: 9 },
-              marker: {
-                size: 10,
-                color: plotData.map((_, i) => i),
-                colorscale: "Viridis",
-              },
-              line: { color: COLORS.primary, width: 2 },
-              hovertemplate:
-                "<b>%{text}</b><br>価格変化: %{x:.1f}%<br>取引量変化: %{y:.1f}%<extra></extra>",
-              showlegend: false,
-            },
-            // Latest point - red star
-            {
-              type: "scatter" as const,
-              mode: "markers" as const,
-              x: [latestQuarter!.priceChangePct],
-              y: [latestQuarter!.volumeChangePct],
-              marker: { size: 16, color: "red", symbol: "star" },
-              name: "最新",
-              showlegend: false,
-              hoverinfo: "skip" as const,
-            },
-          ]}
-          layout={{
-            title: { text: "" },
-            height: 550,
-            xaxis: {
-              title: { text: "㎡単価変化率（%、前四半期比）" },
-              zeroline: true,
-              zerolinecolor: COLORS.neutral,
-              zerolinewidth: 1.5,
-              gridcolor: "#e5e7eb",
-              range: [-xRange * 1.3, xRange * 1.3],
-            },
-            yaxis: {
-              title: { text: "取引量変化率（%、前四半期比）" },
-              zeroline: true,
-              zerolinecolor: COLORS.neutral,
-              zerolinewidth: 1.5,
-              gridcolor: "#e5e7eb",
-              range: [-yRange * 1.3, yRange * 1.3],
-            },
-            showlegend: false,
-            shapes: [
-              // Recovery (price up, volume down) - bottom right
-              {
-                type: "rect",
-                x0: 0, x1: xRange * 1.3, y0: -yRange * 1.3, y1: 0,
-                fillcolor: "rgba(42,157,143,0.08)",
-                line: { width: 0 },
-                layer: "below",
-              },
-              // Expansion (price up, volume up) - top right
-              {
-                type: "rect",
-                x0: 0, x1: xRange * 1.3, y0: 0, y1: yRange * 1.3,
-                fillcolor: "rgba(212,168,67,0.08)",
-                line: { width: 0 },
-                layer: "below",
-              },
-              // Hypersupply (price down, volume up) - top left
-              {
-                type: "rect",
-                x0: -xRange * 1.3, x1: 0, y0: 0, y1: yRange * 1.3,
-                fillcolor: "rgba(231,111,81,0.08)",
-                line: { width: 0 },
-                layer: "below",
-              },
-              // Recession (price down, volume down) - bottom left
-              {
-                type: "rect",
-                x0: -xRange * 1.3, x1: 0, y0: -yRange * 1.3, y1: 0,
-                fillcolor: "rgba(107,114,128,0.08)",
-                line: { width: 0 },
-                layer: "below",
-              },
-            ],
-            annotations: [
-              {
-                x: xRange * 0.7,
-                y: -yRange * 0.85,
-                text: "Recovery<br>（回復期）",
-                showarrow: false,
-                font: { color: COLORS.positive, size: 13 },
-              },
-              {
-                x: xRange * 0.7,
-                y: yRange * 0.85,
-                text: "Expansion<br>（拡大期）",
-                showarrow: false,
-                font: { color: COLORS.accent, size: 13 },
-              },
-              {
-                x: -xRange * 0.7,
-                y: yRange * 0.85,
-                text: "Hypersupply<br>（供給過剰）",
-                showarrow: false,
-                font: { color: COLORS.negative, size: 13 },
-              },
-              {
-                x: -xRange * 0.7,
-                y: -yRange * 0.85,
-                text: "Recession<br>（後退期）",
-                showarrow: false,
-                font: { color: COLORS.neutral, size: 13 },
-              },
-            ],
-            margin: { t: 20, b: 60, l: 70, r: 20 },
-          }}
-        />
+        {/* Quadrant labels */}
+        <div className="grid grid-cols-2 gap-1 text-xs text-center mb-2">
+          <div className="rounded py-1" style={{ backgroundColor: "rgba(231,111,81,0.08)", color: COLORS.negative }}>
+            Hypersupply（供給過剰）
+          </div>
+          <div className="rounded py-1" style={{ backgroundColor: "rgba(212,168,67,0.08)", color: COLORS.accent }}>
+            Expansion（拡大期）
+          </div>
+          <div className="rounded py-1" style={{ backgroundColor: "rgba(107,114,128,0.08)", color: COLORS.neutral }}>
+            Recession（後退期）
+          </div>
+          <div className="rounded py-1" style={{ backgroundColor: "rgba(42,157,143,0.08)", color: COLORS.positive }}>
+            Recovery（回復期）
+          </div>
+        </div>
+
+        <div aria-label="Mueller不動産市場サイクル散布図">
+          <ResponsiveContainer width="100%" height={500}>
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 50, left: 60 }}>
+              <XAxis
+                dataKey="priceChangePct"
+                type="number"
+                name="価格変化率"
+                tick={{ fontSize: 11 }}
+                label={{ value: "㎡単価変化率（%、前四半期比）", position: "bottom", offset: 10, fontSize: 12 }}
+              />
+              <YAxis
+                dataKey="volumeChangePct"
+                type="number"
+                name="取引量変化率"
+                tick={{ fontSize: 11 }}
+                label={{ value: "取引量変化率（%）", angle: -90, position: "insideLeft", offset: -10, fontSize: 12 }}
+              />
+              <Tooltip content={<MuellerTooltip />} />
+              <ReferenceLine x={0} stroke={COLORS.neutral} strokeWidth={1.5} />
+              <ReferenceLine y={0} stroke={COLORS.neutral} strokeWidth={1.5} />
+              <Scatter data={plotData} line={{ stroke: COLORS.primary, strokeWidth: 2 }}>
+                {plotData.map((d, i) => (
+                  <Cell
+                    key={i}
+                    fill={d.isLatest ? "#DC2626" : viridisColor(d.index / Math.max(plotData.length - 1, 1))}
+                    r={d.isLatest ? 10 : 6}
+                  />
+                ))}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Period labels under chart */}
+        <div className="flex flex-wrap gap-2 justify-center mt-2 text-xs text-muted-foreground">
+          {plotData.map((d) => (
+            <span key={d.period} className="flex items-center gap-1">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full"
+                style={{
+                  backgroundColor: d.isLatest
+                    ? "#DC2626"
+                    : viridisColor(d.index / Math.max(plotData.length - 1, 1)),
+                }}
+              />
+              {d.period}
+            </span>
+          ))}
+        </div>
+
         <p className="text-xs text-muted-foreground mt-2">
           Mueller市場サイクル: MLIT不動産取引データ（直近8四半期）の㎡単価中央値と取引件数の前四半期比変化率から算出。
-          赤い星が最新四半期の位置を示します。
+          赤い丸が最新四半期の位置を示します。
         </p>
       </CardContent>
     </Card>

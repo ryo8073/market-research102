@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import PlotlyChart from "@/components/plotly-chart";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine,
+  ResponsiveContainer, Cell,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { gap_analysis_table, type GapRow } from "@/lib/calculator";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
@@ -26,6 +29,11 @@ export default function GapTab({ sectors, selectedCity }: Props) {
   const leakage = gapData.filter((r) => r.factor >= 10).length;
   const surplus = gapData.filter((r) => r.factor <= -10).length;
   const maxLeak = gapData.reduce((max, r) => (r.factor > max.factor ? r : max), gapData[0]);
+
+  const maxAbsFactor = useMemo(() => {
+    const m = Math.max(...sorted.map((d) => Math.abs(d.factor)), 10);
+    return Math.ceil(m / 10) * 10;
+  }, [sorted]);
 
   return (
     <div className="space-y-6">
@@ -80,40 +88,47 @@ export default function GapTab({ sectors, selectedCity }: Props) {
         </div>
       )}
 
-      {/* Gap Bar Chart (STDB-style: single color, zero-centered) */}
-      <PlotlyChart
-        data={[
-          {
-            type: "bar",
-            x: sorted.map((r) => r.factor),
-            y: sorted.map((r) => r.sector),
-            orientation: "h",
-            marker: { color: "#D4A843" },
-            hovertemplate: "%{y}: %{x:+.1f}<extra></extra>",
-          },
-        ]}
-        layout={{
-          title: { text: "漏損/余剰係数" },
-          height: Math.max(400, sorted.length * 50),
-          margin: { l: 200 },
-          shapes: [
-            {
-              type: "line", x0: 0, x1: 0, y0: -0.5, y1: sorted.length - 0.5,
-              line: { color: "#6B7280", width: 2 },
-            },
-          ],
-          annotations: [
-            { x: -50, y: 1.05, text: "← 余剰（供給過多）", showarrow: false, xref: "x", yref: "paper", font: { color: "#6B7280" } },
-            { x: 50, y: 1.05, text: "漏損（出店機会）→", showarrow: false, xref: "x", yref: "paper", font: { color: "#6B7280" } },
-          ],
-          xaxis: { title: { text: "Leakage/Surplus Factor" } },
-        }}
-        onHover={(event: any) => {
-          const point = event.points?.[0];
-          if (point?.y) setHoveredSector(point.y as string);
-        }}
-        onUnhover={() => setHoveredSector(null)}
-      />
+      {/* Gap Bar Chart — Recharts horizontal bar */}
+      <div>
+        <div className="flex justify-between text-xs text-muted-foreground mb-1 px-2">
+          <span>← 余剰（供給過多）</span>
+          <span>漏損/余剰係数</span>
+          <span>漏損（出店機会）→</span>
+        </div>
+        <div aria-label="漏損余剰係数の横棒グラフ">
+          <ResponsiveContainer width="100%" height={Math.max(400, sorted.length * 40)}>
+            <BarChart data={sorted} layout="vertical" margin={{ left: 120, right: 30, top: 10, bottom: 10 }}>
+              <XAxis
+                type="number"
+                domain={[-maxAbsFactor, maxAbsFactor]}
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v: number) => String(v)}
+              />
+              <YAxis
+                type="category"
+                dataKey="sector"
+                width={110}
+                tick={{ fontSize: 11 }}
+              />
+              <Tooltip
+                formatter={(value) => { const v = Number(value); return [`${v > 0 ? "+" : ""}${v.toFixed(1)}`, "係数"]; }}
+                labelFormatter={(label) => String(label)}
+              />
+              <ReferenceLine x={0} stroke="#6B7280" strokeWidth={2} />
+              <Bar
+                dataKey="factor"
+                radius={[0, 4, 4, 0]}
+                onMouseEnter={(_: unknown, idx: number) => setHoveredSector(sorted[idx]?.sector ?? null)}
+                onMouseLeave={() => setHoveredSector(null)}
+              >
+                {sorted.map((d, i) => (
+                  <Cell key={i} fill="#D4A843" />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
       {/* Table */}
       <div className="overflow-x-auto">

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import PlotlyChart from "@/components/plotly-chart";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine,
+  ResponsiveContainer, Cell,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   lq_table,
@@ -97,33 +100,34 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
       )}
 
       {/* LQ Bar Chart */}
-      <PlotlyChart
-        data={[
-          {
-            type: "bar",
-            x: sorted.map((r) => r.lq),
-            y: sorted.map((r) => r.industry),
-            orientation: "h",
-            marker: {
-              color: sorted.map((r) =>
-                r.lq > 1.0 ? "#2A9D8F" : "#6B7280"
-              ),
-            },
-          },
-        ]}
-        layout={{
-          title: { text: "産業別 LQ" },
-          height: 600,
-          margin: { l: 200 },
-          shapes: [
-            {
-              type: "line", x0: 1, x1: 1, y0: -0.5, y1: sorted.length - 0.5,
-              line: { color: "red", dash: "dash", width: 2 },
-            },
-          ],
-          xaxis: { title: { text: "LQ" } },
-        }}
-      />
+      <div aria-label="産業別 LQ 横棒グラフ">
+        <h3 className="text-sm font-semibold mb-2">産業別 LQ</h3>
+        <ResponsiveContainer width="100%" height={Math.max(400, sorted.length * 28)}>
+          <BarChart data={sorted} layout="vertical" margin={{ left: 140, right: 30, top: 5, bottom: 5 }}>
+            <XAxis type="number" tick={{ fontSize: 11 }} />
+            <YAxis type="category" dataKey="industry" width={130} tick={{ fontSize: 11 }} />
+            <Tooltip
+              formatter={(value) => [Number(value).toFixed(3), "LQ"]}
+              contentStyle={{ backgroundColor: "var(--background, #fff)", borderColor: "var(--border, #e5e7eb)" }}
+            />
+            <ReferenceLine x={1} stroke="#EF4444" strokeDasharray="3 3" label={{ value: "LQ=1.0", fontSize: 10, fill: "#EF4444" }} />
+            <Bar dataKey="lq" radius={[0, 4, 4, 0]}>
+              {sorted.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={
+                    selectedSignalIndustries?.has(entry.industry)
+                      ? "#EAB308"
+                      : entry.lq >= 1
+                        ? "#2A9D8F"
+                        : "#9CA3AF"
+                  }
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
       {/* Investment Signal Matrix (if shift-share available) */}
       {ssData && ssData.length > 0 && (

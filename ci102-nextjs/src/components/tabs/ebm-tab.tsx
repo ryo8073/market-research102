@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import PlotlyChart from "@/components/plotly-chart";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   lq_table, total_basic_employment, economic_base_multiplier,
@@ -101,23 +103,41 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{deltaHousing.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })} 戸</div><p className="text-xs text-muted-foreground">住宅需要</p></CardContent></Card>
       </div>
 
-      {/* Waterfall Chart */}
-      <PlotlyChart
-        data={[{
-          type: "waterfall" as any,
-          orientation: "v",
-          measure: ["absolute", "relative", "relative", "relative", "total", "total"],
-          x: [`基盤雇用`, `×EBM ${ebm.toFixed(1)}`, `×PER ${per.toFixed(1)}`, `÷世帯人員`, "延床面積(m2)", "棟数"],
-          y: [newBasicJobs, deltaTotal - newBasicJobs, deltaPop - deltaTotal, deltaHousing - deltaPop, floorArea, bldgCount],
-          text: [`${newBasicJobs}人`, `${Math.round(deltaTotal)}人`, `${Math.round(deltaPop)}人`, `${Math.round(deltaHousing)}戸`, `${Math.round(floorArea)}m2`, `${bldgCount.toFixed(1)}棟`],
-          textposition: "outside",
-          connector: { line: { color: "#6B7280" } },
-          increasing: { marker: { color: "#2A9D8F" } },
-          decreasing: { marker: { color: "#E76F51" } },
-          totals: { marker: { color: "#1B2A4A" } },
-        } as any]}
-        layout={{ title: { text: "EBM/PER カスケード → 不動産開発規模" }, height: 450, showlegend: false }}
-      />
+      {/* Cascade Bar Chart */}
+      {(() => {
+        const cascadeData = [
+          { name: "基盤雇用", value: newBasicJobs, label: `${newBasicJobs}人`, color: "#2A9D8F" },
+          { name: `総雇用 (×${ebm.toFixed(1)})`, value: Math.round(deltaTotal), label: `${Math.round(deltaTotal)}人`, color: "#3B82F6" },
+          { name: `人口 (×${per.toFixed(1)})`, value: Math.round(deltaPop), label: `${Math.round(deltaPop)}人`, color: "#8B5CF6" },
+          { name: `住戸需要 (÷${personsPerHousehold.toFixed(1)})`, value: Math.round(deltaHousing), label: `${Math.round(deltaHousing)}戸`, color: "#F59E0B" },
+          { name: "延床面積", value: Math.round(floorArea), label: `${Math.round(floorArea)}m²`, color: "#1B2A4A" },
+          { name: "棟数", value: Math.round(bldgCount * 10) / 10, label: `${bldgCount.toFixed(1)}棟`, color: "#6B7280" },
+        ];
+        return (
+          <div aria-label="EBM/PER カスケード棒グラフ">
+            <h3 className="text-sm font-semibold mb-2">EBM/PER カスケード → 不動産開発規模</h3>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={cascadeData} margin={{ top: 30, right: 20, left: 20, bottom: 5 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={(_value, _name, props) => {
+                    const label = (props?.payload as { label?: string })?.label ?? String(_value);
+                    return [label, "値"];
+                  }}
+                  contentStyle={{ backgroundColor: "var(--background, #fff)", borderColor: "var(--border, #e5e7eb)" }}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  <LabelList dataKey="label" position="top" fontSize={11} />
+                  {cascadeData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
 
       {/* Feasibility */}
       <h3 className="text-lg font-semibold">開発フィジビリティ</h3>

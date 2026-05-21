@@ -1,13 +1,53 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import PlotlyChart from "@/components/plotly-chart";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  ScatterChart, Scatter, Cell,
+} from "recharts";
 import MuellerCycle from "@/components/mueller-cycle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const TYPE_COLORS = [
+  "#1B2A4A", "#D4A843", "#2A9D8F", "#E76F51", "#6B7280",
+  "#8B5CF6", "#EC4899", "#14B8A6", "#F59E0B", "#3B82F6",
+];
 
 interface Props {
   prefCode: number;
   cityCode?: number;
+}
+
+/** Build histogram bins from an array of numbers */
+function buildHistogramBins(values: number[], binCount: number = 20): Array<{ range: string; count: number; rangeStart: number }> {
+  if (values.length === 0) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (min === max) return [{ range: `${min.toLocaleString()}`, count: values.length, rangeStart: min }];
+  const binWidth = (max - min) / binCount;
+  const bins: Array<{ range: string; count: number; rangeStart: number }> = [];
+  for (let i = 0; i < binCount; i++) {
+    const lo = min + i * binWidth;
+    const hi = lo + binWidth;
+    const count = values.filter((v) => (i === binCount - 1 ? v >= lo && v <= hi : v >= lo && v < hi)).length;
+    const loLabel = lo >= 1e4 ? `${(lo / 1e4).toFixed(0)}万` : lo.toLocaleString();
+    const hiLabel = hi >= 1e4 ? `${(hi / 1e4).toFixed(0)}万` : hi.toLocaleString();
+    bins.push({ range: `${loLabel}-${hiLabel}`, count, rangeStart: lo });
+  }
+  return bins.filter((b) => b.count > 0);
+}
+
+/** Custom tooltip for scatter */
+function ScatterTooltip({ active, payload }: any) {
+  if (!active || !payload?.[0]) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+      <p className="font-semibold">{d.Type}</p>
+      <p>面積: {d.Area}㎡</p>
+      <p>㎡単価: ¥{d.UnitPrice.toLocaleString()}</p>
+    </div>
+  );
 }
 
 export default function RealEstateTab({ prefCode, cityCode }: Props) {
@@ -64,8 +104,40 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
     return sorted[Math.floor(sorted.length / 2)].TradePrice;
   }, [numericData]);
 
-  // Group by Type for box plot
-  const types = useMemo(() => [...new Set(data.map((d: any) => d.Type))].filter(Boolean), [data]);
+  const types = useMemo(() => [...new Set(data.map((d: any) => d.Type))].filter(Boolean) as string[], [data]);
+
+  // Histogram bins for trade price
+  const histogramBins = useMemo(() => {
+    const prices = numericData.filter((d) => d.TradePrice > 0).map((d) => d.TradePrice);
+    return buildHistogramBins(prices, 20);
+  }, [numericData]);
+
+  // Type summary stats (median + mean) for box plot replacement
+  const typeStats = useMemo(() => {
+    return types.map((t) => {
+      const prices = validPrices.filter((d) => d.Type === t).map((d) => d.UnitPrice);
+      if (prices.length === 0) return { type: t, median: 0, mean: 0, count: 0 };
+      const sorted = [...prices].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const med = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+      const avg = prices.reduce((s, v) => s + v, 0) / prices.length;
+      return { type: t, median: med, mean: avg, count: prices.length };
+    }).filter((s) => s.count > 0).sort((a, b) => b.median - a.median);
+  }, [types, validPrices]);
+
+  // Scatter data: area vs unit price, with type for coloring
+  const scatterData = useMemo(() => {
+    return validPrices
+      .filter((d) => d.Area > 0)
+      .map((d) => ({ Area: d.Area, UnitPrice: d.UnitPrice, Type: d.Type }));
+  }, [validPrices]);
+
+  // Create a type->color map
+  const typeColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    types.forEach((t, i) => { map[t] = TYPE_COLORS[i % TYPE_COLORS.length]; });
+    return map;
+  }, [types]);
 
   return (
     <div className="space-y-6">
@@ -118,48 +190,110 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
             </Card>
           </div>
 
-          {/* Charts: histogram + box plot */}
+          {/* Charts: histogram + type stats */}
           <div className="grid md:grid-cols-2 gap-4">
-            <PlotlyChart
-              data={[{
-                type: "histogram",
-                x: numericData.filter((d) => d.TradePrice > 0).map((d) => d.TradePrice),
-                nbinsx: 30,
-                marker: { color: "#1B2A4A" },
-              } as any]}
-              layout={{ title: { text: "取引価格分布" }, height: 400, xaxis: { title: { text: "取引価格（円）" } } }}
-            />
-            <PlotlyChart
-              data={types.map((t) => ({
-                type: "box" as const,
-                y: validPrices.filter((d) => d.Type === t).map((d) => d.UnitPrice),
-                name: t,
-              }))}
-              layout={{ title: { text: "物件種別ごとの㎡単価" }, height: 400 }}
-            />
+            {/* Histogram — trade price distribution */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">取引価格分布</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div aria-label="取引価格のヒストグラム">
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={histogramBins} margin={{ top: 10, right: 10, bottom: 40, left: 10 }}>
+                      <XAxis
+                        dataKey="range"
+                        tick={{ fontSize: 9 }}
+                        angle={-45}
+                        textAnchor="end"
+                        interval={Math.max(0, Math.floor(histogramBins.length / 8))}
+                      />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip
+                        formatter={(value) => [`${Number(value)}件`, "件数"]}
+                        labelFormatter={(label) => `価格帯: ${String(label)}`}
+                      />
+                      <Bar dataKey="count" fill="#1B2A4A" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Type stats — median & mean unit price by type (replaces box plot) */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">物件種別ごとの㎡単価</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div aria-label="物件種別ごとの単価比較">
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={typeStats} layout="vertical" margin={{ left: 80, right: 20, top: 10, bottom: 10 }}>
+                      <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v: number) => `¥${(v / 1000).toFixed(0)}k`} />
+                      <YAxis type="category" dataKey="type" width={70} tick={{ fontSize: 10 }} />
+                      <Tooltip
+                        formatter={(value, name) => [
+                          `¥${Number(value).toLocaleString()}`,
+                          String(name) === "median" ? "中央値" : "平均値",
+                        ]}
+                      />
+                      <Bar dataKey="median" fill="#2A9D8F" name="median" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="mean" fill="#D4A843" name="mean" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div className="flex gap-4 justify-center text-xs text-muted-foreground mt-1">
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "#2A9D8F" }} /> 中央値</span>
+                    <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: "#D4A843" }} /> 平均値</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Scatter: Area × UnitPrice */}
-          <PlotlyChart
-            data={types.map((t) => {
-              const filtered = validPrices.filter((d) => d.Type === t && d.Area > 0);
-              return {
-                type: "scatter" as const,
-                mode: "markers" as const,
-                name: t,
-                x: filtered.map((d) => d.Area),
-                y: filtered.map((d) => d.UnitPrice),
-                marker: { opacity: 0.6 },
-                hovertemplate: `${t}<br>面積: %{x}㎡<br>㎡単価: %{y:,.0f}円<extra></extra>`,
-              };
-            })}
-            layout={{
-              title: { text: "面積 × ㎡単価" },
-              height: 500,
-              xaxis: { title: { text: "面積（㎡）" } },
-              yaxis: { title: { text: "㎡単価（円/㎡）" } },
-            }}
-          />
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">面積 × ㎡単価</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div aria-label="面積と㎡単価の散布図">
+                <ResponsiveContainer width="100%" height={450}>
+                  <ScatterChart margin={{ top: 10, right: 20, bottom: 50, left: 60 }}>
+                    <XAxis
+                      dataKey="Area"
+                      type="number"
+                      name="面積"
+                      tick={{ fontSize: 11 }}
+                      label={{ value: "面積（㎡）", position: "bottom", offset: 10, fontSize: 12 }}
+                    />
+                    <YAxis
+                      dataKey="UnitPrice"
+                      type="number"
+                      name="㎡単価"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v: number) => `¥${(v / 1000).toFixed(0)}k`}
+                      label={{ value: "㎡単価（円/㎡）", angle: -90, position: "insideLeft", offset: -10, fontSize: 12 }}
+                    />
+                    <Tooltip content={<ScatterTooltip />} />
+                    <Scatter data={scatterData}>
+                      {scatterData.map((d, i) => (
+                        <Cell key={i} fill={typeColorMap[d.Type] ?? "#6B7280"} opacity={0.6} />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Type legend */}
+              <div className="flex flex-wrap gap-3 justify-center text-xs text-muted-foreground mt-2">
+                {types.map((t, i) => (
+                  <span key={t} className="flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: TYPE_COLORS[i % TYPE_COLORS.length] }} />
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Mueller Market Cycle */}
           <MuellerCycle prefCode={prefCode} cityCode={cityCode} />

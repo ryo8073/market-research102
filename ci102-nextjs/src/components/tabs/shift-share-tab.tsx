@@ -1,7 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import PlotlyChart from "@/components/plotly-chart";
+import {
+  ComposedChart, Bar, XAxis, YAxis, Tooltip, Legend,
+  ResponsiveContainer, Line,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ShiftShareResult } from "@/lib/calculator";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
@@ -14,7 +17,6 @@ interface Props {
 export default function ShiftShareTab({ precomputed, selectedCity }: Props) {
   const ssData = useMemo(() => [...precomputed].sort((a, b) => b.regional_shift - a.regional_shift), [precomputed]);
 
-  const industries = ssData.map((r) => r.industry);
   const stars = ssData.filter((r) => r.regional_shift > 0 && r.actual_change > 0);
 
   return (
@@ -49,36 +51,42 @@ export default function ShiftShareTab({ precomputed, selectedCity }: Props) {
       )}
 
       {/* Stacked bar chart: NS + IM + RS */}
-      <PlotlyChart
-        data={[
-          {
-            type: "bar", name: "NS（全国成長）",
-            x: industries, y: ssData.map((r) => r.national_growth),
-            marker: { color: "#6B7280" },
-          },
-          {
-            type: "bar", name: "IM（産業構成）",
-            x: industries, y: ssData.map((r) => r.industry_mix),
-            marker: { color: "#D4A843" },
-          },
-          {
-            type: "bar", name: "RS（地域シフト）",
-            x: industries, y: ssData.map((r) => r.regional_shift),
-            marker: { color: "#2A9D8F" },
-          },
-          {
-            type: "scatter", name: "実際の変化",
-            x: industries, y: ssData.map((r) => r.actual_change),
-            mode: "markers", marker: { color: "#E76F51", size: 10, symbol: "diamond" },
-          },
-        ]}
-        layout={{
-          title: { text: "シフトシェア分析（NS / IM / RS 3要因分解）" },
-          barmode: "relative",
-          height: 500,
-          legend: { orientation: "h", y: -0.2 },
-        }}
-      />
+      {(() => {
+        const chartData = ssData.map((r) => ({
+          industry: r.industry,
+          ns: Math.round(r.national_growth),
+          im: Math.round(r.industry_mix),
+          rs: Math.round(r.regional_shift),
+          actual: Math.round(r.actual_change),
+        }));
+        return (
+          <div aria-label="シフトシェア分析 3要因分解チャート">
+            <h3 className="text-sm font-semibold mb-2">シフトシェア分析（NS / IM / RS 3要因分解）</h3>
+            <ResponsiveContainer width="100%" height={Math.max(500, chartData.length * 35)}>
+              <ComposedChart data={chartData} layout="vertical" margin={{ left: 140, right: 30, top: 5, bottom: 5 }}>
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="industry" width={130} tick={{ fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "var(--background, #fff)", borderColor: "var(--border, #e5e7eb)" }}
+                  formatter={(value, name) => [Number(value).toLocaleString(), String(name)]}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="ns" name="NS（全国成長）" fill="#6B7280" stackId="a" />
+                <Bar dataKey="im" name="IM（産業構成）" fill="#D4A843" stackId="a" />
+                <Bar dataKey="rs" name="RS（地域シフト）" fill="#2A9D8F" stackId="a" />
+                <Line
+                  dataKey="actual"
+                  name="実際の変化"
+                  stroke="#E76F51"
+                  strokeWidth={0}
+                  dot={{ r: 5, fill: "#E76F51", stroke: "#E76F51" }}
+                  legendType="diamond"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
 
       {/* Star industries */}
       {stars.length > 0 && (

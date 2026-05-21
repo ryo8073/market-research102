@@ -1,7 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import PlotlyChart from "@/components/plotly-chart";
+import {
+  ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip,
+  ReferenceLine, ResponsiveContainer, Cell,
+} from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   lq_table, total_basic_employment, economic_base_multiplier,
@@ -22,8 +25,40 @@ interface Props {
   highlightPrefCode?: number;
 }
 
+/** Map EBM value to a color gradient (blue=low, teal=mid, orange=high) */
+function ebmColor(ebm: number): string {
+  if (ebm <= 1.5) return "#3B82F6";
+  if (ebm <= 2.0) return "#2A9D8F";
+  if (ebm <= 2.5) return "#D4A843";
+  if (ebm <= 3.0) return "#E76F51";
+  return "#DC2626";
+}
+
+interface CrossDatum {
+  name: string;
+  prefCode: number;
+  gapFactor: number;
+  medianPrice: number;
+  ebm: number;
+  totalEmp: number;
+}
+
+/* Custom tooltip for the scatter chart */
+function CrossTooltip({ active, payload }: any) {
+  if (!active || !payload?.[0]) return null;
+  const d: CrossDatum = payload[0].payload;
+  return (
+    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+      <p className="font-semibold">{d.name}</p>
+      <p>漏損/余剰: {d.gapFactor.toFixed(1)}</p>
+      <p>㎡単価: ¥{d.medianPrice.toLocaleString()}</p>
+      <p>EBM: {d.ebm.toFixed(2)}</p>
+    </div>
+  );
+}
+
 export default function CrossTab({ areas, highlightPrefCode }: Props) {
-  const crossData = useMemo(() => {
+  const crossData = useMemo<CrossDatum[]>(() => {
     return areas.map((area) => {
       const lq = lq_table(area.localEmp, area.nationalEmp);
       const basic = total_basic_employment(lq);
@@ -43,6 +78,7 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
         gapFactor: aggGap,
         medianPrice: area.medianUnitPrice ?? 0,
         ebm,
+        totalEmp,
       };
     }).filter((d) => d.medianPrice > 0);
   }, [areas]);
@@ -60,7 +96,7 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg bg-slate-50 p-4 text-sm">
+      <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 text-sm">
         <p className="font-medium mb-2">4象限の読み方</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <div className="p-2 rounded" style={{ backgroundColor: "rgba(42,157,143,0.1)" }}>
@@ -78,38 +114,53 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
         </div>
       </div>
 
-      <PlotlyChart
-        data={[
-          {
-            type: "scatter",
-            mode: "markers+text" as any,
-            x: crossData.map((d) => d.gapFactor),
-            y: crossData.map((d) => d.medianPrice),
-            text: crossData.map((d) => d.name),
-            textposition: "top center",
-            textfont: { size: 9 },
-            marker: {
-              size: 10,
-              color: crossData.map((d) => d.ebm),
-              colorscale: "Viridis",
-              colorbar: { title: { text: "EBM" } },
-              showscale: true,
-            },
-            hovertemplate: "<b>%{text}</b><br>漏損/余剰: %{x:.1f}<br>㎡単価: ¥%{y:,.0f}<extra></extra>",
-          },
-        ]}
-        layout={{
-          title: { text: "小売ギャップ × 取引単価 クロス分析" },
-          xaxis: { title: { text: "小売漏損/余剰係数" } },
-          yaxis: { title: { text: "㎡単価中央値（円）" } },
-          height: 600,
-          shapes: [
-            { type: "line", x0: 0, x1: 0, y0: 0, y1: 1, xref: "x", yref: "paper", line: { dash: "dash", color: "#6B7280" } },
-            { type: "line", x0: 0, x1: 1, y0: priceMedian, y1: priceMedian, xref: "paper", yref: "y", line: { dash: "dash", color: "#6B7280" } },
-          ],
-          showlegend: false,
-        }}
-      />
+      {/* EBM color legend */}
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-1">
+        <span className="font-medium">EBM:</span>
+        {[
+          { label: "~1.5", color: "#3B82F6" },
+          { label: "~2.0", color: "#2A9D8F" },
+          { label: "~2.5", color: "#D4A843" },
+          { label: "~3.0", color: "#E76F51" },
+          { label: "3.0+", color: "#DC2626" },
+        ].map((item) => (
+          <span key={item.label} className="flex items-center gap-1">
+            <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+            {item.label}
+          </span>
+        ))}
+      </div>
+
+      <div aria-label="小売ギャップと取引単価のクロス分析散布図">
+        <ResponsiveContainer width="100%" height={600}>
+          <ScatterChart margin={{ top: 20, right: 30, bottom: 50, left: 70 }}>
+            <XAxis
+              dataKey="gapFactor"
+              type="number"
+              name="漏損/余剰係数"
+              tick={{ fontSize: 11 }}
+              label={{ value: "小売漏損/余剰係数", position: "bottom", offset: 10, fontSize: 12 }}
+            />
+            <YAxis
+              dataKey="medianPrice"
+              type="number"
+              name="㎡単価中央値"
+              tick={{ fontSize: 11 }}
+              tickFormatter={(v: number) => `¥${(v / 1000).toFixed(0)}k`}
+              label={{ value: "㎡単価中央値（円）", angle: -90, position: "insideLeft", offset: -10, fontSize: 12 }}
+            />
+            <ZAxis dataKey="totalEmp" type="number" range={[40, 400]} name="総雇用" />
+            <Tooltip content={<CrossTooltip />} />
+            <ReferenceLine x={0} stroke="#6B7280" strokeDasharray="3 3" />
+            <ReferenceLine y={priceMedian} stroke="#6B7280" strokeDasharray="3 3" />
+            <Scatter data={crossData} name="都道府県">
+              {crossData.map((d, i) => (
+                <Cell key={i} fill={ebmColor(d.ebm)} />
+              ))}
+            </Scatter>
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
 
       {/* Educational content */}
       <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
@@ -137,7 +188,7 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
             </p>
           </div>
           <p className="text-xs">
-            バブルサイズは総雇用規模、色はEBM（経済基盤乗数）を示します。色が明るいほど乗数効果が大きい地域です。
+            バブルサイズは総雇用規模、色はEBM（経済基盤乗数）を示します。色が暖色ほど乗数効果が大きい地域です。
           </p>
         </div>
       </details>
