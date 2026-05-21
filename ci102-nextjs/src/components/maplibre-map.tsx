@@ -5,7 +5,7 @@ import Map, { Source, Layer, Popup, type MapLayerMouseEvent } from "react-map-gl
 import "maplibre-gl/dist/maplibre-gl.css";
 
 // Free tile source (OpenStreetMap via Versatiles)
-const MAP_STYLE = "https://tiles.versatiles.org/assets/styles/colorful.json";
+const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 // Japan center
 const JAPAN_CENTER = { longitude: 137.0, latitude: 37.5 };

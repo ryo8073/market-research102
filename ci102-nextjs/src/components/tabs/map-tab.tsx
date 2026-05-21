@@ -156,7 +156,7 @@ function MuniMap({ geojson, center }: { geojson: any; center: [number, number] }
             <MapGL
               initialViewState={{ longitude: center[0], latitude: center[1], zoom: 9 }}
               style={{ width: "100%", height: "100%" }}
-              mapStyle="https://tiles.versatiles.org/assets/styles/colorful.json"
+              mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
               interactiveLayerIds={["muni-fill"]}
               onMouseMove={(e: any) => {
                 const f = e.features?.[0];
