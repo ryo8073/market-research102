@@ -39,7 +39,7 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground">総従業者数</CardTitle>
@@ -128,7 +128,7 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
       {ssData && ssData.length > 0 && (
         <>
           <h3 className="text-lg font-semibold">投資シグナル 4象限</h3>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {(() => {
               const rsMap = new Map(ssData.map((s) => [s.industry, s.regional_shift]));
               const best = lqData.filter((r) => r.lq > 1 && (rsMap.get(r.industry) ?? 0) > 0);

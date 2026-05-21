@@ -47,7 +47,7 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
   return (
     <div className="space-y-6">
       {/* EBM/PER KPIs */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">EBM</CardTitle></CardHeader>
           <CardContent><div className="text-3xl font-bold">{ebm.toFixed(2)}</div><p className="text-xs text-muted-foreground">基盤雇用1人が支える総雇用</p></CardContent>
@@ -94,7 +94,7 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
       </div>
 
       {/* Cascade Results */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{deltaTotal.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })}</div><p className="text-xs text-muted-foreground">総雇用波及</p></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{deltaPop.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })}</div><p className="text-xs text-muted-foreground">人口波及</p></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{deltaHousing.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })} 戸</div><p className="text-xs text-muted-foreground">住宅需要</p></CardContent></Card>
@@ -120,7 +120,7 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
 
       {/* Feasibility */}
       <h3 className="text-lg font-semibold">開発フィジビリティ</h3>
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <h4 className="font-medium text-sm mb-2">Front-door（需要側）</h4>
           <Card><CardContent className="pt-4 space-y-2 text-sm">

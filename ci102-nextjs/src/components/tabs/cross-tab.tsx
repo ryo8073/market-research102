@@ -62,7 +62,7 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
     <div className="space-y-6">
       <div className="rounded-lg bg-slate-50 p-4 text-sm">
         <p className="font-medium mb-2">4象限の読み方</p>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <div className="p-2 rounded" style={{ backgroundColor: "rgba(42,157,143,0.1)" }}>
             <strong>右下: 需要あり × 安い = 最優先</strong>
           </div>

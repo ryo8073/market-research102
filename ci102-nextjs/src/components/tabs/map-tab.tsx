@@ -102,12 +102,12 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
   return (
     <div className="space-y-6">
       {/* Metric selector */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {(Object.keys(METRIC_CONFIG) as MapMetric[]).map((m) => (
           <button
             key={m}
             onClick={() => setMetric(m)}
-            className={`px-4 py-2 text-sm rounded-lg border ${metric === m ? "bg-slate-900 text-white" : "bg-white"}`}
+            className={`px-3 py-1.5 text-xs md:px-4 md:py-2 md:text-sm rounded-lg border ${metric === m ? "bg-slate-900 text-white" : "bg-white"}`}
           >
             {METRIC_CONFIG[m].label}
           </button>
@@ -168,7 +168,7 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
             }
             return (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                   {SEGMENTS.map((seg) => (
                     <div key={seg.key} className="text-center p-3 rounded-lg border">
                       <div className="text-2xl">{seg.icon}</div>

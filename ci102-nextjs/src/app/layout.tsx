@@ -25,9 +25,17 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var m=window.matchMedia('(prefers-color-scheme:dark)');function a(e){e.matches?document.documentElement.classList.add('dark'):document.documentElement.classList.remove('dark')}a(m);m.addEventListener('change',a)}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>
   );
 }

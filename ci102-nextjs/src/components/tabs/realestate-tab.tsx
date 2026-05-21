@@ -70,7 +70,7 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
   return (
     <div className="space-y-6">
       {/* Year/Quarter selectors */}
-      <div className="flex gap-4 items-end">
+      <div className="flex flex-wrap gap-4 items-end">
         <div>
           <label className="text-sm font-medium">年度</label>
           <select value={year} onChange={(e) => setYear(Number(e.target.value))}
@@ -101,7 +101,7 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
       {data.length > 0 && (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">取引件数</CardTitle></CardHeader>
               <CardContent><div className="text-2xl font-bold">{data.length.toLocaleString()}</div></CardContent>

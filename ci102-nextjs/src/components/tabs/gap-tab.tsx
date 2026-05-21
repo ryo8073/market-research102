@@ -29,7 +29,7 @@ export default function GapTab({ sectors, selectedCity }: Props) {
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground">漏損セクター</CardTitle>
@@ -61,7 +61,7 @@ export default function GapTab({ sectors, selectedCity }: Props) {
       {selectedCity && (
         <div className="rounded-lg border p-4" style={{ backgroundColor: "#f0f9ff" }}>
           <h3 className="font-semibold mb-2">{selectedCity.area_name} — 市区町村参考データ</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">総雇用</CardTitle></CardHeader>
               <CardContent><div className="text-xl font-bold">{selectedCity.total_emp.toLocaleString()}</div></CardContent>

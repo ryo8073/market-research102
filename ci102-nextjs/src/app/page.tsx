@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { PREFECTURES } from "@/lib/codes";
 import { usePrefectureData } from "@/lib/use-prefecture-data";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
@@ -37,10 +39,27 @@ function KpiCard({ title, value, subtitle, trend }: {
         <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold" style={{ color: COLORS.primary }}>{value}</div>
+        <div className="text-2xl font-bold text-[#1B2A4A] dark:text-white">{value}</div>
         {subtitle && <p className="text-xs text-muted-foreground mt-1">{arrow && <span style={{ color }} className="mr-1">{arrow}</span>}{subtitle}</p>}
       </CardContent>
     </Card>
+  );
+}
+
+function KpiSkeletonGrid() {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <Card key={i} className="text-center">
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-20 mx-auto" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-16 mx-auto" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
 
@@ -108,60 +127,93 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: COLORS.bg }}>
+    <div className="min-h-screen bg-[#F8F9FA] dark:bg-gray-950">
       {/* Header */}
-      <header className="text-white px-6 py-4 shadow-md" style={{ backgroundColor: COLORS.primary }}>
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight">CI102 不動産市場分析ダッシュボード</h1>
-          <div className="flex items-center gap-3">
-            <select value={prefCode} onChange={(e) => { setPrefCode(Number(e.target.value)); setCityCode(""); setAiResult(null); }}
-              className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white">
-              {Object.entries(PREFECTURES).map(([code, name]) => (
-                <option key={code} value={code}>{String(code).padStart(2, "0")} {name}</option>
-              ))}
-            </select>
-            <select value={cityCode} onChange={(e) => setCityCode(e.target.value)}
-              className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white max-w-[180px]">
-              <option value="">全県</option>
-              {municipalities.map((m) => (
-                <option key={m.area_code} value={m.area_code}>{m.area_name}</option>
-              ))}
-            </select>
-            <Badge variant="outline" className="text-white border-white/30">
-              {loading ? "読込中..." : selectedCity ? selectedCity.area_name : pref?.pref_name ?? "—"}
-            </Badge>
+      <header className="text-white px-4 py-3 shadow-md md:px-6 md:py-4 bg-[#1B2A4A] dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <h1 className="text-lg font-bold tracking-tight md:text-xl">CI102 不動産市場分析ダッシュボード</h1>
+            <div className="flex flex-wrap items-center gap-2 md:gap-3">
+              <select value={prefCode} onChange={(e) => { setPrefCode(Number(e.target.value)); setCityCode(""); setAiResult(null); }}
+                className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 max-w-full md:max-w-[180px]">
+                {Object.entries(PREFECTURES).map(([code, name]) => (
+                  <option key={code} value={code}>{String(code).padStart(2, "0")} {name}</option>
+                ))}
+              </select>
+              <select value={cityCode} onChange={(e) => setCityCode(e.target.value)}
+                className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 max-w-full md:max-w-[180px]">
+                <option value="">全県</option>
+                {municipalities.map((m) => (
+                  <option key={m.area_code} value={m.area_code}>{m.area_name}</option>
+                ))}
+              </select>
+              <Badge variant="outline" className="text-white border-white/30">
+                {loading ? "読込中..." : selectedCity ? selectedCity.area_name : pref?.pref_name ?? "—"}
+              </Badge>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main */}
-      <main className="max-w-7xl mx-auto px-6 py-6">
+      <main className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6">
         {(prefError || muniError) && (
-          <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          <div className="mb-4 rounded-lg border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950 p-3 text-sm text-red-800 dark:text-red-300">
             {prefError && <p>都道府県データ読込エラー: {prefError}</p>}
             {muniError && <p>市区町村データ読込エラー: {muniError}</p>}
           </div>
         )}
         {loading ? (
-          <div className="text-center py-20 text-muted-foreground animate-pulse">全国データを読込中...</div>
+          <div className="space-y-6 py-6">
+            <div className="text-center">
+              <Skeleton className="h-10 w-80 mx-auto" />
+              <Skeleton className="h-4 w-24 mx-auto mt-2" />
+            </div>
+            <KpiSkeletonGrid />
+          </div>
         ) : !pref ? (
           <div className="text-center py-20 text-muted-foreground">データが見つかりません</div>
         ) : (
           <Tabs defaultValue="scorecard" className="w-full">
             <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
-              <TabsTrigger value="scorecard">⓪ スコアカード</TabsTrigger>
-              <TabsTrigger value="lq">① 経済基盤</TabsTrigger>
-              <TabsTrigger value="ebm">② 需要予測</TabsTrigger>
-              <TabsTrigger value="shift">③ シフトシェア</TabsTrigger>
-              <TabsTrigger value="gap">④ 小売市場</TabsTrigger>
-              <TabsTrigger value="realestate">⑤ 不動産取引</TabsTrigger>
-              <TabsTrigger value="map">⑥ 地図分析</TabsTrigger>
-              <TabsTrigger value="cross">⑦ クロス分析</TabsTrigger>
+              <TabsTrigger value="scorecard" className="text-xs md:text-sm">
+                <span className="md:hidden">⓪</span>
+                <span className="hidden md:inline">⓪ スコアカード</span>
+              </TabsTrigger>
+              <TabsTrigger value="lq" className="text-xs md:text-sm">
+                <span className="md:hidden">①</span>
+                <span className="hidden md:inline">① 経済基盤</span>
+              </TabsTrigger>
+              <TabsTrigger value="ebm" className="text-xs md:text-sm">
+                <span className="md:hidden">②</span>
+                <span className="hidden md:inline">② 需要予測</span>
+              </TabsTrigger>
+              <TabsTrigger value="shift" className="text-xs md:text-sm">
+                <span className="md:hidden">③</span>
+                <span className="hidden md:inline">③ シフトシェア</span>
+              </TabsTrigger>
+              <TabsTrigger value="gap" className="text-xs md:text-sm">
+                <span className="md:hidden">④</span>
+                <span className="hidden md:inline">④ 小売市場</span>
+              </TabsTrigger>
+              <TabsTrigger value="realestate" className="text-xs md:text-sm">
+                <span className="md:hidden">⑤</span>
+                <span className="hidden md:inline">⑤ 不動産取引</span>
+              </TabsTrigger>
+              <TabsTrigger value="map" className="text-xs md:text-sm">
+                <span className="md:hidden">⑥</span>
+                <span className="hidden md:inline">⑥ 地図分析</span>
+              </TabsTrigger>
+              <TabsTrigger value="cross" className="text-xs md:text-sm">
+                <span className="md:hidden">⑦</span>
+                <span className="hidden md:inline">⑦ クロス分析</span>
+              </TabsTrigger>
             </TabsList>
 
             <div className="mt-6">
               {/* Tab 0: Scorecard */}
               <TabsContent value="scorecard">
+                <ErrorBoundary>
                 <div className="space-y-6">
                   <div className="text-center">
                     <h2 className="text-4xl font-bold" style={{ color: scoreColor }}>
@@ -170,7 +222,7 @@ export default function Dashboard() {
                     <p className="text-sm text-muted-foreground mt-1">{pref.pref_name}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
                     <KpiCard title="EBM" value={pref.ebm.toFixed(2)} subtitle="経済基盤乗数" />
                     <KpiCard title="PER" value={pref.per.toFixed(2)} subtitle="人口雇用比率" />
                     <KpiCard title="基盤雇用比率" value={`${pref.basic_ratio.toFixed(1)}%`} />
@@ -183,7 +235,7 @@ export default function Dashboard() {
                   {selectedCity && (
                     <>
                       <Separator />
-                      <div className="rounded-lg border p-4" style={{ backgroundColor: "#f0f9ff" }}>
+                      <div className="rounded-lg border p-4 bg-sky-50 dark:bg-sky-950/30">
                         <h3 className="font-semibold mb-3">{selectedCity.area_name} — 市区町村データ</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           <KpiCard title="総雇用" value={selectedCity.total_emp.toLocaleString()} />
@@ -205,7 +257,7 @@ export default function Dashboard() {
                           <div key={r.industry} className="flex justify-between items-center rounded-lg border p-3">
                             <span className="text-sm font-medium">{r.industry}</span>
                             <div className="text-right">
-                              <span className="text-lg font-bold" style={{ color: COLORS.positive }}>LQ {r.lq.toFixed(2)}</span>
+                              <span className="text-lg font-bold text-[#2A9D8F]">LQ {r.lq.toFixed(2)}</span>
                               <p className="text-xs text-muted-foreground">基盤雇用 {Math.round(r.basic_emp_estimate).toLocaleString()}</p>
                             </div>
                           </div>
@@ -215,11 +267,11 @@ export default function Dashboard() {
                     <div>
                       <h3 className="text-lg font-semibold mb-3">投資シグナル</h3>
                       <div className="space-y-2">
-                        {pref.rs_total > 0 && <div className="rounded-lg border-l-4 p-3" style={{ borderLeftColor: COLORS.positive, backgroundColor: "#f0fdf4" }}><p className="text-sm">RS合計 +{pref.rs_total.toLocaleString()} — 全国を上回る競争優位</p></div>}
-                        {pref.rs_total < 0 && <div className="rounded-lg border-l-4 p-3" style={{ borderLeftColor: COLORS.negative, backgroundColor: "#fef2f2" }}><p className="text-sm">RS合計 {pref.rs_total.toLocaleString()} — 競争力低下に注意</p></div>}
-                        {pref.aggregate_gap_factor > 10 && <div className="rounded-lg border-l-4 p-3" style={{ borderLeftColor: COLORS.positive, backgroundColor: "#f0fdf4" }}><p className="text-sm">小売漏損 +{pref.aggregate_gap_factor.toFixed(1)} — {pref.num_leakage_sectors}セクターに出店機会</p></div>}
-                        {pref.aggregate_gap_factor < -10 && <div className="rounded-lg border-l-4 p-3" style={{ borderLeftColor: COLORS.negative, backgroundColor: "#fef2f2" }}><p className="text-sm">供給過多 {pref.aggregate_gap_factor.toFixed(1)} — {pref.num_surplus_sectors}セクターが競争過多</p></div>}
-                        {pref.actual_emp_change < 0 && <div className="rounded-lg border-l-4 p-3" style={{ borderLeftColor: COLORS.negative, backgroundColor: "#fef2f2" }}><p className="text-sm">雇用減少トレンド: 2016→2021で{pref.actual_emp_change.toLocaleString()}人</p></div>}
+                        {pref.rs_total > 0 && <div className="rounded-lg border-l-4 border-l-[#2A9D8F] p-3 bg-green-50 dark:bg-green-950/30"><p className="text-sm">RS合計 +{pref.rs_total.toLocaleString()} — 全国を上回る競争優位</p></div>}
+                        {pref.rs_total < 0 && <div className="rounded-lg border-l-4 border-l-[#E76F51] p-3 bg-red-50 dark:bg-red-950/30"><p className="text-sm">RS合計 {pref.rs_total.toLocaleString()} — 競争力低下に注意</p></div>}
+                        {pref.aggregate_gap_factor > 10 && <div className="rounded-lg border-l-4 border-l-[#2A9D8F] p-3 bg-green-50 dark:bg-green-950/30"><p className="text-sm">小売漏損 +{pref.aggregate_gap_factor.toFixed(1)} — {pref.num_leakage_sectors}セクターに出店機会</p></div>}
+                        {pref.aggregate_gap_factor < -10 && <div className="rounded-lg border-l-4 border-l-[#E76F51] p-3 bg-red-50 dark:bg-red-950/30"><p className="text-sm">供給過多 {pref.aggregate_gap_factor.toFixed(1)} — {pref.num_surplus_sectors}セクターが競争過多</p></div>}
+                        {pref.actual_emp_change < 0 && <div className="rounded-lg border-l-4 border-l-[#E76F51] p-3 bg-red-50 dark:bg-red-950/30"><p className="text-sm">雇用減少トレンド: 2016→2021で{pref.actual_emp_change.toLocaleString()}人</p></div>}
                       </div>
                     </div>
                   </div>
@@ -231,14 +283,14 @@ export default function Dashboard() {
                     <h3 className="font-semibold mb-2">Proformer 物件データ連携</h3>
                     <div className="flex gap-2 items-end">
                       <input value={pfId} onChange={(e) => setPfId(e.target.value)} placeholder="物件データID (external_id)"
-                        className="flex-1 rounded border px-3 py-1.5 text-sm" />
+                        className="flex-1 rounded border px-3 py-1.5 text-sm bg-background text-foreground" />
                       <button onClick={fetchProformer} disabled={pfLoading || !pfId}
-                        className="rounded bg-slate-900 text-white px-4 py-1.5 text-sm disabled:opacity-50">
+                        className="rounded bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-1.5 text-sm disabled:opacity-50">
                         {pfLoading ? "取得中..." : "取得"}
                       </button>
                     </div>
                     {pfData && (
-                      <div className="grid grid-cols-4 gap-3 mt-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
                         <KpiCard title="取得価格" value={`¥${(pfData.property?.acquisition_price ?? 0).toLocaleString()}`} />
                         <KpiCard title="NOI" value={`¥${(pfData.noi_annual ?? 0).toLocaleString()}`} />
                         <KpiCard title="Cap Rate" value={`${((pfData.investment_performance?.cap_rate ?? 0) * 100).toFixed(1)}%`} />
@@ -251,11 +303,11 @@ export default function Dashboard() {
                   <div className="rounded-lg border p-4">
                     <h3 className="font-semibold mb-2">AI分析（Claude）</h3>
                     <button onClick={runAiAnalysis} disabled={aiLoading}
-                      className="rounded bg-slate-900 text-white px-4 py-1.5 text-sm disabled:opacity-50">
+                      className="rounded bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-1.5 text-sm disabled:opacity-50">
                       {aiLoading ? "分析中..." : pfData ? "AI統合分析を生成（地域+物件）" : "AI分析を生成"}
                     </button>
                     {aiResult && (
-                      <div className="mt-3 prose prose-sm max-w-none">
+                      <div className="mt-3 prose prose-sm dark:prose-invert max-w-none">
                         <div dangerouslySetInnerHTML={{ __html: aiResult.replace(/\n/g, "<br/>") }} />
                         <p className="text-xs text-muted-foreground mt-2">
                           この分析はAIが生成したものです。過去のスナップショットデータに基づいています。
@@ -274,10 +326,12 @@ export default function Dashboard() {
                     </ul>
                   </details>
                 </div>
+                </ErrorBoundary>
               </TabsContent>
 
               {/* Tab 1: LQ */}
               <TabsContent value="lq">
+                <ErrorBoundary>
                 <LqTab
                   localEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.local_emp]))}
                   nationalEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.national_emp]))}
@@ -287,10 +341,12 @@ export default function Dashboard() {
                   nationalT1={undefined}
                   selectedCity={selectedCity}
                 />
+                </ErrorBoundary>
               </TabsContent>
 
               {/* Tab 2: EBM */}
               <TabsContent value="ebm">
+                <ErrorBoundary>
                 <EbmTab
                   localEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.local_emp]))}
                   nationalEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.national_emp]))}
@@ -299,42 +355,53 @@ export default function Dashboard() {
                   personsPerHousehold={pref.persons_per_household}
                   selectedCity={selectedCity}
                 />
+                </ErrorBoundary>
               </TabsContent>
 
               {/* Tab 3: Shift-Share */}
               <TabsContent value="shift">
+                <ErrorBoundary>
                 {pref.shift_share_table.length > 0 ? (
                   <ShiftShareTab precomputed={pref.shift_share_table} selectedCity={selectedCity} />
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">シフトシェアデータがありません</div>
                 )}
+                </ErrorBoundary>
               </TabsContent>
 
               {/* Tab 4: Gap */}
               <TabsContent value="gap">
+                <ErrorBoundary>
                 <GapTab sectors={pref.gap_table.map((r) => ({ sector: r.sector, demand: r.demand, supply: r.supply }))} selectedCity={selectedCity} />
+                </ErrorBoundary>
               </TabsContent>
 
               {/* Tab 5: Real Estate */}
               <TabsContent value="realestate">
+                <ErrorBoundary>
                 <RealEstateTab prefCode={prefCode} cityCode={cityCode ? Number(cityCode) : undefined} />
+                </ErrorBoundary>
               </TabsContent>
 
               {/* Tab 6: Map */}
               <TabsContent value="map">
+                <ErrorBoundary>
                 <MapTab prefCode={prefCode} prefName={pref.pref_name} allData={allData} />
+                </ErrorBoundary>
               </TabsContent>
 
               {/* Tab 7: Cross */}
               <TabsContent value="cross">
+                <ErrorBoundary>
                 <CrossTab areas={crossAreas} highlightPrefCode={prefCode} />
+                </ErrorBoundary>
               </TabsContent>
             </div>
           </Tabs>
         )}
       </main>
 
-      <footer className="border-t mt-auto px-6 py-3">
+      <footer className="border-t mt-auto px-4 py-3 md:px-6">
         <p className="text-xs text-muted-foreground text-center max-w-7xl mx-auto">
           分析手法: 経済基盤分析（LQ/EBM/PER）、シフトシェア分析、ギャップ分析 |
           データ: e-Stat 経済センサス活動調査 2021 / 国勢調査 2020 / 国土交通省不動産情報ライブラリ
