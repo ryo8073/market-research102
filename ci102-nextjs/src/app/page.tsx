@@ -16,6 +16,8 @@ import {
   TAKAMATSU_EMP_T0, TAKAMATSU_EMP_T1, NATIONAL_EMP_T0, NATIONAL_EMP_T1,
 } from "@/lib/sample-data";
 import LqTab from "@/components/tabs/lq-tab";
+import EbmTab from "@/components/tabs/ebm-tab";
+import ShiftShareTab from "@/components/tabs/shift-share-tab";
 import GapTab from "@/components/tabs/gap-tab";
 
 // Color palette (SPEC_v2 compliant)
@@ -250,10 +252,21 @@ export default function Dashboard() {
               />
             </TabsContent>
             <TabsContent value="ebm">
-              <PlaceholderTab title="② 需要予測（EBM/PER + ウォーターフォール + フィジビリティ）" />
+              <EbmTab
+                localEmp={TAKAMATSU_EMP}
+                nationalEmp={NATIONAL_EMP}
+                population={TAKAMATSU.population}
+                totalEmployment={TAKAMATSU.totalEmployment}
+                personsPerHousehold={TAKAMATSU.personsPerHousehold}
+              />
             </TabsContent>
             <TabsContent value="shift">
-              <PlaceholderTab title="③ シフトシェア分析" />
+              <ShiftShareTab
+                localT0={TAKAMATSU_EMP_T0}
+                localT1={TAKAMATSU_EMP_T1}
+                nationalT0={NATIONAL_EMP_T0}
+                nationalT1={NATIONAL_EMP_T1}
+              />
             </TabsContent>
             <TabsContent value="gap">
               <GapTab sectors={RETAIL_SECTORS} />

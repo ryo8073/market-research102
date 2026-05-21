@@ -39,58 +39,8 @@ def _get_api_key(name: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 @dataclass
-class ResasClient:
-    """地域経済分析システム RESAS API クライアント。
-
-    https://opendata.resas-portal.go.jp/docs/api/v1/index.html
-    """
-
-    api_key: Optional[str] = None
-    base_url: str = "https://opendata.resas-portal.go.jp/api/v1"
-    timeout: int = 15
-
-    def __post_init__(self):
-        if self.api_key is None:
-            self.api_key = _get_api_key("RESAS_API_KEY")
-
-    @property
-    def available(self) -> bool:
-        return bool(self.api_key)
-
-    def industry_specialization(
-        self,
-        year: int,
-        pref_code: int,
-        city_code: int,
-        sic_code: str = "-",
-    ) -> Optional[pd.DataFrame]:
-        """産業別特化係数を取得。
-
-        ロードマップ参照: GET /industry/power/forIndustry
-        Returns DataFrame columns: simcCode, simcName, value, employee, labor
-        """
-        if not self.available:
-            return None
-        try:
-            r = requests.get(
-                f"{self.base_url}/industry/power/forIndustry",
-                params={
-                    "year": year,
-                    "prefCode": pref_code,
-                    "cityCode": city_code,
-                    "sicCode": sic_code,
-                },
-                headers={"X-API-KEY": self.api_key},
-                timeout=self.timeout,
-            )
-            r.raise_for_status()
-            payload = r.json()
-            data = (payload.get("result") or {}).get("data") or []
-            if not data:
-                return None
-            return pd.DataFrame(data)
-        except requests.RequestException:
-            return None
+# RESAS API は 2025/3/24 にサービス終了。クラスを削除済み。
+# 旧コードは _archive/resas.py に保存。
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +237,7 @@ class MarketDataAccessor:
     """
 
     def __init__(self):
-        self.resas = ResasClient()
+        self.resas = None  # RESAS API 廃止 (2025/3/24)
         self.estat = EStatClient()
         self.mlit = MlitReinfolibClient()
         # 新 API 層のクライアント
