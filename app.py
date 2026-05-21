@@ -454,9 +454,11 @@ Tab ①〜④ で分析した経済基盤の強さ（LQ、EBM、シフトシェ�
             re_quarter = st.selectbox("四半期", options=[1, 2, 3, 4], index=0, key="re_quarter")
 
         try:
+            # MLIT API は都道府県全体(XX000/0)の場合 city_code=None が必要
+            _mlit_city = city_code if city_code and city_code % 1000 != 0 else None
             df_re = mlit_client.transaction_prices(
                 year=re_year, quarter=re_quarter,
-                pref_code=pref_code, city_code=city_code,
+                pref_code=pref_code, city_code=_mlit_city,
             )
             if df_re is not None and not df_re.empty:
                 st.metric("取引件数", f"{len(df_re):,}")
