@@ -206,10 +206,36 @@ EBM×PERカスケード（基盤雇用N人増→総雇用→人口→住宅需�
 
 UIにはエラーバナー（赤背景）を表示し、ユーザーが問題を認識できるようにする。
 
+## Next.js版 技術選定
+
+### チャートライブラリ: Recharts（Plotlyではない）
+
+```tsx
+// ❌ NG: Plotly.js（3.5MB、SSR非対応）
+import Plot from "react-plotly.js";
+
+// ✅ OK: Recharts（軽量、SSR対応、ResponsiveContainer統一）
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+```
+
+**理由**: Plotly.jsは約3.5MBでバンドル肥大化、SSR非対応。Rechartsは軽量でReact統合が自然。2026-05-22に全タブ移行完了。
+
+### 重いコンポーネントはdynamic importで遅延読み込み
+
+```tsx
+const LqTab = dynamic(() => import("@/components/tabs/lq-tab"), {
+  loading: () => <TabSkeleton />,
+});
+```
+
+タブコンポーネント・MapLibre等は `next/dynamic` で分割。
+
 ## Vercelデプロイ情報
 
 - プロジェクト名: `ci102-market-analysis`
 - 本番URL: https://ci102-market-analysis.vercel.app
+- 学習ページ: https://ci102-market-analysis.vercel.app/learn
 - Root Directory: `ci102-nextjs`（Build and Deployment設定）
 - GitHub連携: `ryo8073/market-research102` → push自動デプロイ
 - 環境変数: ESTAT_APP_ID, MLIT_API_KEY, ANTHROPIC_API_KEY, PROFORMER_API_KEY
+- 同一リポジトリに複数Vercelプロジェクトを接続しないこと（app.py検出エラーの原因）
