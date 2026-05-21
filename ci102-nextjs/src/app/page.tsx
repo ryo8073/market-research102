@@ -19,6 +19,9 @@ import LqTab from "@/components/tabs/lq-tab";
 import EbmTab from "@/components/tabs/ebm-tab";
 import ShiftShareTab from "@/components/tabs/shift-share-tab";
 import GapTab from "@/components/tabs/gap-tab";
+import RealEstateTab from "@/components/tabs/realestate-tab";
+import MapTab from "@/components/tabs/map-tab";
+import CrossTab from "@/components/tabs/cross-tab";
 
 // Color palette (SPEC_v2 compliant)
 const COLORS = {
@@ -182,14 +185,6 @@ function ScorecardTab() {
   );
 }
 
-function PlaceholderTab({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-center h-64 rounded-lg border border-dashed">
-      <p className="text-muted-foreground">{title} — 実装中</p>
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const [prefCode, setPrefCode] = useState(13);
 
@@ -272,13 +267,13 @@ export default function Dashboard() {
               <GapTab sectors={RETAIL_SECTORS} />
             </TabsContent>
             <TabsContent value="realestate">
-              <PlaceholderTab title="⑤ 不動産取引 + Mueller サイクル（MLIT API接続後に表示）" />
+              <RealEstateTab prefCode={prefCode} />
             </TabsContent>
             <TabsContent value="map">
-              <PlaceholderTab title="⑥ 地図分析（GeoJSON読込後に表示）" />
+              <MapTab prefCode={prefCode} prefName={PREFECTURES[prefCode] ?? ""} />
             </TabsContent>
             <TabsContent value="cross">
-              <PlaceholderTab title="⑦ クロス分析（全都道府県データ取得後に表示）" />
+              <CrossTab areas={[]} highlightPrefCode={prefCode} />
             </TabsContent>
           </div>
         </Tabs>
