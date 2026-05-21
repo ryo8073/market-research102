@@ -514,13 +514,15 @@ Tab ①〜④ で分析した経済基盤の強さ（LQ、EBM、シフトシェ�
 # ---------------------------------------------------------------------------
 
 with tab_map:
-    st.header("全国地図分析（都道府県別）")
+    st.header("地図分析")
 
     map_view = st.selectbox("分析ビュー", [
-        "産業集積マップ（LQ）",
-        "シフトシェア RS マップ",
-        "小売ギャップマップ",
+        "産業集積マップ（LQ）— 都道府県",
+        "シフトシェア RS マップ — 都道府県",
+        "小売ギャップマップ — 都道府県",
         "都道府県比較ダッシュボード",
+        "県内市区町村マップ（LQ）",
+        "産業中分類ドリルダウン",
     ])
 
     try:
@@ -531,7 +533,7 @@ with tab_map:
         st.stop()
 
     try:
-        if map_view == "産業集積マップ（LQ）":
+        if map_view == "産業集積マップ（LQ）— 都道府県":
             st.subheader("産業別 特化係数（LQ）全国マップ")
             with st.expander("この地図の見方", expanded=False):
                 st.markdown("""
@@ -584,7 +586,7 @@ LQ = 1.0（白）が全国平均水準。特定の産業を選択すると、
                         use_container_width=True,
                     )
 
-        elif map_view == "シフトシェア RS マップ":
+        elif map_view == "シフトシェア RS マップ — 都道府県":
             st.subheader("地域シフト（RS）合計 全国マップ")
             with st.expander("この地図の見方", expanded=False):
                 st.markdown("""
@@ -609,7 +611,7 @@ LQ = 1.0（白）が全国平均水準。特定の産業を選択すると、
                     use_container_width=True,
                 )
 
-        elif map_view == "小売ギャップマップ":
+        elif map_view == "小売ギャップマップ — 都道府県":
             st.subheader("小売 漏損/余剰係数 全国マップ")
             with st.expander("この地図の見方", expanded=False):
                 st.markdown("""
@@ -676,6 +678,112 @@ LQ = 1.0（白）が全国平均水準。特定の産業を選択すると、
                     )
                 else:
                     st.info("2つ以上の都道府県を選択してください。")
+
+        elif map_view == "県内市区町村マップ（LQ）":
+            st.subheader(f"{_pref_name} 市区町村別 LQ 分析")
+            with st.expander("この地図の見方", expanded=False):
+                st.markdown("""
+サイドバーで選択中の都道府県内の市区町村を地図表示します。
+特定産業を選ぶと、その産業のLQが市区町村ごとにどう違うかを可視化できます。
+県庁所在地と郊外で産業構造がどう異なるかを確認できます。
+                """)
+
+            from data.geo_utils import load_municipality_geojson
+            muni_geojson = load_municipality_geojson(pref_code)
+
+            muni_view = st.radio(
+                "表示モード", ["特定産業のLQ", "基盤雇用比率（概要）"],
+                horizontal=True, key="muni_view",
+            )
+
+            center = map_charts.get_pref_center(pref_code)
+
+            if muni_view == "特定産業のLQ":
+                industries = map_data.get_industry_list()
+                if industries:
+                    sel_ind = st.selectbox("産業を選択", industries, key="muni_ind")
+                    df_muni = map_data.compute_municipality_industry_lq(pref_code, sel_ind)
+                    if not df_muni.empty and muni_geojson:
+                        st.plotly_chart(
+                            map_charts.choropleth_municipality_industry_lq(
+                                df_muni, muni_geojson, center[0], center[1], sel_ind,
+                            ),
+                            use_container_width=True,
+                        )
+                    elif df_muni.empty:
+                        st.info("データがありません。")
+                    else:
+                        st.warning("市区町村境界データがありません。ランキングのみ表示します。")
+                    if not df_muni.empty:
+                        st.subheader("LQ ランキング")
+                        st.dataframe(
+                            df_muni.sort_values("lq", ascending=False)
+                            .style.format({"lq": "{:.3f}", "local_emp": "{:,.0f}", "basic_emp": "{:,.0f}"}),
+                            use_container_width=True,
+                        )
+            else:
+                df_muni = map_data.compute_municipality_lq(pref_code)
+                if not df_muni.empty and muni_geojson:
+                    st.plotly_chart(
+                        map_charts.choropleth_municipality_lq(
+                            df_muni, muni_geojson, center[0], center[1],
+                        ),
+                        use_container_width=True,
+                    )
+                elif df_muni.empty:
+                    st.info("データがありません。")
+                else:
+                    st.warning("市区町村境界データがありません。ランキングのみ表示します。")
+                if not df_muni.empty:
+                    st.subheader("基盤雇用比率ランキング")
+                    st.dataframe(
+                        df_muni.sort_values("basic_ratio", ascending=False)
+                        [["area_name", "basic_ratio", "num_basic", "total_emp", "basic_emp", "max_lq_industry"]]
+                        .style.format({
+                            "basic_ratio": "{:.1f}%",
+                            "total_emp": "{:,.0f}",
+                            "basic_emp": "{:,.0f}",
+                        }),
+                        use_container_width=True,
+                    )
+
+        elif map_view == "産業中分類ドリルダウン":
+            st.subheader("産業中分類 LQ ドリルダウン")
+            with st.expander("この分析の意味", expanded=False):
+                st.markdown("""
+産業大分類（例:「製造業」）の中をさらに細かい中分類（例:「食料品製造業」
+「輸送用機械器具製造業」等）で分解し、具体的にどのサブセクターに
+特化しているかを特定します。投資判断のためのテナントターゲティングに活用できます。
+                """)
+            st.caption(f"対象: {_pref_name} {_city_name}")
+            df_detail = map_data.compute_industry_detail_lq(pref_code, city_code)
+            if not df_detail.empty:
+                import plotly.express as _px
+                fig_detail = _px.bar(
+                    df_detail.sort_values("lq", ascending=True),
+                    x="lq", y="industry", orientation="h",
+                    title=f"産業中分類 LQ（{_pref_name} {_city_name}）",
+                    labels={"lq": "LQ", "industry": "産業中分類"},
+                    color="lq",
+                    color_continuous_scale=["#2166ac", "#f7f7f7", "#b2182b"],
+                    color_continuous_midpoint=1.0,
+                )
+                fig_detail.add_vline(x=1.0, line_dash="dash", line_color="red")
+                fig_detail.update_layout(height=max(400, len(df_detail) * 22))
+                st.plotly_chart(fig_detail, use_container_width=True)
+
+                st.subheader("詳細テーブル")
+                st.dataframe(
+                    df_detail.style.format({
+                        "local_emp": "{:,.0f}",
+                        "national_emp": "{:,.0f}",
+                        "lq": "{:.3f}",
+                        "basic_emp_estimate": "{:,.1f}",
+                    }),
+                    use_container_width=True,
+                )
+            else:
+                st.info("産業中分類データがありません。")
 
     except FileNotFoundError:
         st.error("GeoJSON ファイルが見つかりません（data/japan_prefectures.geojson）。")

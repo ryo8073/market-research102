@@ -354,3 +354,123 @@ def compute_prefecture_comparison(cache_dir_str: str | None = None) -> pd.DataFr
         })
 
     return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# 5. 県内市区町村レベル分析
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600, show_spinner="市区町村LQを計算中...")
+def compute_municipality_lq(
+    pref_code: int, cache_dir_str: str | None = None,
+) -> pd.DataFrame:
+    """県内の市区町村別LQサマリを計算。
+
+    Returns DataFrame: area_code, area_name, total_emp, basic_emp,
+                       basic_ratio, num_basic, max_lq, max_lq_industry
+    """
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
+    df_emp = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
+    if df_emp is None:
+        return pd.DataFrame()
+
+    national_emp = get_national_employment(df_emp)
+    if not national_emp:
+        return pd.DataFrame()
+
+    from data.census_cache import list_areas_by_prefecture
+    areas = list_areas_by_prefecture(df_emp, pref_code)
+
+    rows = []
+    for area_code, area_name in areas:
+        local_emp = get_area_employment(df_emp, area_code)
+        if not local_emp:
+            continue
+        df_lq = lq_table(local_emp, national_emp)
+        basic_total = total_basic_employment(df_lq)
+        total_emp_val = float(df_lq["local_emp"].sum())
+        basic_industries = df_lq[df_lq["lq"] > 1.0]
+        top = df_lq.iloc[0] if not df_lq.empty else None
+
+        rows.append({
+            "area_code": area_code,
+            "area_name": area_name,
+            "total_emp": int(total_emp_val),
+            "basic_emp": int(basic_total),
+            "basic_ratio": basic_total / total_emp_val * 100 if total_emp_val > 0 else 0,
+            "num_basic": len(basic_industries),
+            "max_lq": float(top["lq"]) if top is not None else 0,
+            "max_lq_industry": str(top["industry"]) if top is not None else "",
+        })
+
+    return pd.DataFrame(rows)
+
+
+@st.cache_data(ttl=3600, show_spinner="産業別LQを計算中...")
+def compute_municipality_industry_lq(
+    pref_code: int, industry_name: str, cache_dir_str: str | None = None,
+) -> pd.DataFrame:
+    """県内の市区町村別に特定産業のLQ値を計算。
+
+    Returns DataFrame: area_code, area_name, lq, local_emp, basic_emp
+    """
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
+    df_emp = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
+    if df_emp is None:
+        return pd.DataFrame()
+
+    national_emp = get_national_employment(df_emp)
+    if not national_emp:
+        return pd.DataFrame()
+
+    from data.census_cache import list_areas_by_prefecture
+    areas = list_areas_by_prefecture(df_emp, pref_code)
+
+    rows = []
+    for area_code, area_name in areas:
+        local_emp = get_area_employment(df_emp, area_code)
+        if not local_emp:
+            continue
+        df_lq = lq_table(local_emp, national_emp)
+        row = df_lq[df_lq["industry"] == industry_name]
+        if row.empty:
+            continue
+        r = row.iloc[0]
+        rows.append({
+            "area_code": area_code,
+            "area_name": area_name,
+            "lq": float(r["lq"]),
+            "local_emp": float(r["local_emp"]),
+            "basic_emp": float(r["basic_emp_estimate"]),
+        })
+
+    return pd.DataFrame(rows)
+
+
+@st.cache_data(ttl=3600, show_spinner="産業中分類LQを計算中...")
+def compute_industry_detail_lq(
+    pref_code: int, city_code: int, cache_dir_str: str | None = None,
+) -> pd.DataFrame:
+    """産業中分類レベルのLQテーブルを計算（ドリルダウン用）。
+
+    Returns DataFrame: industry, local_emp, national_emp, lq, basic_emp_estimate
+    """
+    from data.census_cache import (
+        DS_EMPLOYMENT_MID, get_area_employment_mid, load_cached_dataset as _load,
+    )
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
+    df_mid = _load(cache_dir, DS_EMPLOYMENT_MID.csv_name)
+    if df_mid is None:
+        return pd.DataFrame()
+
+    if city_code and city_code % 1000 != 0:
+        area_code = f"{pref_code:02d}{city_code % 1000:03d}"
+    else:
+        area_code = f"{pref_code:02d}000"
+    local_emp = get_area_employment_mid(df_mid, area_code)
+    national_emp = get_area_employment_mid(df_mid, "00000")
+
+    if not local_emp or not national_emp:
+        return pd.DataFrame()
+
+    return lq_table(local_emp, national_emp)

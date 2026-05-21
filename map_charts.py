@@ -9,6 +9,31 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 _GEOJSON_PATH = Path(__file__).parent / "data" / "japan_prefectures.geojson"
+
+# 都道府県庁所在地の緯度・経度（市区町村マップの中心座標に使用）
+_PREF_CENTER: dict[int, tuple[float, float]] = {
+    1: (43.06, 141.35), 2: (40.82, 140.74), 3: (39.70, 141.15),
+    4: (38.27, 140.87), 5: (39.72, 140.10), 6: (38.24, 140.33),
+    7: (37.75, 140.47), 8: (36.34, 140.45), 9: (36.57, 139.88),
+    10: (36.39, 139.06), 11: (35.86, 139.65), 12: (35.61, 140.12),
+    13: (35.69, 139.69), 14: (35.45, 139.64), 15: (37.90, 139.02),
+    16: (36.70, 137.21), 17: (36.59, 136.63), 18: (36.07, 136.22),
+    19: (35.66, 138.57), 20: (36.24, 138.18), 21: (35.39, 136.72),
+    22: (34.98, 138.38), 23: (35.18, 136.91), 24: (34.73, 136.51),
+    25: (35.00, 135.87), 26: (35.02, 135.76), 27: (34.69, 135.52),
+    28: (34.69, 135.18), 29: (34.69, 135.83), 30: (34.23, 135.17),
+    31: (35.50, 134.24), 32: (35.47, 133.05), 33: (34.66, 133.93),
+    34: (34.40, 132.46), 35: (34.19, 131.47), 36: (34.07, 134.56),
+    37: (34.34, 134.04), 38: (33.84, 132.77), 39: (33.56, 133.53),
+    40: (33.61, 130.42), 41: (33.25, 130.30), 42: (32.74, 129.87),
+    43: (32.79, 130.74), 44: (33.24, 131.61), 45: (31.91, 131.42),
+    46: (31.56, 130.56), 47: (26.34, 127.80),
+}
+
+
+def get_pref_center(pref_code: int) -> tuple[float, float]:
+    """都道府県の中心座標 (lat, lon) を返す。"""
+    return _PREF_CENTER.get(pref_code, (36.5, 138.0))
 _geojson_cache: dict | None = None
 
 
@@ -228,5 +253,71 @@ def comparison_bar(df: pd.DataFrame, selected_prefs: list[int]) -> go.Figure:
         barmode="group",
         height=450,
         yaxis_title="万人",
+    )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# 5. 県内市区町村マップ
+# ---------------------------------------------------------------------------
+
+def choropleth_municipality_lq(
+    df: pd.DataFrame, geojson: dict, center_lat: float, center_lon: float,
+) -> go.Figure:
+    """市区町村別の基盤雇用比率コロプレス。"""
+    fig = px.choropleth_map(
+        df,
+        geojson=geojson,
+        locations="area_code",
+        featureidkey="properties.N03_007",
+        color="basic_ratio",
+        hover_name="area_name",
+        hover_data={
+            "basic_ratio": ":.1f",
+            "num_basic": True,
+            "max_lq_industry": True,
+            "area_code": False,
+        },
+        color_continuous_scale="YlOrRd",
+        labels={
+            "basic_ratio": "基盤雇用比率(%)",
+            "num_basic": "基盤産業数",
+            "max_lq_industry": "最大LQ産業",
+        },
+        map_style="open-street-map",
+        center={"lat": center_lat, "lon": center_lon},
+        zoom=8,
+        opacity=0.7,
+    )
+    fig.update_layout(height=600, margin={"r": 0, "t": 30, "l": 0, "b": 0})
+    return fig
+
+
+def choropleth_municipality_industry_lq(
+    df: pd.DataFrame, geojson: dict,
+    center_lat: float, center_lon: float, industry_name: str,
+) -> go.Figure:
+    """市区町村別の特定産業LQコロプレス。"""
+    fig = px.choropleth_map(
+        df,
+        geojson=geojson,
+        locations="area_code",
+        featureidkey="properties.N03_007",
+        color="lq",
+        hover_name="area_name",
+        hover_data={"lq": ":.3f", "local_emp": ":,.0f", "basic_emp": ":,.0f", "area_code": False},
+        color_continuous_scale=["#2166ac", "#f7f7f7", "#b2182b"],
+        color_continuous_midpoint=1.0,
+        range_color=[0.0, max(2.0, df["lq"].max())],
+        labels={"lq": "LQ", "local_emp": "従業者数", "basic_emp": "基盤雇用"},
+        map_style="open-street-map",
+        center={"lat": center_lat, "lon": center_lon},
+        zoom=8,
+        opacity=0.7,
+    )
+    fig.update_layout(
+        height=600,
+        margin={"r": 0, "t": 30, "l": 0, "b": 0},
+        title=f"{industry_name} LQ（市区町村別）",
     )
     return fig
