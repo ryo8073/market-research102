@@ -1,100 +1,143 @@
-# CI102 Market Analysis — 日本版
+# CI102 不動産市場分析ダッシュボード
 
-CCIM CI102（市場分析）の数理モデルを日本の公的オープンデータで再現する不動産投資判断ツール。
+CCIM CI102（Market Analysis for Commercial Investment Real Estate）の数理モデルを日本の公的オープンデータで再現する不動産投資判断ツール。
 
-## 概要
+## 2つのバージョン
 
-- **LQ**（特化係数）、**EBM**（経済基盤乗数）、**PER**（人口雇用比率）、**シフトシェア分析**、**小売ギャップ分析**を実装
-- Streamlit ベースの対話的ダッシュボード（Phase 1 MVP）
-- RESAS API / e-Stat API / 不動産情報ライブラリ API への接続インターフェース完備
-- PoC 対象都市: **香川県高松市**（サンプルデータで即時動作）
+| | Streamlit (Python) | Next.js (TypeScript) |
+|---|---|---|
+| 用途 | 検証・開発環境 | **本番Web公開用** |
+| 起動 | `streamlit run app.py` | `cd ci102-nextjs && npm run dev` |
+| テスト | 61テスト | 69テスト |
+| 地図 | Plotly choropleth | **MapLibre GL JS** |
+| デプロイ | ローカル | **Vercel** |
 
-## ファイル構成
+## 機能一覧（8タブ）
 
-| ファイル | 役割 |
-|---------|------|
-| `app.py` | Streamlit ダッシュボード本体 |
-| `calculator.py` | CI102 数理モデル（純粋関数） |
-| `data_sources.py` | RESAS / e-Stat / MLIT API クライアント + フォールバック |
-| `sample_data.py` | 高松市 PoC 用近似データ |
-| `tests/test_calculator.py` | 23ケースの回帰テスト |
+| タブ | 分析内容 |
+|---|---|
+| **⓪ 投資スコアカード** | 全指標1画面集約 + 投資適格スコア(0-100) + テナント戦略 + AI分析(Claude) + Proformer連携 |
+| **① 経済基盤** | LQ(特化係数) + シフトシェア統合 + 投資シグナル4象限 |
+| **② 需要予測** | EBM/PER + ウォーターフォール + 物件規模換算 + 開発フィジビリティ |
+| **③ シフトシェア分析** | NS/IM/RS 3要因分解 + スター産業判定 |
+| **④ 小売市場** | ギャップ分析(漏損/余剰) + オフィス/工業ギャップ |
+| **⑤ 不動産取引** | MLIT取引価格 + 時系列トレンド(8四半期) + Mueller市場サイクル |
+| **⑥ 地図分析** | 都道府県コロプレス + 市区町村境界 + セグメンテーション(6タイプ) |
+| **⑦ クロス分析** | ギャップ × 取引価格 4象限散布図 |
+
+## データソース
+
+| データ | ソース | 時点 |
+|---|---|---|
+| 産業別従業者数 | e-Stat 経済センサス活動調査 | 2021年6月 |
+| 人口・世帯 | e-Stat 国勢調査 | 2020年10月 |
+| 不動産取引価格 | 国土交通省 不動産情報ライブラリ API | 四半期更新 |
+| 物件DCF分析 | Proformer不動産投資診断プロ API | リアルタイム |
+| AI分析 | Anthropic Claude API | リアルタイム |
 
 ## セットアップ
 
-```powershell
+### Streamlit版（検証用）
+
+```bash
 pip install -r requirements.txt
-
-# APIキー設定（任意・未設定でもサンプルデータで動作）
 cp .env.example .env
-# .env を編集して RESAS_API_KEY / ESTAT_APP_ID / MLIT_API_KEY を設定
-```
-
-## 起動
-
-```powershell
+# .env を編集してAPIキーを設定
 streamlit run app.py
 ```
 
-ブラウザで `http://localhost:8501` を開く。
+### Next.js版（本番用）
 
-## テスト実行
-
-```powershell
-python -m pytest tests/ -v
+```bash
+cd ci102-nextjs
+npm install
+cp ../.env .env.local
+npm run dev     # 開発サーバー http://localhost:3000
+npm run build   # 本番ビルド
 ```
 
-ロードマップ記載の既知例（Gwinnett County EBM≈4.97、Apparel surplus -24.0 等）で検証済み。
+### 環境変数 (.env)
+
+```
+# 必須
+ESTAT_APP_ID=           # e-Stat API (https://www.e-stat.go.jp/api/)
+MLIT_API_KEY=           # MLIT不動産情報ライブラリ (https://www.reinfolib.mlit.go.jp/help/apiManual/)
+
+# 任意
+ANTHROPIC_API_KEY=      # Claude AI分析 (https://console.anthropic.com/)
+PROFORMER_API_KEY=      # Proformer DCF連携 (https://proformer.ai/)
+```
+
+## テスト
+
+```bash
+# Python (Streamlit版)
+python -m pytest tests/ -v          # 61テスト
+
+# TypeScript (Next.js版)
+cd ci102-nextjs && npx vitest run   # 69テスト
+```
+
+教科書値で検証済み: Orlando MSA / Denver MSA / Baton Rouge / Gwinnett County
+
+## デプロイ (Vercel)
+
+```bash
+cd ci102-nextjs
+npx vercel          # プレビューデプロイ
+npx vercel --prod   # 本番デプロイ
+```
+
+Vercel管理画面で環境変数 (ESTAT_APP_ID, MLIT_API_KEY, ANTHROPIC_API_KEY, PROFORMER_API_KEY) を設定。
+
+## ディレクトリ構成
+
+```
+CI102_MarketAnalysis/
+├── app.py                    # Streamlit本体（8タブ）
+├── calculator.py             # CI102数理エンジン（18関数）
+├── scorecard.py              # 投資スコアカード集約
+├── ai_analysis.py            # Claude AI統合分析
+├── cross_analysis.py         # ギャップ×価格クロス分析
+├── mueller_cycle.py          # Mueller不動産市場サイクル
+├── segmentation.py           # Tapestry風セグメンテーション
+├── report_generator.py       # PDFレポート生成
+├── config.py                 # 環境変数管理
+├── data_sources.py           # API統合 + 3段フォールバック
+├── map_data.py               # 都道府県集計
+├── map_charts.py             # Plotlyチャート
+├── api/
+│   ├── estat.py              # e-Stat APIクライアント
+│   ├── mlit.py               # MLIT APIクライアント
+│   └── proformer.py          # Proformer APIクライアント
+├── data/
+│   ├── cache/                # CSVキャッシュ（自動DL）
+│   ├── geo/                  # 市区町村TopoJSON（47県）
+│   └── japan_prefectures.geojson
+├── tests/                    # Python 61テスト
+├── ci102-nextjs/             # Next.js版（本番用）
+│   ├── src/lib/calculator.ts # 18関数移植（69テスト）
+│   ├── src/app/api/          # API Routes (e-Stat/MLIT/Proformer)
+│   ├── src/components/       # shadcn/ui + MapLibre GL JS
+│   └── public/geo/           # GeoJSON/TopoJSON
+├── docs/                     # 仕様書・移行ガイド
+└── _archive/                 # 廃止ファイル（RESAS API等）
+```
 
 ## 数理モデル
 
-### LQ（特化係数）
-```
-LQ = (e_i / e) / (E_i / E)
-```
-LQ > 1.0 の超過分から基盤雇用を算出: `basic = e_i × (1 - 1/LQ)`
-
-### EBM（経済基盤乗数）
-```
-EBM = 総雇用 / 基盤雇用
-```
-
-### PER（人口雇用比率）
-```
-PER = 総人口 / 総雇用
-```
-
-### シフトシェア分析
-雇用変動を3要因に分解:
-- **NS**（国家成長）= e_i,t0 × g_national
-- **IM**（産業ミックス）= e_i,t0 × (g_industry - g_national)
-- **RS**（地域シフト）= e_i,t0 × (g_local - g_industry)
-
-恒等式: `NS + IM + RS = 実雇用変化`
-
-### ギャップ分析（Leakage/Surplus Factor）
-```
-Factor = (Demand - Supply) / (Demand + Supply) × 100
-```
-- `+100`: 完全漏出（出店余地大）
-- `0`: 均衡
-- `-100`: 完全余剰（飽和市場）
-
-## ロードマップ進捗
-
-- ✅ **Phase 1（Month 1-4）**: コア数理エンジン + データソース層 + MVP UI
-- ⏳ **Phase 2（Month 5-8）**: 地図UI（MapLibre GL）、商圏ポリゴン、空間ジョイン
-- ⏳ **Phase 3（Month 9-12）**: 不動産価格連携、予測AI、PDFレポート出力
-
-## 次のステップ
-
-1. RESAS API キーを取得して `data_sources.ResasClient.industry_specialization` 経由で実データ取得を有効化
-2. e-Stat 経済センサスの最新年データで `lq_table` を最新化（ナウキャスト補完）
-3. 不動産情報ライブラリ API の取引価格データを EBM/RS 時系列にオーバーレイ
-4. MapLibre GL JS でフロントエンドを置き換え、任意ポリゴン商圏分析を実装
+| モデル | 数式 | 用途 |
+|---|---|---|
+| LQ | `(e_i/e) / (E_i/E)` | 産業集積度の測定 |
+| EBM | `総雇用 / 基盤雇用` | 雇用波及効果の測定 |
+| PER | `総人口 / 総雇用` | 人口波及の測定 |
+| シフトシェア | `NS + IM + RS = 実変化` | 競争力の3要因分解 |
+| ギャップ | `(D-S)/(D+S) × 100` | 漏損/余剰の定量化 |
+| 投資スコア | `EBM×20% + 基盤比率×20% + RS×25% + Gap×20% + Scale×15%` | 投資適格性の総合評価 |
 
 ## 出典
 
 - CCIM Institute CI102: Market Analysis for Commercial Investment Real Estate
-- 地域経済分析システム（RESAS）API: https://opendata.resas-portal.go.jp/
 - e-Stat API: https://www.e-stat.go.jp/api/
 - 不動産情報ライブラリ API: https://www.reinfolib.mlit.go.jp/
+- Proformer不動産投資診断プロ: https://proformer.ai/
