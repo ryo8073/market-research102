@@ -131,8 +131,9 @@ c3.metric("総従業者数", f"{basics['total_employment']:,}")
 c4.metric("平均世帯人員", f"{basics['persons_per_household']:.2f}")
 
 
-tab_lq, tab_ebm, tab_ss, tab_gap, tab_re = st.tabs(
-    ["① LQ・経済基盤", "② EBM・PER・予測", "③ シフトシェア分析", "④ 小売ギャップ分析", "⑤ 不動産取引価格"]
+tab_lq, tab_ebm, tab_ss, tab_gap, tab_re, tab_map = st.tabs(
+    ["① LQ・経済基盤", "② EBM・PER・予測", "③ シフトシェア分析",
+     "④ 小売ギャップ分析", "⑤ 不動産取引価格", "⑥ 地図分析"]
 )
 
 
@@ -505,6 +506,174 @@ Tab ①〜④ で分析した経済基盤の強さ（LQ、EBM、シフトシェ�
 実際の不動産価格にどう反映されているかを確認できます。
         """)
 
+
+# ---------------------------------------------------------------------------
+# Tab 6: Map Analysis
+# ---------------------------------------------------------------------------
+
+with tab_map:
+    st.header("全国地図分析（都道府県別）")
+
+    map_view = st.selectbox("分析ビュー", [
+        "産業集積マップ（LQ）",
+        "シフトシェア RS マップ",
+        "小売ギャップマップ",
+        "都道府県比較ダッシュボード",
+    ])
+
+    try:
+        import map_data
+        import map_charts
+
+        if map_view == "産業集積マップ（LQ）":
+            st.subheader("産業別 特化係数（LQ）全国マップ")
+            with st.expander("この地図の見方", expanded=False):
+                st.markdown("""
+赤い地域ほどLQが高く（集積度が高い）、青い地域ほどLQが低い。
+LQ = 1.0（白）が全国平均水準。特定の産業を選択すると、
+その産業がどの都道府県に集積しているかを一目で把握できます。
+                """)
+
+            view_mode = st.radio(
+                "表示モード", ["特定産業のLQ", "基盤雇用比率（概要）"],
+                horizontal=True,
+            )
+
+            if view_mode == "特定産業のLQ":
+                industries = map_data.get_industry_list()
+                if industries:
+                    selected_industry = st.selectbox("産業を選択", industries)
+                    df_ilq = map_data.compute_prefecture_industry_lq(selected_industry)
+                    if not df_ilq.empty:
+                        st.plotly_chart(
+                            map_charts.choropleth_industry_lq(df_ilq),
+                            use_container_width=True,
+                        )
+                        st.subheader("LQ ランキング")
+                        st.dataframe(
+                            df_ilq.sort_values("lq", ascending=False)
+                            .style.format({"lq": "{:.3f}", "local_emp": "{:,.0f}", "basic_emp": "{:,.0f}"}),
+                            use_container_width=True,
+                        )
+                    else:
+                        st.info("データがありません。")
+                else:
+                    st.warning("キャッシュが未構築です。")
+            else:
+                df_summary = map_data.compute_prefecture_lq_summary()
+                if not df_summary.empty:
+                    st.plotly_chart(
+                        map_charts.choropleth_lq_summary(df_summary),
+                        use_container_width=True,
+                    )
+                    st.subheader("基盤雇用比率ランキング")
+                    st.dataframe(
+                        df_summary.sort_values("basic_ratio", ascending=False)
+                        [["pref_name", "basic_ratio", "num_basic", "total_emp", "basic_emp", "max_lq_industry"]]
+                        .style.format({
+                            "basic_ratio": "{:.1f}%",
+                            "total_emp": "{:,.0f}",
+                            "basic_emp": "{:,.0f}",
+                        }),
+                        use_container_width=True,
+                    )
+
+        elif map_view == "シフトシェア RS マップ":
+            st.subheader("地域シフト（RS）合計 全国マップ")
+            with st.expander("この地図の見方", expanded=False):
+                st.markdown("""
+**緑**の地域は地域シフト(RS)合計が正 = 全国トレンドを上回る競争優位を持つ。
+**赤**の地域はRS合計が負 = 全国の同産業と比べ雇用が減少傾向。
+期間: 2016年 → 2021年（経済センサス活動調査）。
+                """)
+            df_ss = map_data.compute_prefecture_shift_share()
+            if not df_ss.empty:
+                st.plotly_chart(
+                    map_charts.choropleth_shift_share(df_ss),
+                    use_container_width=True,
+                )
+                st.subheader("地域シフト(RS) ランキング")
+                st.dataframe(
+                    df_ss.sort_values("total_rs", ascending=False)
+                    [["pref_name", "total_rs", "total_actual_change", "top_rs_industry"]]
+                    .style.format({
+                        "total_rs": "{:+,.0f}",
+                        "total_actual_change": "{:+,.0f}",
+                    }),
+                    use_container_width=True,
+                )
+
+        elif map_view == "小売ギャップマップ":
+            st.subheader("小売 漏損/余剰係数 全国マップ")
+            with st.expander("この地図の見方", expanded=False):
+                st.markdown("""
+**緑**（正の係数）= 漏損（Leakage）: 購買力が域外に流出 → 出店機会あり。
+**赤**（負の係数）= 余剰（Surplus）: 域内供給が需要を上回る → 競争過多。
+需要は人口 × 全国平均1人あたり小売支出額で按分推計。
+                """)
+            df_gap = map_data.compute_prefecture_retail_gap()
+            if not df_gap.empty:
+                st.plotly_chart(
+                    map_charts.choropleth_retail_gap(df_gap),
+                    use_container_width=True,
+                )
+                st.subheader("漏損/余剰 ランキング")
+                st.dataframe(
+                    df_gap.sort_values("aggregate_factor", ascending=False)
+                    [["pref_name", "aggregate_factor", "num_leakage", "num_surplus",
+                      "total_demand", "total_supply"]]
+                    .style.format({
+                        "aggregate_factor": "{:+.1f}",
+                        "total_demand": "{:,.0f}",
+                        "total_supply": "{:,.0f}",
+                    }),
+                    use_container_width=True,
+                )
+
+        elif map_view == "都道府県比較ダッシュボード":
+            st.subheader("都道府県 横断比較")
+            df_comp = map_data.compute_prefecture_comparison()
+            if not df_comp.empty:
+                selected = st.multiselect(
+                    "比較する都道府県を選択（2〜8）",
+                    options=df_comp["pref_code"].tolist(),
+                    format_func=lambda c: f"{ALL_PREFECTURES.get(c, '')}",
+                    default=[13, 27, 23, 37],
+                )
+                if len(selected) >= 2:
+                    col_radar, col_bar = st.columns(2)
+                    with col_radar:
+                        st.plotly_chart(
+                            map_charts.comparison_radar(df_comp, selected),
+                            use_container_width=True,
+                        )
+                    with col_bar:
+                        st.plotly_chart(
+                            map_charts.comparison_bar(df_comp, selected),
+                            use_container_width=True,
+                        )
+
+                    st.subheader("詳細テーブル")
+                    subset = df_comp[df_comp["pref_code"].isin(selected)]
+                    st.dataframe(
+                        subset[["pref_name", "population", "total_emp", "basic_emp",
+                                "ebm", "per", "basic_ratio"]]
+                        .style.format({
+                            "population": "{:,.0f}",
+                            "total_emp": "{:,.0f}",
+                            "basic_emp": "{:,.0f}",
+                            "ebm": "{:.2f}",
+                            "per": "{:.2f}",
+                            "basic_ratio": "{:.1f}%",
+                        }),
+                        use_container_width=True,
+                    )
+                else:
+                    st.info("2つ以上の都道府県を選択してください。")
+
+    except Exception as e:
+        st.error(f"地図データの読み込みに失敗しました: {e}")
+        st.info("全国データのキャッシュが構築されていない可能性があります。")
 
 # ---------------------------------------------------------------------------
 # Footer
