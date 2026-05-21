@@ -10,6 +10,7 @@ import {
   forecast_required_floor_area, forecast_building_count,
   development_feasibility,
 } from "@/lib/calculator";
+import type { MunicipalityData } from "@/lib/use-municipality-data";
 
 interface Props {
   localEmp: Record<string, number>;
@@ -17,9 +18,10 @@ interface Props {
   population: number;
   totalEmployment: number;
   personsPerHousehold: number;
+  selectedCity?: MunicipalityData | null;
 }
 
-export default function EbmTab({ localEmp, nationalEmp, population, totalEmployment, personsPerHousehold }: Props) {
+export default function EbmTab({ localEmp, nationalEmp, population, totalEmployment, personsPerHousehold, selectedCity }: Props) {
   const [newBasicJobs, setNewBasicJobs] = useState(100);
   const [avgUnitSize, setAvgUnitSize] = useState(65);
   const [floorsPerBldg, setFloorsPerBldg] = useState(5);
@@ -55,6 +57,32 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
           <CardContent><div className="text-3xl font-bold">{per.toFixed(2)}</div><p className="text-xs text-muted-foreground">就業者1人あたり総人口</p></CardContent>
         </Card>
       </div>
+
+      {/* Municipality highlight */}
+      {selectedCity && (
+        <div className="rounded-lg border p-4" style={{ backgroundColor: "#f0f9ff" }}>
+          <h3 className="font-semibold mb-3">{selectedCity.area_name} — 市区町村データ</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">総雇用</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{selectedCity.total_emp.toLocaleString()}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">基盤雇用</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{Math.round(selectedCity.basic_emp).toLocaleString()}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">基盤雇用比率</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{selectedCity.basic_ratio.toFixed(1)}%</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">基盤産業数</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{selectedCity.num_basic}</div></CardContent>
+            </Card>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">EBM/PER・シミュレーションは都道府県レベルの値です。市区町村の基盤雇用を比較参照してください。</p>
+        </div>
+      )}
 
       {/* Simulation Input */}
       <div className="rounded-lg border p-4">

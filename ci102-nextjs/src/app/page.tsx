@@ -47,8 +47,8 @@ function KpiCard({ title, value, subtitle, trend }: {
 export default function Dashboard() {
   const [prefCode, setPrefCode] = useState(13);
   const [cityCode, setCityCode] = useState<string>("");
-  const { data: pref, allData, loading } = usePrefectureData(prefCode);
-  const { data: municipalities } = useMunicipalityData(prefCode);
+  const { data: pref, allData, loading, error: prefError } = usePrefectureData(prefCode);
+  const { data: municipalities, error: muniError } = useMunicipalityData(prefCode);
   const selectedCity = cityCode ? municipalities.find((m) => m.area_code === cityCode) ?? null : null;
 
   // Proformer state
@@ -136,6 +136,12 @@ export default function Dashboard() {
 
       {/* Main */}
       <main className="max-w-7xl mx-auto px-6 py-6">
+        {(prefError || muniError) && (
+          <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+            {prefError && <p>都道府県データ読込エラー: {prefError}</p>}
+            {muniError && <p>市区町村データ読込エラー: {muniError}</p>}
+          </div>
+        )}
         {loading ? (
           <div className="text-center py-20 text-muted-foreground animate-pulse">全国データを読込中...</div>
         ) : !pref ? (
@@ -274,6 +280,7 @@ export default function Dashboard() {
                   localT1={pref.shift_share_table.length > 0 ? Object.fromEntries(pref.shift_share_table.map((r) => [r.industry, r.actual_change])) : undefined}
                   nationalT0={undefined}
                   nationalT1={undefined}
+                  selectedCity={selectedCity}
                 />
               </TabsContent>
 
@@ -285,13 +292,14 @@ export default function Dashboard() {
                   population={pref.population}
                   totalEmployment={pref.total_employment}
                   personsPerHousehold={pref.persons_per_household}
+                  selectedCity={selectedCity}
                 />
               </TabsContent>
 
               {/* Tab 3: Shift-Share */}
               <TabsContent value="shift">
                 {pref.shift_share_table.length > 0 ? (
-                  <ShiftShareTab precomputed={pref.shift_share_table} />
+                  <ShiftShareTab precomputed={pref.shift_share_table} selectedCity={selectedCity} />
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">シフトシェアデータがありません</div>
                 )}
@@ -299,12 +307,12 @@ export default function Dashboard() {
 
               {/* Tab 4: Gap */}
               <TabsContent value="gap">
-                <GapTab sectors={pref.gap_table.map((r) => ({ sector: r.sector, demand: r.demand, supply: r.supply }))} />
+                <GapTab sectors={pref.gap_table.map((r) => ({ sector: r.sector, demand: r.demand, supply: r.supply }))} selectedCity={selectedCity} />
               </TabsContent>
 
               {/* Tab 5: Real Estate */}
               <TabsContent value="realestate">
-                <RealEstateTab prefCode={prefCode} />
+                <RealEstateTab prefCode={prefCode} cityCode={cityCode ? Number(cityCode) : undefined} />
               </TabsContent>
 
               {/* Tab 6: Map */}

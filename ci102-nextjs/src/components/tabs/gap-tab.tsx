@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import PlotlyChart from "@/components/plotly-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { gap_analysis_table, type GapRow } from "@/lib/calculator";
+import type { MunicipalityData } from "@/lib/use-municipality-data";
 
 /** Format yen values with appropriate unit (万 or 億) */
 function formatYen(val: number): string {
@@ -15,9 +16,10 @@ function formatYen(val: number): string {
 
 interface Props {
   sectors: Array<{ sector: string; demand: number; supply: number }>;
+  selectedCity?: MunicipalityData | null;
 }
 
-export default function GapTab({ sectors }: Props) {
+export default function GapTab({ sectors, selectedCity }: Props) {
   const gapData = useMemo(() => gap_analysis_table(sectors), [sectors]);
   const sorted = useMemo(() => [...gapData].sort((a, b) => a.factor - b.factor), [gapData]);
   const leakage = gapData.filter((r) => r.factor >= 10).length;
@@ -54,6 +56,28 @@ export default function GapTab({ sectors }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Municipality highlight */}
+      {selectedCity && (
+        <div className="rounded-lg border p-4" style={{ backgroundColor: "#f0f9ff" }}>
+          <h3 className="font-semibold mb-2">{selectedCity.area_name} — 市区町村参考データ</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">総雇用</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{selectedCity.total_emp.toLocaleString()}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">基盤雇用比率</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{selectedCity.basic_ratio.toFixed(1)}%</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">セグメント</CardTitle></CardHeader>
+              <CardContent><div className="text-sm font-bold">{selectedCity.segment ?? "—"}</div></CardContent>
+            </Card>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">小売ギャップ分析は都道府県レベルのデータです。市区町村別の小売データは事前計算に含まれていません。</p>
+        </div>
+      )}
 
       {/* Gap Bar Chart (STDB-style: single color, zero-centered) */}
       <PlotlyChart

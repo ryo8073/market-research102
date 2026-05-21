@@ -2,13 +2,16 @@
 
 import { useMemo } from "react";
 import PlotlyChart from "@/components/plotly-chart";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ShiftShareResult } from "@/lib/calculator";
+import type { MunicipalityData } from "@/lib/use-municipality-data";
 
 interface Props {
   precomputed: ShiftShareResult[];
+  selectedCity?: MunicipalityData | null;
 }
 
-export default function ShiftShareTab({ precomputed }: Props) {
+export default function ShiftShareTab({ precomputed, selectedCity }: Props) {
   const ssData = useMemo(() => [...precomputed].sort((a, b) => b.regional_shift - a.regional_shift), [precomputed]);
 
   const industries = ssData.map((r) => r.industry);
@@ -16,6 +19,35 @@ export default function ShiftShareTab({ precomputed }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Municipality highlight */}
+      {selectedCity && (
+        <div className="rounded-lg border p-4" style={{ backgroundColor: "#f0f9ff" }}>
+          <h3 className="font-semibold mb-3">{selectedCity.area_name} — 市区町村データ</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">総雇用</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{selectedCity.total_emp.toLocaleString()}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">基盤雇用</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{Math.round(selectedCity.basic_emp).toLocaleString()}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">最大LQ産業</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold">{selectedCity.max_lq.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">{selectedCity.max_lq_industry}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">セグメント</CardTitle></CardHeader>
+              <CardContent><div className="text-sm font-bold">{selectedCity.segment ?? "—"}</div></CardContent>
+            </Card>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">シフトシェア分析は都道府県レベルのデータです。市区町村別の経済構造変化は上記指標を参照してください。</p>
+        </div>
+      )}
+
       {/* Stacked bar chart: NS + IM + RS */}
       <PlotlyChart
         data={[

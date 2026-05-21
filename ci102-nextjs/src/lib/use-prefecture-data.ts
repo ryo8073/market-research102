@@ -62,6 +62,7 @@ export function usePrefectureData(prefCode: number) {
   const [data, setData] = useState<PrefectureData | null>(null);
   const [allData, setAllData] = useState<Record<string, PrefectureData> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (_cache) {
@@ -72,14 +73,22 @@ export function usePrefectureData(prefCode: number) {
     }
 
     setLoading(true);
+    setError(null);
     fetch("/data/prefectures.json")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status} for /data/prefectures.json`);
+        }
+        return r.json();
+      })
       .then((json: Record<string, PrefectureData>) => {
         _cache = json;
         setAllData(json);
         setData(json[String(prefCode)] ?? null);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("[usePrefectureData]", err);
+        setError(String(err));
         setData(null);
         setAllData(null);
       })
@@ -93,5 +102,5 @@ export function usePrefectureData(prefCode: number) {
     }
   }, [prefCode, allData]);
 
-  return { data, allData, loading };
+  return { data, allData, loading, error };
 }

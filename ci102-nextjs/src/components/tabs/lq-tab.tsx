@@ -9,6 +9,7 @@ import {
   shift_share_table,
   type LQRow,
 } from "@/lib/calculator";
+import type { MunicipalityData } from "@/lib/use-municipality-data";
 
 interface Props {
   localEmp: Record<string, number>;
@@ -17,9 +18,10 @@ interface Props {
   localT1?: Record<string, number>;
   nationalT0?: Record<string, number>;
   nationalT1?: Record<string, number>;
+  selectedCity?: MunicipalityData | null;
 }
 
-export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationalT0, nationalT1 }: Props) {
+export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationalT0, nationalT1, selectedCity }: Props) {
   const lqData = useMemo(() => lq_table(localEmp, nationalEmp), [localEmp, nationalEmp]);
   const basicTotal = useMemo(() => total_basic_employment(lqData), [lqData]);
   const totalEmp = useMemo(() => lqData.reduce((s, r) => s + r.local_emp, 0), [lqData]);
@@ -63,6 +65,35 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
           </CardContent>
         </Card>
       </div>
+
+      {/* Municipality highlight */}
+      {selectedCity && (
+        <div className="rounded-lg border p-4" style={{ backgroundColor: "#f0f9ff" }}>
+          <h3 className="font-semibold mb-3">{selectedCity.area_name} — 市区町村データ</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">総従業者数</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{selectedCity.total_emp.toLocaleString()}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">推計基盤雇用</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{Math.round(selectedCity.basic_emp).toLocaleString()}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">基盤雇用比率</CardTitle></CardHeader>
+              <CardContent><div className="text-xl font-bold">{selectedCity.basic_ratio.toFixed(1)}%</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs text-muted-foreground">最大LQ産業</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold">{selectedCity.max_lq.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">{selectedCity.max_lq_industry}</p>
+              </CardContent>
+            </Card>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">下記チャート・テーブルは都道府県レベルのデータです。市区町村の産業別内訳は事前計算データに含まれていません。</p>
+        </div>
+      )}
 
       {/* LQ Bar Chart */}
       <PlotlyChart
