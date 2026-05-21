@@ -23,7 +23,7 @@ def load_geojson() -> dict:
 
 _MAP_COMMON = dict(
     featureidkey="properties.pref_code",
-    mapbox_style="open-street-map",
+    map_style="open-street-map",
     center={"lat": 36.5, "lon": 138.0},
     zoom=4,
     opacity=0.7,
@@ -40,7 +40,7 @@ def choropleth_industry_lq(df: pd.DataFrame) -> go.Figure:
     df columns: pref_code, pref_name, lq, local_emp, basic_emp
     """
     geojson = load_geojson()
-    fig = px.choropleth_mapbox(
+    fig = px.choropleth_map(
         df,
         geojson=geojson,
         locations="pref_code",
@@ -63,7 +63,7 @@ def choropleth_lq_summary(df: pd.DataFrame) -> go.Figure:
     df columns: pref_code, pref_name, basic_ratio, num_basic, max_lq_industry
     """
     geojson = load_geojson()
-    fig = px.choropleth_mapbox(
+    fig = px.choropleth_map(
         df,
         geojson=geojson,
         locations="pref_code",
@@ -97,7 +97,7 @@ def choropleth_shift_share(df: pd.DataFrame) -> go.Figure:
     df columns: pref_code, pref_name, total_rs, top_rs_industry
     """
     geojson = load_geojson()
-    fig = px.choropleth_mapbox(
+    fig = px.choropleth_map(
         df,
         geojson=geojson,
         locations="pref_code",
@@ -132,7 +132,7 @@ def choropleth_retail_gap(df: pd.DataFrame) -> go.Figure:
     df columns: pref_code, pref_name, aggregate_factor, num_leakage, num_surplus
     """
     geojson = load_geojson()
-    fig = px.choropleth_mapbox(
+    fig = px.choropleth_map(
         df,
         geojson=geojson,
         locations="pref_code",

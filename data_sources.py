@@ -214,6 +214,7 @@ class MarketDataAccessor:
         # 新 API 層のクライアント
         self._estat_v2 = None
         self._census_df: pd.DataFrame | None = None  # 全国キャッシュ
+        self._census_table_id: str | None = None
         self._init_v2_clients()
 
     def _init_v2_clients(self):
@@ -399,8 +400,8 @@ class MarketDataAccessor:
         skip_prefixes = ("G1", "G2", "O1", "O2", "Q1", "Q2", "R1", "R2")
         if any(name.startswith(p) for p in skip_prefixes):
             return ""  # 空文字→集約時にスキップ
-        # 先頭のJSICコード文字を除去: "D建設業" → "建設業"
-        if len(name) > 1 and name[0].isalpha():
+        # 先頭のJSICコード文字（ASCII英字）を除去: "D建設業" → "建設業"
+        if len(name) > 1 and name[0].isascii() and name[0].isalpha():
             return name[1:]
         return name
 
@@ -546,7 +547,8 @@ class MarketDataAccessor:
                 pop_data = get_area_population(df_pop, area_code)
                 emp_data = get_area_employment(df_emp, area_code)
 
-                # 国勢調査2020テーブル: 「2015年の人口(組替)」が2020年基準での人口値
+                # 国勢調査2020テーブル: 「2015年の人口(組替)」は2020年境界に
+                # 組替えた2015年時点の人口（2020年人口ではない点に注意）
                 # 「世帯数」は2020年の世帯数
                 population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
                 households = pop_data.get("世帯数", 0)

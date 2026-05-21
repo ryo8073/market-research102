@@ -188,7 +188,7 @@ $$\\text{基盤雇用} = \\text{地域の従業者数} \\times \\frac{LQ - 1}{LQ
     )
     fig.add_vline(x=1.0, line_dash="dash", line_color="red", annotation_text="LQ = 1.0")
     fig.update_layout(height=600)
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("詳細テーブル")
     st.dataframe(
@@ -200,7 +200,7 @@ $$\\text{基盤雇用} = \\text{地域の従業者数} \\times \\frac{LQ - 1}{LQ
                 "basic_emp_estimate": "{:,.1f}",
             }
         ),
-        width='stretch',
+        use_container_width=True,
     )
 
 
@@ -322,7 +322,7 @@ $$\\text{雇用変動} = \\text{NS（国家成長）} + \\text{IM（産業ミッ
         yaxis_title="雇用変動（人）",
         height=500,
     )
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("詳細テーブル")
     st.dataframe(
@@ -335,7 +335,7 @@ $$\\text{雇用変動} = \\text{NS（国家成長）} + \\text{IM（産業ミッ
                 "total_share": "{:+,.0f}",
             }
         ),
-        width='stretch',
+        use_container_width=True,
     )
 
     star_industries = df_ss[
@@ -393,7 +393,7 @@ $$\\text{Leakage/Surplus Factor} = \\frac{\\text{Demand} - \\text{Supply}}{\\tex
     )
     fig.add_vline(x=0, line_dash="dash", line_color="gray")
     fig.update_layout(height=500)
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("詳細テーブル")
     st.dataframe(
@@ -405,7 +405,7 @@ $$\\text{Leakage/Surplus Factor} = \\frac{\\text{Demand} - \\text{Supply}}{\\tex
                 "factor": "{:+.1f}",
             }
         ),
-        width='stretch',
+        use_container_width=True,
     )
 
     opportunities = df_gap[df_gap["factor"] >= 10]
@@ -524,7 +524,11 @@ with tab_map:
     try:
         import map_data
         import map_charts
+    except ImportError:
+        st.error("地図分析モジュールが見つかりません（map_data.py / map_charts.py）。")
+        st.stop()
 
+    try:
         if map_view == "産業集積マップ（LQ）":
             st.subheader("産業別 特化係数（LQ）全国マップ")
             with st.expander("この地図の見方", expanded=False):
@@ -671,9 +675,11 @@ LQ = 1.0（白）が全国平均水準。特定の産業を選択すると、
                 else:
                     st.info("2つ以上の都道府県を選択してください。")
 
+    except FileNotFoundError:
+        st.error("GeoJSON ファイルが見つかりません（data/japan_prefectures.geojson）。")
     except Exception as e:
-        st.error(f"地図データの読み込みに失敗しました: {e}")
-        st.info("全国データのキャッシュが構築されていない可能性があります。")
+        st.error(f"地図データの処理中にエラーが発生しました: {e}")
+        st.exception(e)
 
 # ---------------------------------------------------------------------------
 # Footer

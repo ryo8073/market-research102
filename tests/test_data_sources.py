@@ -221,8 +221,11 @@ class TestNormalize2016IndustryName:
         assert MarketDataAccessor._normalize_2016_industry_name("G1通信業") == ""
         assert MarketDataAccessor._normalize_2016_industry_name("R2その他") == ""
 
-    def test_pure_kanji_strips_first_char(self):
-        # 漢字も isalpha()=True なので先頭文字が除去される
-        # 実際の2016年データは "D建設業" 形式なのでこれで問題ない
+    def test_strips_ascii_prefix(self):
         assert MarketDataAccessor._normalize_2016_industry_name("D建設業") == "建設業"
         assert MarketDataAccessor._normalize_2016_industry_name("I卸売業，小売業") == "卸売業，小売業"
+
+    def test_kanji_only_name_preserved(self):
+        # 漢字のみの名前（2021年形式）は先頭が除去されない
+        assert MarketDataAccessor._normalize_2016_industry_name("建設業") == "建設業"
+        assert MarketDataAccessor._normalize_2016_industry_name("製造業") == "製造業"

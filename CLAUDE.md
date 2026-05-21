@@ -14,7 +14,11 @@ api/mlit.py            MLIT 不動産情報ライブラリ API
   ↑
 data_sources.py        キャッシュ→API→sample_data の3段フォールバック
   ↑
-app.py                 Streamlit UI（5タブ）
+app.py                 Streamlit UI（6タブ）
+  ↑
+map_data.py            都道府県別集計（@st.cache_data付き）
+map_charts.py          Plotly choropleth_map 描画
+data/japan_prefectures.geojson  47都道府県境界GeoJSON
 ```
 
 ## 絶対に守ること
@@ -97,6 +101,18 @@ import fitz
 doc = fitz.open(r'path/to/file.pdf')
 text = doc[page_index].get_text()
 ```
+
+### 人口データの時点に注意
+
+国勢調査2020テーブル（`0003433220`）の `「2015年（平成27年）の人口（組替）」` は、
+**2020年の市区町村境界に組替えた2015年時点の人口**であり、2020年時点の人口ではない。
+このテーブルには2020年人口そのものは含まれていない。
+
+PER・小売ギャップ需要推計はすべてこの2015年人口を使用している。
+次回国勢調査（2025年）結果の公表後に差し替えを検討すること。
+
+人口キー名は `map_data._POP_KEY` と `data_sources.py` 内にハードコードされている。
+変更時は両方を更新すること。
 
 ## データの鮮度
 

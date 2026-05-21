@@ -2,12 +2,17 @@
 
 全国CSVキャッシュから47都道府県分のLQ/シフトシェア/ギャップ等を
 一括計算し、plotly choropleth 用の DataFrame を返す。
+
+注: 人口データは国勢調査2020テーブルの「2015年の人口（組替）」を使用。
+    これは2020年の市区町村境界に組替えた2015年時点の人口であり、
+    2020年時点の人口ではない。次回国勢調査（2025年）結果の公表後に更新予定。
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 import pandas as pd
+import streamlit as st
 
 from calculator import (
     economic_base_multiplier,
@@ -31,6 +36,9 @@ from data.census_cache import (
 from data.codes import PREFECTURES
 from data_sources import MarketDataAccessor
 
+# 人口キー（国勢調査2020テーブル）
+_POP_KEY = "2015年（平成27年）の人口（組替）"
+
 
 def _load_datasets(cache_dir: Path) -> dict[str, pd.DataFrame | None]:
     """必要なCSVを一括ロード。"""
@@ -47,18 +55,23 @@ def _get_cache_dir() -> Path:
     return get_settings().cache_dir
 
 
+def _default_cache_dir_str() -> str:
+    """キャッシュディレクトリのパス文字列を返す（st.cache_data のキーに使用）。"""
+    return str(_get_cache_dir())
+
+
 # ---------------------------------------------------------------------------
 # 1. LQ サマリ（産業集積マップ用）
 # ---------------------------------------------------------------------------
 
-def compute_prefecture_lq_summary(cache_dir: Path | None = None) -> pd.DataFrame:
+@st.cache_data(ttl=3600, show_spinner="LQサマリを計算中...")
+def compute_prefecture_lq_summary(cache_dir_str: str | None = None) -> pd.DataFrame:
     """47都道府県のLQサマリを一括計算。
 
     Returns DataFrame: pref_code, pref_name, total_emp, basic_emp,
                        basic_ratio, num_basic, max_lq, max_lq_industry
     """
-    if cache_dir is None:
-        cache_dir = _get_cache_dir()
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
     df_emp = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
     if df_emp is None:
         return pd.DataFrame()
@@ -93,15 +106,15 @@ def compute_prefecture_lq_summary(cache_dir: Path | None = None) -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
+@st.cache_data(ttl=3600, show_spinner="産業別LQを計算中...")
 def compute_prefecture_industry_lq(
-    industry_name: str, cache_dir: Path | None = None,
+    industry_name: str, cache_dir_str: str | None = None,
 ) -> pd.DataFrame:
     """特定産業について47都道府県のLQ値を計算。
 
     Returns DataFrame: pref_code, pref_name, lq, local_emp, basic_emp
     """
-    if cache_dir is None:
-        cache_dir = _get_cache_dir()
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
     df_emp = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
     if df_emp is None:
         return pd.DataFrame()
@@ -132,10 +145,10 @@ def compute_prefecture_industry_lq(
     return pd.DataFrame(rows)
 
 
-def get_industry_list(cache_dir: Path | None = None) -> list[str]:
+@st.cache_data(ttl=3600)
+def get_industry_list(cache_dir_str: str | None = None) -> list[str]:
     """キャッシュから産業名リストを取得。"""
-    if cache_dir is None:
-        cache_dir = _get_cache_dir()
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
     df_emp = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
     if df_emp is None:
         return []
@@ -147,14 +160,14 @@ def get_industry_list(cache_dir: Path | None = None) -> list[str]:
 # 2. シフトシェア RS マップ用
 # ---------------------------------------------------------------------------
 
-def compute_prefecture_shift_share(cache_dir: Path | None = None) -> pd.DataFrame:
+@st.cache_data(ttl=3600, show_spinner="シフトシェアを計算中...")
+def compute_prefecture_shift_share(cache_dir_str: str | None = None) -> pd.DataFrame:
     """47都道府県のシフトシェアRS合計を計算。
 
     Returns DataFrame: pref_code, pref_name, total_rs, total_actual_change,
                        top_rs_industry, top_rs_value
     """
-    if cache_dir is None:
-        cache_dir = _get_cache_dir()
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
 
     datasets = _load_datasets(cache_dir)
     df_2016 = datasets["emp_2016"]
@@ -166,7 +179,7 @@ def compute_prefecture_shift_share(cache_dir: Path | None = None) -> pd.DataFram
     if not national_t1:
         return pd.DataFrame()
 
-    # 2016年全国データ: 47都道府県合計で算出
+    # 2016年全国データ: 47都道府県合計で算出（00000が存在しないため）
     normalizer = MarketDataAccessor._normalize_2016_industry_name
     national_t0: dict[str, float] = {}
     for pc in range(1, 48):
@@ -224,14 +237,16 @@ def compute_prefecture_shift_share(cache_dir: Path | None = None) -> pd.DataFram
 # 3. 小売ギャップマップ用
 # ---------------------------------------------------------------------------
 
-def compute_prefecture_retail_gap(cache_dir: Path | None = None) -> pd.DataFrame:
+@st.cache_data(ttl=3600, show_spinner="小売ギャップを計算中...")
+def compute_prefecture_retail_gap(cache_dir_str: str | None = None) -> pd.DataFrame:
     """47都道府県の小売ギャップ集計。
 
     Returns DataFrame: pref_code, pref_name, total_demand, total_supply,
                        aggregate_factor, num_leakage, num_surplus
+
+    注: 需要は人口(2015年組替) × 全国平均1人あたり小売支出額(2021年)で按分推計。
     """
-    if cache_dir is None:
-        cache_dir = _get_cache_dir()
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
 
     datasets = _load_datasets(cache_dir)
     df_retail = datasets["retail"]
@@ -241,7 +256,7 @@ def compute_prefecture_retail_gap(cache_dir: Path | None = None) -> pd.DataFrame
 
     national_supply = get_area_retail_sales(df_retail, "00000")
     national_pop_data = get_area_population(df_pop, "00000")
-    nat_population = national_pop_data.get("2015年（平成27年）の人口（組替）", 0)
+    nat_population = national_pop_data.get(_POP_KEY, 0)
     if nat_population <= 0 or not national_supply:
         return pd.DataFrame()
 
@@ -250,7 +265,7 @@ def compute_prefecture_retail_gap(cache_dir: Path | None = None) -> pd.DataFrame
         area_code = f"{pc:02d}000"
         supply = get_area_retail_sales(df_retail, area_code)
         pop_data = get_area_population(df_pop, area_code)
-        population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
+        population = pop_data.get(_POP_KEY, 0)
         if not supply or population <= 0:
             continue
 
@@ -288,14 +303,14 @@ def compute_prefecture_retail_gap(cache_dir: Path | None = None) -> pd.DataFrame
 # 4. 都道府県比較ダッシュボード用
 # ---------------------------------------------------------------------------
 
-def compute_prefecture_comparison(cache_dir: Path | None = None) -> pd.DataFrame:
+@st.cache_data(ttl=3600, show_spinner="都道府県比較データを計算中...")
+def compute_prefecture_comparison(cache_dir_str: str | None = None) -> pd.DataFrame:
     """47都道府県の主要指標を一括集計。
 
     Returns DataFrame: pref_code, pref_name, population, total_emp,
                        basic_emp, ebm, per, basic_ratio
     """
-    if cache_dir is None:
-        cache_dir = _get_cache_dir()
+    cache_dir = Path(cache_dir_str) if cache_dir_str else _get_cache_dir()
 
     datasets = _load_datasets(cache_dir)
     df_emp = datasets["emp_2021"]
@@ -319,7 +334,7 @@ def compute_prefecture_comparison(cache_dir: Path | None = None) -> pd.DataFrame
         df_lq = lq_table(local_emp, national_emp)
         basic_total = total_basic_employment(df_lq)
         total_emp = float(df_lq["local_emp"].sum())
-        population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
+        population = pop_data.get(_POP_KEY, 0)
 
         if total_emp <= 0 or population <= 0:
             continue
