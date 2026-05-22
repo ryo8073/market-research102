@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip,
-  ReferenceLine, ResponsiveContainer, Cell,
+  ReferenceLine, ReferenceArea, ResponsiveContainer, Cell,
 } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -96,6 +96,14 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
 
   const priceMedian = crossData.reduce((s, d) => s + d.medianPrice, 0) / crossData.length;
 
+  // Compute axis domains for ReferenceArea
+  const gapValues = crossData.map((d) => d.gapFactor);
+  const priceValues = crossData.map((d) => d.medianPrice);
+  const gapMin = Math.min(...gapValues, -10);
+  const gapMax = Math.max(...gapValues, 10);
+  const gapPad = Math.max(Math.abs(gapMin), Math.abs(gapMax)) * 1.15;
+  const priceMax = Math.max(...priceValues) * 1.1;
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg bg-slate-50 dark:bg-slate-900 p-4 text-sm">
@@ -136,10 +144,32 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
       <div aria-label="小売ギャップと取引単価のクロス分析散布図">
         <ResponsiveContainer width="100%" height={600}>
           <ScatterChart margin={{ top: 20, right: 30, bottom: 50, left: 70 }}>
+            {/* Quadrant backgrounds */}
+            <ReferenceArea
+              x1={0} x2={gapPad} y1={0} y2={priceMedian}
+              fill="#2A9D8F" fillOpacity={0.06}
+              label={{ value: "最優先", position: "insideBottomRight", fontSize: 11, fill: "#2A9D8F", fontWeight: 600 }}
+            />
+            <ReferenceArea
+              x1={0} x2={gapPad} y1={priceMedian} y2={priceMax}
+              fill="#D4A843" fillOpacity={0.06}
+              label={{ value: "コスト注意", position: "insideTopRight", fontSize: 11, fill: "#D4A843", fontWeight: 600 }}
+            />
+            <ReferenceArea
+              x1={-gapPad} x2={0} y1={0} y2={priceMedian}
+              fill="#6B7280" fillOpacity={0.04}
+              label={{ value: "様子見", position: "insideBottomLeft", fontSize: 11, fill: "#6B7280", fontWeight: 600 }}
+            />
+            <ReferenceArea
+              x1={-gapPad} x2={0} y1={priceMedian} y2={priceMax}
+              fill="#E76F51" fillOpacity={0.06}
+              label={{ value: "回避", position: "insideTopLeft", fontSize: 11, fill: "#E76F51", fontWeight: 600 }}
+            />
             <XAxis
               dataKey="gapFactor"
               type="number"
               name="漏損/余剰係数"
+              domain={[-gapPad, gapPad]}
               tick={{ fontSize: 11 }}
               label={{ value: "小売漏損/余剰係数", position: "bottom", offset: 10, fontSize: 12 }}
             />
@@ -147,17 +177,23 @@ export default function CrossTab({ areas, highlightPrefCode }: Props) {
               dataKey="medianPrice"
               type="number"
               name="㎡単価中央値"
+              domain={[0, priceMax]}
               tick={{ fontSize: 11 }}
               tickFormatter={(v: number) => `¥${(v / 1000).toFixed(0)}k`}
               label={{ value: "㎡単価中央値（円）", angle: -90, position: "insideLeft", offset: -10, fontSize: 12 }}
             />
             <ZAxis dataKey="totalEmp" type="number" range={[40, 400]} name="総雇用" />
             <Tooltip content={<CrossTooltip />} />
-            <ReferenceLine x={0} stroke="#6B7280" strokeDasharray="3 3" />
-            <ReferenceLine y={priceMedian} stroke="#6B7280" strokeDasharray="3 3" />
+            <ReferenceLine x={0} stroke="#6B7280" strokeWidth={1.5} strokeDasharray="4 4" />
+            <ReferenceLine y={priceMedian} stroke="#6B7280" strokeWidth={1.5} strokeDasharray="4 4" />
             <Scatter data={crossData} name="都道府県">
               {crossData.map((d, i) => (
-                <Cell key={i} fill={ebmColor(d.ebm)} />
+                <Cell
+                  key={i}
+                  fill={ebmColor(d.ebm)}
+                  stroke={d.prefCode === highlightPrefCode ? "#1B2A4A" : "none"}
+                  strokeWidth={d.prefCode === highlightPrefCode ? 3 : 0}
+                />
               ))}
             </Scatter>
           </ScatterChart>
