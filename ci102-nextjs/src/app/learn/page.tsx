@@ -309,6 +309,25 @@ export default function LearnPage() {
                 その1社が撤退すれば、テナント需要も人口も急減する可能性があります。」
               </p>
             </ClientTip>
+
+            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
+              <ul className="list-disc list-inside space-y-1">
+                <li>
+                  <strong>消費パターンの均一性仮定:</strong> LQは「全国の消費パターンが均一」という前提に基づいています。
+                  観光地・軍事基地・大学都市など、域外からの消費や特殊な需要構造を持つ地域では、
+                  LQが基盤雇用を正確に反映しない場合があります。
+                </li>
+                <li>
+                  <strong>産業分類の粒度:</strong> 大分類レベルのLQは、同一産業内の多様性を隠します。
+                  例えば「製造業」のLQが1.0でも、自動車部品製造と食品製造では不動産需要への影響が大きく異なります。
+                </li>
+                <li>
+                  <strong>遅行指標:</strong> 経済センサス（2021年）は調査時点のスナップショットであり、
+                  公表時にはすでに数年遅れています。調査後の企業進出・撤退は反映されていません。
+                </li>
+              </ul>
+            </div>
           </Section>
 
           {/* ======================== 第2章: EBM ======================== */}
@@ -385,6 +404,25 @@ export default function LearnPage() {
                 だからこそ、基盤産業の多角化が重要なのです。」
               </p>
             </ClientTip>
+
+            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
+              <ul className="list-disc list-inside space-y-1">
+                <li>
+                  <strong>静的乗数:</strong> EBMは分析時点のスナップショットであり、
+                  基盤産業の構成が変化すればEBMも変動します。過去のEBMで将来の波及効果を推計する際は、
+                  産業構造の安定性を前提としている点に注意が必要です。
+                </li>
+                <li>
+                  <strong>線形仮定:</strong> カスケード計算は「基盤雇用の変化が非基盤雇用に線形に波及する」と仮定しています。
+                  実際には、大規模な雇用変動ではインフラ制約・住宅供給制約により非線形な効果が生じます。
+                </li>
+                <li>
+                  <strong>シミュレーション ≠ 予測:</strong> EBMカスケードはWhat-If分析であり、予測ではありません。
+                  「仮にX人増えたら」の仮定に基づく参考値として、実績データと必ず併せて評価してください。
+                </li>
+              </ul>
+            </div>
           </Section>
 
           {/* ======================== 第3章: PER ======================== */}
@@ -450,6 +488,21 @@ export default function LearnPage() {
                 オフィス・商業需要に直結しやすい傾向があります。」
               </p>
             </ClientTip>
+
+            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
+              <ul className="list-disc list-inside space-y-1">
+                <li>
+                  <strong>通勤圏の影響:</strong> PERは夜間人口（居住者）と雇用の比率です。
+                  東京のように大量の通勤者が流入する地域ではPERが低くなり、雇用増が居住人口増に直結しません。
+                  昼間人口を併せて確認してください。
+                </li>
+                <li>
+                  <strong>世帯構成の変化:</strong> 住戸需要への変換に使う世帯人員数は国勢調査時点の値です。
+                  単身世帯化・高齢化の進行により、同じ人口増でも必要住戸数は変動します。
+                </li>
+              </ul>
+            </div>
           </Section>
 
           {/* ======================== 第4章: シフトシェア ======================== */}
@@ -530,6 +583,26 @@ export default function LearnPage() {
                 その産業のテナントが主要顧客であれば、リスク要因として認識すべきです。」
               </p>
             </ClientTip>
+
+            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
+              <ul className="list-disc list-inside space-y-1">
+                <li>
+                  <strong>分析期間への依存:</strong> シフトシェアの結果は分析期間の選び方で大きく変わります。
+                  好況期のみ（2016→2021）と不況期を跨ぐ期間では、同じ地域でもNS/IM/RSの符号が逆転する場合があります。
+                  本アプリは経済センサス2016年→2021年の5年間を使用しています。
+                </li>
+                <li>
+                  <strong>コロナ禍の影響:</strong> 2021年はコロナ禍の影響が残る時期です。
+                  飲食・宿泊・娯楽業のRS値は一時的な需要減の影響を受けており、
+                  長期的な競争力を反映していない可能性があります。
+                </li>
+                <li>
+                  <strong>因果関係ではない:</strong> RSが正でも「なぜその地域が競争力を持つか」は示しません。
+                  立地優位性、政策支援、コスト優位など、RSの背景にある要因は別途調査が必要です。
+                </li>
+              </ul>
+            </div>
           </Section>
 
           {/* ======================== 第5章: ギャップ分析 ======================== */}
@@ -621,6 +694,26 @@ export default function LearnPage() {
                 この用途のテナントを入れる場合は慎重に検討すべきです。」
               </p>
             </ClientTip>
+
+            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
+              <ul className="list-disc list-inside space-y-1">
+                <li>
+                  <strong>EC・越境購買の未反映:</strong> 需要推計は人口ベースの按分であり、
+                  ECサイトでの購入、隣接自治体への越境購買、観光消費は反映されません。
+                  EC比率の高いセクター（書籍・家電等）では漏損が過大に見積もられる傾向があります。
+                </li>
+                <li>
+                  <strong>需要推計の精度:</strong> 域内需要は「人口 × 全国1人あたり支出額」で按分しており、
+                  所得水準・年齢構成・消費性向の地域差を反映していません。
+                  高所得地域では需要が過小に、低所得地域では過大に推計される可能性があります。
+                </li>
+                <li>
+                  <strong>供給側データの制約:</strong> 供給額は経済センサスの年間商品販売額であり、
+                  新規出店・閉店のタイムラグ、季節変動は反映されていません。
+                </li>
+              </ul>
+            </div>
           </Section>
 
           {/* ======================== 第6章: 投資適格スコア ======================== */}
@@ -778,6 +871,34 @@ export default function LearnPage() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <h3 className="font-semibold text-lg mt-6">遅行指標（Lagging Indicators）としてのCI102データ</h3>
+            <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-3 text-sm">
+              <p>
+                CI102の分析に使用するすべてのデータは<strong>遅行指標（Lagging Indicators）</strong>です。
+                過去の実績を集計した統計であり、現在の市場状況や将来の動向を直接予測するものではありません。
+              </p>
+              <InterpTable
+                headers={["データソース", "調査時点", "公表タイミング", "注意点"]}
+                rows={[
+                  ["経済センサス", "2021年6月", "2023年公表", "コロナ禍直後。リモートワーク普及前の産業構造。次回2026年"],
+                  ["国勢調査", "2020年10月", "2021年公表", "人口は2015年値の2020年境界組替。次回2025年（結果は2026-27年）"],
+                  ["建築着工統計", "年次更新", "翌年公表", "過去の着工実績。建設コスト・金利変動は未反映"],
+                  ["MLIT取引価格", "四半期更新", "約3ヶ月遅れ", "成約事例のみ。売り出し中・未成約は含まない"],
+                ]}
+              />
+              <p>
+                <strong>統計公表から現在までの市場変化</strong>（企業の進出・撤退、再開発計画、インフラ整備、
+                金利政策の変更、人口移動トレンドの変化等）はこれらのデータに反映されていません。
+                投資判断には、これらの統計分析を<strong>最新の市場調査・物件個別のデューデリジェンス・
+                現地ヒアリング</strong>と組み合わせることが不可欠です。
+              </p>
+              <p>
+                CI102テキスト（Mueller &amp; Laposa）でも繰り返し強調されているように、
+                「データは過去を語るが、未来を保証しない（Data tells you where you&apos;ve been, not where you&apos;re going）」。
+                分析結果は投資判断の<strong>出発点</strong>であり、<strong>結論</strong>ではありません。
+              </p>
             </div>
 
             <h3 className="font-semibold text-lg mt-6">最後に</h3>
