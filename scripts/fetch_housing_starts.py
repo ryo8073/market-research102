@@ -197,6 +197,9 @@ def fetch_building_stories_by_pref() -> dict[int, dict]:
             pref_stories[area_code].get(story_code, 0) + float(val)
         )
 
+    # Codes for 3F+ buildings only (proxy for apartment/collective housing)
+    apartment_story_codes = {"14", "15", "16", "17", "18", "19", "20"}
+
     result: dict[int, dict] = {}
     for pref_code, pref_name in PREFECTURES.items():
         area_key = f"{pref_code:02d}000"
@@ -205,27 +208,52 @@ def fetch_building_stories_by_pref() -> dict[int, dict]:
             print(f"  WARNING: No story data for {pref_name}")
             continue
 
-        # Weighted average floors
+        # Weighted average floors: ALL residential (including detached)
         total_buildings = sum(stories.values())
         if total_buildings == 0:
             continue
 
-        weighted_sum = sum(
-            story_midpoints.get(code, 1) * count
-            for code, count in stories.items()
-        )
-        avg_floors = weighted_sum / total_buildings
+        # Weighted average floors: 3F+ only (apartments/collective housing)
+        apt_buildings = {
+            code: count for code, count in stories.items()
+            if code in apartment_story_codes
+        }
+        apt_total = sum(apt_buildings.values())
 
-        # Buildings with 3+ floors (proxy for apartments)
-        apartment_buildings = sum(
-            count for code, count in stories.items()
-            if story_midpoints.get(code, 0) >= 3
-        )
+        if apt_total > 0:
+            apt_weighted = sum(
+                story_midpoints[code] * count
+                for code, count in apt_buildings.items()
+            )
+            avg_floors_apartment = apt_weighted / apt_total
+        else:
+            avg_floors_apartment = 3.0  # Fallback
+
+        # Story distribution for apartments (for explanation)
+        story_distribution = {}
+        for code, count in sorted(apt_buildings.items()):
+            mp = story_midpoints[code]
+            if mp == 3:
+                label = "3F"
+            elif mp == 4.5:
+                label = "4-5F"
+            elif mp == 7.5:
+                label = "6-9F"
+            elif mp == 12.5:
+                label = "10-15F"
+            else:
+                label = f"{int(mp)}F+"
+            story_distribution[label] = int(count)
 
         result[pref_code] = {
             "total_residential_buildings": int(total_buildings),
-            "apartment_buildings_3f_plus": int(apartment_buildings),
-            "avg_floors": round(avg_floors, 1),
+            "apartment_buildings_3f_plus": int(apt_total),
+            "avg_floors_all": round(
+                sum(story_midpoints.get(c, 1) * n for c, n in stories.items()) / total_buildings,
+                1,
+            ),
+            "avg_floors_apartment": round(avg_floors_apartment, 1),
+            "story_distribution": story_distribution,
         }
 
     return result
@@ -270,32 +298,36 @@ def main():
         stories = story_data.get(pref_code, {})
 
         avg_area = apt.get("avg_unit_area_m2", 50)  # Fallback
-        avg_floors = stories.get("avg_floors", 5)
+        # Use apartment-only average floors (3F+ buildings)
+        avg_floors_apt = stories.get("avg_floors_apartment", 5)
         apt_units = apt.get("apartment_units", 0)
         apt_buildings = stories.get("apartment_buildings_3f_plus", 0)
 
-        # Estimate units per building
+        # Estimate units per building: apartment units / apartment buildings
         avg_units_per_building = 20  # Default
         if apt_buildings > 0 and apt_units > 0:
             avg_units_per_building = round(apt_units / apt_buildings, 1)
 
-        # Estimate units per floor
+        # Estimate units per floor from actual data
         avg_units_per_floor = 4  # Default
-        if avg_floors > 0 and avg_units_per_building > 0:
-            avg_units_per_floor = round(avg_units_per_building / max(avg_floors, 1), 1)
+        if avg_floors_apt > 0 and avg_units_per_building > 0:
+            avg_units_per_floor = round(avg_units_per_building / max(avg_floors_apt, 1), 1)
             avg_units_per_floor = max(1, min(avg_units_per_floor, 20))  # Clamp
 
         output[str(pref_code)] = {
             "pref_name": pref_name,
             "avg_unit_area_m2": avg_area,
-            "avg_floors": avg_floors,
+            "avg_floors": avg_floors_apt,
+            "avg_floors_all_residential": stories.get("avg_floors_all", None),
             "avg_units_per_building": avg_units_per_building,
             "avg_units_per_floor": avg_units_per_floor,
             "apartment_units_2023": apt.get("apartment_units", None),
             "apartment_buildings_3f_plus_2023": apt_buildings or None,
+            "story_distribution": stories.get("story_distribution", None),
             "data_year": 2023,
+            "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses.",
         }
-        print(f"  {pref_name}: area={avg_area}m2, floors={avg_floors}, units/bldg={avg_units_per_building}")
+        print(f"  {pref_name}: area={avg_area}m2, apt_floors={avg_floors_apt}, units/bldg={avg_units_per_building}, units/floor={avg_units_per_floor}")
 
     # National average
     all_areas = [v["avg_unit_area_m2"] for v in output.values() if v["avg_unit_area_m2"]]
@@ -310,6 +342,7 @@ def main():
         "avg_units_per_building": None,
         "avg_units_per_floor": None,
         "data_year": 2023,
+        "_note": "avg_floors is for 3F+ buildings only (apartments).",
     }
 
     # Save

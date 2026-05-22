@@ -2,479 +2,997 @@
   "1": {
     "pref_name": "北海道",
     "avg_unit_area_m2": 56.8,
-    "avg_floors": 2.0,
+    "avg_floors": 4.2,
+    "avg_floors_all_residential": 2.0,
     "avg_units_per_building": 18.5,
-    "avg_units_per_floor": 9.2,
+    "avg_units_per_floor": 4.4,
     "apartment_units_2023": 16687,
     "apartment_buildings_3f_plus_2023": 902,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 365,
+      "4-5F": 497,
+      "6-9F": 7,
+      "10-15F": 30,
+      "18F+": 2,
+      "23F+": 1,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "2": {
     "pref_name": "青森県",
     "avg_unit_area_m2": 42.2,
-    "avg_floors": 1.8,
+    "avg_floors": 3.1,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 25.8,
-    "avg_units_per_floor": 14.3,
+    "avg_units_per_floor": 8.3,
     "apartment_units_2023": 439,
     "apartment_buildings_3f_plus_2023": 17,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 16,
+      "4-5F": 1,
+      "6-9F": 0,
+      "10-15F": 0,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "3": {
     "pref_name": "岩手県",
     "avg_unit_area_m2": 54.0,
-    "avg_floors": 1.8,
+    "avg_floors": 4.2,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 23.9,
-    "avg_units_per_floor": 13.3,
+    "avg_units_per_floor": 5.7,
     "apartment_units_2023": 1123,
     "apartment_buildings_3f_plus_2023": 47,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 35,
+      "4-5F": 8,
+      "6-9F": 0,
+      "10-15F": 3,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "4": {
     "pref_name": "宮城県",
     "avg_unit_area_m2": 48.5,
-    "avg_floors": 2.0,
+    "avg_floors": 3.7,
+    "avg_floors_all_residential": 2.0,
     "avg_units_per_building": 17.5,
-    "avg_units_per_floor": 8.8,
+    "avg_units_per_floor": 4.7,
     "apartment_units_2023": 5559,
     "apartment_buildings_3f_plus_2023": 317,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 275,
+      "4-5F": 23,
+      "6-9F": 1,
+      "10-15F": 15,
+      "18F+": 2,
+      "23F+": 1,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "5": {
     "pref_name": "秋田県",
     "avg_unit_area_m2": 50.6,
-    "avg_floors": 1.8,
+    "avg_floors": 3.4,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 52.8,
-    "avg_units_per_floor": 20,
+    "avg_units_per_floor": 15.5,
     "apartment_units_2023": 633,
     "apartment_buildings_3f_plus_2023": 12,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 9,
+      "4-5F": 3,
+      "6-9F": 0,
+      "10-15F": 0,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "6": {
     "pref_name": "山形県",
     "avg_unit_area_m2": 61.6,
-    "avg_floors": 1.9,
+    "avg_floors": 3.9,
+    "avg_floors_all_residential": 1.9,
     "avg_units_per_building": 27.2,
-    "avg_units_per_floor": 14.3,
+    "avg_units_per_floor": 7.0,
     "apartment_units_2023": 652,
     "apartment_buildings_3f_plus_2023": 24,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 19,
+      "4-5F": 4,
+      "6-9F": 0,
+      "10-15F": 0,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "7": {
     "pref_name": "福島県",
     "avg_unit_area_m2": 58.3,
-    "avg_floors": 1.8,
+    "avg_floors": 3.3,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 16.0,
-    "avg_units_per_floor": 8.9,
+    "avg_units_per_floor": 4.8,
     "apartment_units_2023": 1091,
     "apartment_buildings_3f_plus_2023": 68,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 65,
+      "4-5F": 2,
+      "6-9F": 0,
+      "10-15F": 0,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "8": {
     "pref_name": "茨城県",
     "avg_unit_area_m2": 53.1,
-    "avg_floors": 1.7,
+    "avg_floors": 3.5,
+    "avg_floors_all_residential": 1.7,
     "avg_units_per_building": 22.2,
-    "avg_units_per_floor": 13.1,
+    "avg_units_per_floor": 6.3,
     "apartment_units_2023": 2747,
     "apartment_buildings_3f_plus_2023": 124,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 112,
+      "4-5F": 5,
+      "6-9F": 3,
+      "10-15F": 4,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "9": {
     "pref_name": "栃木県",
     "avg_unit_area_m2": 62.3,
-    "avg_floors": 1.8,
+    "avg_floors": 4.3,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 22.9,
-    "avg_units_per_floor": 12.7,
+    "avg_units_per_floor": 5.3,
     "apartment_units_2023": 1807,
     "apartment_buildings_3f_plus_2023": 79,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 61,
+      "4-5F": 7,
+      "6-9F": 3,
+      "10-15F": 7,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "10": {
     "pref_name": "群馬県",
     "avg_unit_area_m2": 57.4,
-    "avg_floors": 1.7,
+    "avg_floors": 3.7,
+    "avg_floors_all_residential": 1.7,
     "avg_units_per_building": 14.6,
-    "avg_units_per_floor": 8.6,
+    "avg_units_per_floor": 3.9,
     "apartment_units_2023": 1242,
     "apartment_buildings_3f_plus_2023": 85,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 78,
+      "4-5F": 2,
+      "6-9F": 0,
+      "10-15F": 4,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "11": {
     "pref_name": "埼玉県",
     "avg_unit_area_m2": 51.9,
-    "avg_floors": 2.1,
+    "avg_floors": 3.2,
+    "avg_floors_all_residential": 2.1,
     "avg_units_per_building": 4.6,
-    "avg_units_per_floor": 2.2,
+    "avg_units_per_floor": 1.4,
     "apartment_units_2023": 20538,
     "apartment_buildings_3f_plus_2023": 4445,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 4297,
+      "4-5F": 62,
+      "6-9F": 43,
+      "10-15F": 43,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "12": {
     "pref_name": "千葉県",
     "avg_unit_area_m2": 52.5,
-    "avg_floors": 2.0,
+    "avg_floors": 3.3,
+    "avg_floors_all_residential": 2.0,
     "avg_units_per_building": 11.4,
-    "avg_units_per_floor": 5.7,
+    "avg_units_per_floor": 3.5,
     "apartment_units_2023": 19352,
     "apartment_buildings_3f_plus_2023": 1697,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 1565,
+      "4-5F": 63,
+      "6-9F": 38,
+      "10-15F": 30,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 1
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "13": {
     "pref_name": "東京都",
     "avg_unit_area_m2": 52.0,
-    "avg_floors": 2.5,
+    "avg_floors": 3.6,
+    "avg_floors_all_residential": 2.5,
     "avg_units_per_building": 7.2,
-    "avg_units_per_floor": 2.9,
+    "avg_units_per_floor": 2.0,
     "apartment_units_2023": 90236,
     "apartment_buildings_3f_plus_2023": 12592,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 10620,
+      "4-5F": 1176,
+      "6-9F": 386,
+      "10-15F": 398,
+      "18F+": 11,
+      "23F+": 1,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "14": {
     "pref_name": "神奈川県",
     "avg_unit_area_m2": 53.3,
-    "avg_floors": 2.2,
+    "avg_floors": 3.3,
+    "avg_floors_all_residential": 2.2,
     "avg_units_per_building": 6.5,
-    "avg_units_per_floor": 3.0,
+    "avg_units_per_floor": 2.0,
     "apartment_units_2023": 38223,
     "apartment_buildings_3f_plus_2023": 5914,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 5527,
+      "4-5F": 178,
+      "6-9F": 114,
+      "10-15F": 93,
+      "18F+": 1,
+      "23F+": 1,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "15": {
     "pref_name": "新潟県",
     "avg_unit_area_m2": 49.1,
-    "avg_floors": 1.9,
+    "avg_floors": 3.3,
+    "avg_floors_all_residential": 1.9,
     "avg_units_per_building": 11.2,
-    "avg_units_per_floor": 5.9,
+    "avg_units_per_floor": 3.4,
     "apartment_units_2023": 1281,
     "apartment_buildings_3f_plus_2023": 114,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 109,
+      "4-5F": 2,
+      "6-9F": 0,
+      "10-15F": 3,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "16": {
     "pref_name": "富山県",
     "avg_unit_area_m2": 52.2,
-    "avg_floors": 1.9,
+    "avg_floors": 3.6,
+    "avg_floors_all_residential": 1.9,
     "avg_units_per_building": 32.7,
-    "avg_units_per_floor": 17.2,
+    "avg_units_per_floor": 9.1,
     "apartment_units_2023": 1146,
     "apartment_buildings_3f_plus_2023": 35,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 31,
+      "4-5F": 1,
+      "6-9F": 2,
+      "10-15F": 1,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "17": {
     "pref_name": "石川県",
     "avg_unit_area_m2": 51.9,
-    "avg_floors": 1.9,
+    "avg_floors": 3.3,
+    "avg_floors_all_residential": 1.9,
     "avg_units_per_building": 18.1,
-    "avg_units_per_floor": 9.5,
+    "avg_units_per_floor": 5.5,
     "apartment_units_2023": 1356,
     "apartment_buildings_3f_plus_2023": 75,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 70,
+      "4-5F": 1,
+      "6-9F": 3,
+      "10-15F": 1,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "18": {
     "pref_name": "福井県",
     "avg_unit_area_m2": 43.9,
-    "avg_floors": 1.8,
+    "avg_floors": 3.6,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 31.3,
-    "avg_units_per_floor": 17.4,
+    "avg_units_per_floor": 8.7,
     "apartment_units_2023": 1157,
     "apartment_buildings_3f_plus_2023": 37,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 32,
+      "4-5F": 2,
+      "6-9F": 2,
+      "10-15F": 1,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "19": {
     "pref_name": "山梨県",
     "avg_unit_area_m2": 44.3,
-    "avg_floors": 1.8,
+    "avg_floors": 3.5,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 15.6,
-    "avg_units_per_floor": 8.7,
+    "avg_units_per_floor": 4.5,
     "apartment_units_2023": 624,
     "apartment_buildings_3f_plus_2023": 40,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 37,
+      "4-5F": 0,
+      "6-9F": 2,
+      "10-15F": 1,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "20": {
     "pref_name": "長野県",
     "avg_unit_area_m2": 52.0,
-    "avg_floors": 1.8,
+    "avg_floors": 3.5,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 21.2,
-    "avg_units_per_floor": 11.8,
+    "avg_units_per_floor": 6.1,
     "apartment_units_2023": 1931,
     "apartment_buildings_3f_plus_2023": 91,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 78,
+      "4-5F": 9,
+      "6-9F": 2,
+      "10-15F": 1,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "21": {
     "pref_name": "岐阜県",
     "avg_unit_area_m2": 57.0,
-    "avg_floors": 1.8,
+    "avg_floors": 3.6,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 16.8,
-    "avg_units_per_floor": 9.3,
+    "avg_units_per_floor": 4.7,
     "apartment_units_2023": 1661,
     "apartment_buildings_3f_plus_2023": 99,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 86,
+      "4-5F": 6,
+      "6-9F": 4,
+      "10-15F": 3,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "22": {
     "pref_name": "静岡県",
     "avg_unit_area_m2": 58.3,
-    "avg_floors": 1.9,
+    "avg_floors": 3.6,
+    "avg_floors_all_residential": 1.9,
     "avg_units_per_building": 10.8,
-    "avg_units_per_floor": 5.7,
+    "avg_units_per_floor": 3.0,
     "apartment_units_2023": 5027,
     "apartment_buildings_3f_plus_2023": 466,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 370,
+      "4-5F": 78,
+      "6-9F": 1,
+      "10-15F": 16,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "23": {
     "pref_name": "愛知県",
     "avg_unit_area_m2": 52.5,
-    "avg_floors": 2.1,
+    "avg_floors": 3.8,
+    "avg_floors_all_residential": 2.1,
     "avg_units_per_building": 9.4,
-    "avg_units_per_floor": 4.5,
+    "avg_units_per_floor": 2.5,
     "apartment_units_2023": 22368,
     "apartment_buildings_3f_plus_2023": 2385,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 2101,
+      "4-5F": 60,
+      "6-9F": 49,
+      "10-15F": 169,
+      "18F+": 5,
+      "23F+": 1,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "24": {
     "pref_name": "三重県",
     "avg_unit_area_m2": 45.3,
-    "avg_floors": 1.7,
+    "avg_floors": 4.0,
+    "avg_floors_all_residential": 1.7,
     "avg_units_per_building": 26.0,
-    "avg_units_per_floor": 15.3,
+    "avg_units_per_floor": 6.5,
     "apartment_units_2023": 2629,
     "apartment_buildings_3f_plus_2023": 101,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 82,
+      "4-5F": 8,
+      "6-9F": 3,
+      "10-15F": 8,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "25": {
     "pref_name": "滋賀県",
     "avg_unit_area_m2": 50.3,
-    "avg_floors": 1.9,
+    "avg_floors": 3.6,
+    "avg_floors_all_residential": 1.9,
     "avg_units_per_building": 22.9,
-    "avg_units_per_floor": 12.1,
+    "avg_units_per_floor": 6.4,
     "apartment_units_2023": 3163,
     "apartment_buildings_3f_plus_2023": 138,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 122,
+      "4-5F": 7,
+      "6-9F": 3,
+      "10-15F": 6,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "26": {
     "pref_name": "京都府",
     "avg_unit_area_m2": 52.7,
-    "avg_floors": 2.2,
+    "avg_floors": 3.4,
+    "avg_floors_all_residential": 2.2,
     "avg_units_per_building": 8.1,
-    "avg_units_per_floor": 3.7,
+    "avg_units_per_floor": 2.4,
     "apartment_units_2023": 8087,
     "apartment_buildings_3f_plus_2023": 1002,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 875,
+      "4-5F": 86,
+      "6-9F": 27,
+      "10-15F": 14,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "27": {
     "pref_name": "大阪府",
     "avg_unit_area_m2": 50.1,
-    "avg_floors": 2.4,
+    "avg_floors": 3.6,
+    "avg_floors_all_residential": 2.4,
     "avg_units_per_building": 7.8,
-    "avg_units_per_floor": 3.2,
+    "avg_units_per_floor": 2.2,
     "apartment_units_2023": 49353,
     "apartment_buildings_3f_plus_2023": 6360,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 5862,
+      "4-5F": 77,
+      "6-9F": 117,
+      "10-15F": 299,
+      "18F+": 2,
+      "23F+": 0,
+      "28F+": 3
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "28": {
     "pref_name": "兵庫県",
     "avg_unit_area_m2": 54.4,
-    "avg_floors": 2.1,
+    "avg_floors": 3.5,
+    "avg_floors_all_residential": 2.1,
     "avg_units_per_building": 7.9,
-    "avg_units_per_floor": 3.8,
+    "avg_units_per_floor": 2.3,
     "apartment_units_2023": 14727,
     "apartment_buildings_3f_plus_2023": 1870,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 1711,
+      "4-5F": 58,
+      "6-9F": 37,
+      "10-15F": 61,
+      "18F+": 3,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "29": {
     "pref_name": "奈良県",
     "avg_unit_area_m2": 55.0,
-    "avg_floors": 2.0,
+    "avg_floors": 3.5,
+    "avg_floors_all_residential": 2.0,
     "avg_units_per_building": 13.0,
-    "avg_units_per_floor": 6.5,
+    "avg_units_per_floor": 3.7,
     "apartment_units_2023": 1490,
     "apartment_buildings_3f_plus_2023": 115,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 96,
+      "4-5F": 12,
+      "6-9F": 6,
+      "10-15F": 1,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "30": {
     "pref_name": "和歌山県",
     "avg_unit_area_m2": 56.1,
-    "avg_floors": 1.8,
+    "avg_floors": 3.4,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 11.6,
-    "avg_units_per_floor": 6.4,
+    "avg_units_per_floor": 3.4,
     "apartment_units_2023": 545,
     "apartment_buildings_3f_plus_2023": 47,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 44,
+      "4-5F": 2,
+      "6-9F": 0,
+      "10-15F": 0,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "31": {
     "pref_name": "鳥取県",
     "avg_unit_area_m2": 57.7,
-    "avg_floors": 1.8,
+    "avg_floors": 6.0,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 46.3,
-    "avg_units_per_floor": 20,
+    "avg_units_per_floor": 7.7,
     "apartment_units_2023": 463,
     "apartment_buildings_3f_plus_2023": 10,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 6,
+      "4-5F": 1,
+      "6-9F": 0,
+      "10-15F": 3,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "32": {
     "pref_name": "島根県",
     "avg_unit_area_m2": 64.9,
-    "avg_floors": 1.8,
+    "avg_floors": 4.8,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 30.3,
-    "avg_units_per_floor": 16.8,
+    "avg_units_per_floor": 6.3,
     "apartment_units_2023": 818,
     "apartment_buildings_3f_plus_2023": 27,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 21,
+      "4-5F": 1,
+      "6-9F": 0,
+      "10-15F": 5,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "33": {
     "pref_name": "岡山県",
     "avg_unit_area_m2": 61.2,
-    "avg_floors": 1.9,
+    "avg_floors": 4.2,
+    "avg_floors_all_residential": 1.9,
     "avg_units_per_building": 23.9,
-    "avg_units_per_floor": 12.6,
+    "avg_units_per_floor": 5.7,
     "apartment_units_2023": 3252,
     "apartment_buildings_3f_plus_2023": 136,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 113,
+      "4-5F": 4,
+      "6-9F": 5,
+      "10-15F": 14,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "34": {
     "pref_name": "広島県",
     "avg_unit_area_m2": 55.9,
-    "avg_floors": 2.1,
+    "avg_floors": 4.0,
+    "avg_floors_all_residential": 2.1,
     "avg_units_per_building": 11.4,
-    "avg_units_per_floor": 5.4,
+    "avg_units_per_floor": 2.9,
     "apartment_units_2023": 8461,
     "apartment_buildings_3f_plus_2023": 745,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 649,
+      "4-5F": 16,
+      "6-9F": 19,
+      "10-15F": 54,
+      "18F+": 7,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "35": {
     "pref_name": "山口県",
     "avg_unit_area_m2": 53.3,
-    "avg_floors": 1.7,
+    "avg_floors": 4.4,
+    "avg_floors_all_residential": 1.7,
     "avg_units_per_building": 25.5,
-    "avg_units_per_floor": 15.0,
+    "avg_units_per_floor": 5.8,
     "apartment_units_2023": 1607,
     "apartment_buildings_3f_plus_2023": 63,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 51,
+      "4-5F": 1,
+      "6-9F": 4,
+      "10-15F": 7,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "36": {
     "pref_name": "徳島県",
     "avg_unit_area_m2": 56.1,
-    "avg_floors": 1.8,
+    "avg_floors": 4.6,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 22.1,
-    "avg_units_per_floor": 12.3,
+    "avg_units_per_floor": 4.8,
     "apartment_units_2023": 596,
     "apartment_buildings_3f_plus_2023": 27,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 22,
+      "4-5F": 0,
+      "6-9F": 1,
+      "10-15F": 4,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "37": {
     "pref_name": "香川県",
     "avg_unit_area_m2": 58.7,
-    "avg_floors": 1.7,
+    "avg_floors": 5.2,
+    "avg_floors_all_residential": 1.7,
     "avg_units_per_building": 24.8,
-    "avg_units_per_floor": 14.6,
+    "avg_units_per_floor": 4.8,
     "apartment_units_2023": 1191,
     "apartment_buildings_3f_plus_2023": 48,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 33,
+      "4-5F": 4,
+      "6-9F": 2,
+      "10-15F": 8,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "38": {
     "pref_name": "愛媛県",
     "avg_unit_area_m2": 60.1,
-    "avg_floors": 1.7,
+    "avg_floors": 5.1,
+    "avg_floors_all_residential": 1.7,
     "avg_units_per_building": 22.0,
-    "avg_units_per_floor": 12.9,
+    "avg_units_per_floor": 4.3,
     "apartment_units_2023": 1256,
     "apartment_buildings_3f_plus_2023": 57,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 35,
+      "4-5F": 7,
+      "6-9F": 8,
+      "10-15F": 6,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "39": {
     "pref_name": "高知県",
     "avg_unit_area_m2": 67.7,
-    "avg_floors": 1.8,
+    "avg_floors": 3.6,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 12.4,
-    "avg_units_per_floor": 6.9,
+    "avg_units_per_floor": 3.4,
     "apartment_units_2023": 420,
     "apartment_buildings_3f_plus_2023": 34,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 30,
+      "4-5F": 1,
+      "6-9F": 2,
+      "10-15F": 1,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "40": {
     "pref_name": "福岡県",
     "avg_unit_area_m2": 58.3,
-    "avg_floors": 2.0,
+    "avg_floors": 4.7,
+    "avg_floors_all_residential": 2.0,
     "avg_units_per_building": 19.2,
-    "avg_units_per_floor": 9.6,
+    "avg_units_per_floor": 4.1,
     "apartment_units_2023": 19946,
     "apartment_buildings_3f_plus_2023": 1038,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 728,
+      "4-5F": 91,
+      "6-9F": 97,
+      "10-15F": 117,
+      "18F+": 5,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "41": {
     "pref_name": "佐賀県",
     "avg_unit_area_m2": 58.3,
-    "avg_floors": 1.7,
+    "avg_floors": 4.8,
+    "avg_floors_all_residential": 1.7,
     "avg_units_per_building": 34.5,
-    "avg_units_per_floor": 20,
+    "avg_units_per_floor": 7.2,
     "apartment_units_2023": 1551,
     "apartment_buildings_3f_plus_2023": 45,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 32,
+      "4-5F": 4,
+      "6-9F": 2,
+      "10-15F": 7,
+      "18F+": 0,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "42": {
     "pref_name": "長崎県",
     "avg_unit_area_m2": 52.9,
-    "avg_floors": 1.8,
+    "avg_floors": 5.8,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 42.8,
-    "avg_units_per_floor": 20,
+    "avg_units_per_floor": 7.4,
     "apartment_units_2023": 3984,
     "apartment_buildings_3f_plus_2023": 93,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 56,
+      "4-5F": 6,
+      "6-9F": 9,
+      "10-15F": 21,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "43": {
     "pref_name": "熊本県",
     "avg_unit_area_m2": 53.4,
-    "avg_floors": 1.8,
+    "avg_floors": 5.2,
+    "avg_floors_all_residential": 1.8,
     "avg_units_per_building": 27.4,
-    "avg_units_per_floor": 15.2,
+    "avg_units_per_floor": 5.3,
     "apartment_units_2023": 6196,
     "apartment_buildings_3f_plus_2023": 226,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 145,
+      "4-5F": 21,
+      "6-9F": 24,
+      "10-15F": 35,
+      "18F+": 0,
+      "23F+": 1,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "44": {
     "pref_name": "大分県",
     "avg_unit_area_m2": 55.0,
-    "avg_floors": 1.7,
+    "avg_floors": 5.1,
+    "avg_floors_all_residential": 1.7,
     "avg_units_per_building": 27.0,
-    "avg_units_per_floor": 15.9,
+    "avg_units_per_floor": 5.3,
     "apartment_units_2023": 2001,
     "apartment_buildings_3f_plus_2023": 74,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 40,
+      "4-5F": 19,
+      "6-9F": 5,
+      "10-15F": 8,
+      "18F+": 2,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "45": {
     "pref_name": "宮崎県",
     "avg_unit_area_m2": 54.5,
-    "avg_floors": 1.5,
+    "avg_floors": 4.7,
+    "avg_floors_all_residential": 1.5,
     "avg_units_per_building": 25.5,
-    "avg_units_per_floor": 17.0,
+    "avg_units_per_floor": 5.4,
     "apartment_units_2023": 1684,
     "apartment_buildings_3f_plus_2023": 66,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 30,
+      "4-5F": 26,
+      "6-9F": 5,
+      "10-15F": 4,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "46": {
     "pref_name": "鹿児島県",
     "avg_unit_area_m2": 47.0,
-    "avg_floors": 1.5,
+    "avg_floors": 4.8,
+    "avg_floors_all_residential": 1.5,
     "avg_units_per_building": 29.5,
-    "avg_units_per_floor": 19.7,
+    "avg_units_per_floor": 6.1,
     "apartment_units_2023": 3366,
     "apartment_buildings_3f_plus_2023": 114,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 63,
+      "4-5F": 30,
+      "6-9F": 9,
+      "10-15F": 11,
+      "18F+": 1,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "47": {
     "pref_name": "沖縄県",
     "avg_unit_area_m2": 64.7,
-    "avg_floors": 1.9,
+    "avg_floors": 4.6,
+    "avg_floors_all_residential": 1.9,
     "avg_units_per_building": 14.6,
-    "avg_units_per_floor": 7.7,
+    "avg_units_per_floor": 3.2,
     "apartment_units_2023": 6044,
     "apartment_buildings_3f_plus_2023": 413,
-    "data_year": 2023
+    "story_distribution": {
+      "3F": 238,
+      "4-5F": 99,
+      "6-9F": 43,
+      "10-15F": 31,
+      "18F+": 2,
+      "23F+": 0,
+      "28F+": 0
+    },
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments). avg_floors_all_residential includes detached houses."
   },
   "national": {
     "pref_name": "全国平均",
     "avg_unit_area_m2": 54.5,
-    "avg_floors": 1.9,
+    "avg_floors": 4.0,
     "avg_units_per_building": null,
     "avg_units_per_floor": null,
-    "data_year": 2023
+    "data_year": 2023,
+    "_note": "avg_floors is for 3F+ buildings only (apartments)."
   }
 }

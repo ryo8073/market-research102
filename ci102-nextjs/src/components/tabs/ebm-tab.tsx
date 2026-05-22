@@ -18,9 +18,12 @@ import { ReadingGuide } from "@/components/ui/reading-guide";
 interface HousingDefaults {
   avg_unit_area_m2: number;
   avg_floors: number;
+  avg_floors_all_residential: number | null;
   avg_units_per_building: number;
   avg_units_per_floor: number;
   apartment_units_2023: number | null;
+  apartment_buildings_3f_plus_2023: number | null;
+  story_distribution: Record<string, number> | null;
   data_year: number;
 }
 
@@ -57,14 +60,10 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
       if (defaults) {
         setHousingDefaults(defaults);
         setAvgUnitSize(Math.round(defaults.avg_unit_area_m2));
-        // avg_floors from data is for all residential (includes detached).
-        // For apartments, use a more realistic estimate:
-        // if units_per_building > 10, likely mid-rise (5F+); otherwise 3F
-        const estFloors = defaults.avg_units_per_building > 15 ? 7
-          : defaults.avg_units_per_building > 8 ? 5 : 3;
-        setFloorsPerBldg(estFloors);
+        // avg_floors is now 3F+ apartment buildings only (from 建築着工統計)
+        setFloorsPerBldg(Math.round(defaults.avg_floors));
         // units per floor from data
-        const upf = Math.max(2, Math.round(defaults.avg_units_per_building / estFloors));
+        const upf = Math.max(2, Math.round(defaults.avg_units_per_floor));
         setUnitsPerFloor(upf);
       }
     };
@@ -169,17 +168,34 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
           </div>
         </div>
         {housingDefaults && (
-          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs space-y-1">
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs space-y-2">
             <p className="font-semibold text-blue-700 dark:text-blue-400">
-              初期値は建築着工統計（{housingDefaults.data_year}年）に基づく地域データです
+              初期値は建築着工統計（{housingDefaults.data_year}年）に基づく地域実績データです
             </p>
-            <p className="text-blue-600 dark:text-blue-400">
-              共同住宅 新築着工実績: 平均専有面積 {housingDefaults.avg_unit_area_m2}m2/戸、
-              棟あたり平均 {housingDefaults.avg_units_per_building}戸
-              {housingDefaults.apartment_units_2023 != null && `（年間 ${housingDefaults.apartment_units_2023.toLocaleString()}戸着工）`}
-            </p>
+            <div className="text-blue-600 dark:text-blue-400 space-y-0.5">
+              <p>
+                平均専有面積: <strong>{housingDefaults.avg_unit_area_m2}m2/戸</strong>（共同住宅 新築着工の床面積合計 / 戸数）
+              </p>
+              <p>
+                平均階数: <strong>{housingDefaults.avg_floors}F</strong>（3階以上の居住専用建物のみ。1-2階建て＝戸建住宅は除外）
+              </p>
+              <p>
+                棟あたり平均戸数: <strong>{housingDefaults.avg_units_per_building}戸</strong>（共同住宅着工戸数 / 3F以上建物数）
+              </p>
+              {housingDefaults.apartment_units_2023 != null && housingDefaults.apartment_buildings_3f_plus_2023 != null && (
+                <p>
+                  着工実績: 年間 {housingDefaults.apartment_units_2023.toLocaleString()}戸 / {housingDefaults.apartment_buildings_3f_plus_2023.toLocaleString()}棟
+                </p>
+              )}
+              {housingDefaults.story_distribution && (
+                <p>
+                  階数分布（3F以上）: {Object.entries(housingDefaults.story_distribution).map(([k, v]) => `${k}=${v}棟`).join("、")}
+                </p>
+              )}
+            </div>
             <p className="text-muted-foreground">
-              出典: e-Stat 建築着工統計 年報（国土交通省）。実際の開発計画に合わせて数値を変更してください。
+              出典: e-Stat 建築着工統計 年報（国土交通省）Table 16（戸数・床面積）/ Table 4（階数別建物数）。
+              実際の開発計画に合わせて数値を変更してください。
             </p>
           </div>
         )}
