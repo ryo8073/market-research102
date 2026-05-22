@@ -8,6 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { gap_analysis_table, type GapRow } from "@/lib/calculator";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
+import { ReadingGuide } from "@/components/ui/reading-guide";
 
 /** Format yen values with appropriate unit (万 or 億) */
 function formatYen(val: number): string {
@@ -88,6 +89,13 @@ export default function GapTab({ sectors, selectedCity }: Props) {
         </div>
       )}
 
+      {/* Reading Guide */}
+      <ReadingGuide steps={[
+        { title: "右に伸びるバーに注目", description: "右方向（正の値）は漏損=出店機会。域内住民の購買力が域外に流出しており、新規出店で取り戻せる。" },
+        { title: "係数の大きさで優先順位を付ける", description: "+10以上が有意な漏損。大きいほど未充足の需要が大きく、商業施設・テナントの投資妙味が高い。" },
+        { title: "左に伸びるバーは競争過多", description: "負の値は余剰。既存店舗が多く新規出店はカニバリゼーションのリスク。テナント誘致には別の切り口が必要。" },
+      ]} />
+
       {/* Gap Bar Chart — Recharts horizontal bar */}
       <div>
         <div className="flex justify-between text-xs text-muted-foreground mb-1 px-2">
@@ -115,6 +123,8 @@ export default function GapTab({ sectors, selectedCity }: Props) {
                 labelFormatter={(label) => String(label)}
               />
               <ReferenceLine x={0} stroke="#6B7280" strokeWidth={2} />
+              <ReferenceLine x={10} stroke="#2A9D8F" strokeDasharray="3 3" strokeWidth={1} label={{ value: "+10", fontSize: 9, fill: "#2A9D8F", position: "top" }} />
+              <ReferenceLine x={-10} stroke="#E76F51" strokeDasharray="3 3" strokeWidth={1} label={{ value: "-10", fontSize: 9, fill: "#E76F51", position: "top" }} />
               <Bar
                 dataKey="factor"
                 radius={[0, 4, 4, 0]}
@@ -122,11 +132,55 @@ export default function GapTab({ sectors, selectedCity }: Props) {
                 onMouseLeave={() => setHoveredSector(null)}
               >
                 {sorted.map((d, i) => (
-                  <Cell key={i} fill="#D4A843" />
+                  <Cell key={i} fill={d.factor >= 10 ? "#2A9D8F" : d.factor <= -10 ? "#E76F51" : "#D4A843"} />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Butterfly Chart: Demand vs Supply */}
+      <div aria-label="需要vs供給バタフライチャート">
+        <h3 className="text-sm font-semibold mb-1">需要 vs 供給（バタフライ比較）</h3>
+        <p className="text-xs text-muted-foreground mb-2">
+          左=供給（域内の年間販売額）、右=需要（推定購買力）。右に長い=漏損（域外流出）、左に長い=余剰（供給過多）。
+        </p>
+        {(() => {
+          const maxVal = Math.max(...gapData.map((d) => Math.max(d.demand, d.supply)));
+          const butterflyData = [...gapData].sort((a, b) => b.factor - a.factor).map((d) => ({
+            sector: d.sector,
+            demand: d.demand,
+            supply: -d.supply, // negative to go left
+            factor: d.factor,
+          }));
+          return (
+            <ResponsiveContainer width="100%" height={Math.max(350, butterflyData.length * 38)}>
+              <BarChart data={butterflyData} layout="vertical" margin={{ left: 120, right: 30, top: 5, bottom: 5 }}>
+                <XAxis
+                  type="number"
+                  domain={[-maxVal * 1.1, maxVal * 1.1]}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v: number) => formatYen(Math.abs(v))}
+                />
+                <YAxis type="category" dataKey="sector" width={110} tick={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={(value, name) => {
+                    const abs = Math.abs(Number(value));
+                    return [formatYen(abs), String(name) === "supply" ? "供給" : "需要"];
+                  }}
+                  labelFormatter={(label) => String(label)}
+                />
+                <ReferenceLine x={0} stroke="#6B7280" strokeWidth={1.5} />
+                <Bar dataKey="supply" name="供給" fill="#E76F51" fillOpacity={0.7} radius={[4, 0, 0, 4]} />
+                <Bar dataKey="demand" name="需要" fill="#2A9D8F" fillOpacity={0.7} radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          );
+        })()}
+        <div className="flex justify-center gap-6 mt-2 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#E76F51]/70" />← 供給（年間販売額）</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#2A9D8F]/70" />需要（推定購買力）→</span>
         </div>
       </div>
 

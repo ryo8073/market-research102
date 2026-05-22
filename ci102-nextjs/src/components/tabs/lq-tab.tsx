@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine,
   ResponsiveContainer, Cell,
+  ScatterChart, Scatter, ZAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,6 +14,7 @@ import {
   type LQRow,
 } from "@/lib/calculator";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
+import { ReadingGuide } from "@/components/ui/reading-guide";
 
 interface Props {
   localEmp: Record<string, number>;
@@ -99,6 +101,13 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
         </div>
       )}
 
+      {/* Reading Guide */}
+      <ReadingGuide steps={[
+        { title: "LQ=1.0ラインを確認", description: "赤い破線より右の産業が基盤産業（域外から資金を呼び込む産業）。左側は域内消費型。" },
+        { title: "LQ上位の多様性を見る", description: "複数産業がLQ>1.5なら経済基盤が分散し安定的。1産業のみ突出は一極集中リスク。" },
+        { title: "基盤雇用の絶対数を確認", description: "LQが高くても雇用が少なければ経済インパクトは限定的。テーブルの基盤雇用推計で実質的な影響力を判断。" },
+      ]} />
+
       {/* LQ Bar Chart */}
       <div aria-label="産業別 LQ 横棒グラフ">
         <h3 className="text-sm font-semibold mb-2">産業別 LQ</h3>
@@ -111,6 +120,7 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
               contentStyle={{ backgroundColor: "var(--background, #fff)", borderColor: "var(--border, #e5e7eb)" }}
             />
             <ReferenceLine x={1} stroke="#EF4444" strokeDasharray="3 3" label={{ value: "LQ=1.0", fontSize: 10, fill: "#EF4444" }} />
+            <ReferenceLine x={1.25} stroke="#D4A843" strokeDasharray="3 3" label={{ value: "1.25", fontSize: 9, fill: "#D4A843" }} />
             <Bar dataKey="lq" radius={[0, 4, 4, 0]}>
               {sorted.map((entry, i) => (
                 <Cell
@@ -127,6 +137,61 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Bubble Chart: LQ vs Employment vs Basic Employment */}
+      <div aria-label="LQバブルチャート（LQ×雇用×基盤雇用）">
+        <h3 className="text-sm font-semibold mb-1">LQ × 雇用規模マトリクス</h3>
+        <p className="text-xs text-muted-foreground mb-2">
+          横軸=LQ、縦軸=地域雇用者数、バブルサイズ=基盤雇用推計。右上が「高集積×大規模」の最重要産業。
+        </p>
+        <ResponsiveContainer width="100%" height={400}>
+          <ScatterChart margin={{ top: 20, right: 30, bottom: 50, left: 70 }}>
+            <XAxis
+              dataKey="lq" type="number" name="LQ"
+              tick={{ fontSize: 11 }}
+              label={{ value: "特化係数（LQ）", position: "bottom", offset: 15, fontSize: 12 }}
+            />
+            <YAxis
+              dataKey="local_emp" type="number" name="地域雇用"
+              tick={{ fontSize: 11 }}
+              tickFormatter={(v: number) => v >= 10000 ? `${(v / 10000).toFixed(0)}万` : v.toLocaleString()}
+              label={{ value: "地域雇用者数", angle: -90, position: "insideLeft", offset: -15, fontSize: 12 }}
+            />
+            <ZAxis dataKey="basic_emp_estimate" range={[40, 800]} name="基盤雇用" />
+            <Tooltip
+              content={({ active, payload }: any) => {
+                if (!active || !payload?.[0]) return null;
+                const d = payload[0].payload as LQRow;
+                return (
+                  <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+                    <p className="font-bold text-sm mb-1">{d.industry}</p>
+                    <p>LQ: <span className="font-semibold">{d.lq.toFixed(3)}</span></p>
+                    <p>地域雇用: <span className="font-semibold">{d.local_emp.toLocaleString()}</span></p>
+                    <p>基盤雇用: <span className="font-semibold">{Math.round(d.basic_emp_estimate).toLocaleString()}</span></p>
+                  </div>
+                );
+              }}
+            />
+            <ReferenceLine x={1} stroke="#EF4444" strokeDasharray="3 3" />
+            <Scatter data={lqData} fill="#2A9D8F">
+              {lqData.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={entry.lq >= 1.25 ? "#2A9D8F" : entry.lq >= 1.0 ? "#D4A843" : "#9CA3AF"}
+                  fillOpacity={0.7}
+                  stroke={entry.lq >= 1.25 ? "#2A9D8F" : entry.lq >= 1.0 ? "#D4A843" : "#9CA3AF"}
+                  strokeWidth={1}
+                />
+              ))}
+            </Scatter>
+          </ScatterChart>
+        </ResponsiveContainer>
+        <div className="flex justify-center gap-4 mt-2 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#2A9D8F]" />LQ≥1.25（強い基盤産業）</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#D4A843]" />LQ 1.0-1.25（弱い基盤産業）</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#9CA3AF]" />LQ&lt;1.0（非基盤産業）</span>
+        </div>
       </div>
 
       {/* Investment Signal Matrix (if shift-share available) */}

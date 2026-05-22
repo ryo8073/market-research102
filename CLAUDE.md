@@ -220,6 +220,35 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 
 **理由**: Plotly.jsは約3.5MBでバンドル肥大化、SSR非対応。Rechartsは軽量でReact統合が自然。2026-05-22に全タブ移行完了。
 
+### Recharts の formatter/callback に明示的な型注釈を書かない
+
+```tsx
+// ❌ NG: RenderableText is not assignable to string でビルド失敗
+<LabelList formatter={(v: string) => v} />
+<Tooltip formatter={(value: number, name: string) => [value, name]} />
+
+// ✅ OK: 型推論に任せるか unknown で受ける
+<LabelList formatter={(v: unknown) => String(v ?? "")} />
+<Tooltip formatter={(value, name) => [Number(value).toFixed(1), String(name)]} />
+```
+
+**理由**: Recharts の型定義は `LabelFormatter = (label: RenderableText) => ...`、`Formatter<ValueType, NameType>` で `ValueType | undefined` を受ける。`string` や `number` を明示すると型が狭すぎて `is not assignable` エラーになる。
+
+### 共有UIコンポーネント
+
+チャート説明・教育コンテンツ用のコンポーネントは `components/ui/` に集約済み:
+
+| コンポーネント | ファイル | 用途 |
+|--------------|---------|------|
+| `CaseStudy` | `callouts.tsx` | 緑枠。具体的な地域の分析例 |
+| `ClientTip` | `callouts.tsx` | 黄枠。お客様への説明文テンプレ |
+| `RiskAlert` | `callouts.tsx` | 赤枠。リスク警告 |
+| `InfoBox` | `callouts.tsx` | 青枠。参考情報 |
+| `InterpTable` | `callouts.tsx` | 閾値×意味の解釈テーブル |
+| `ReadingGuide` | `reading-guide.tsx` | 3ステップのチャート読み方ガイド |
+
+新しいタブや画面にこれらが必要な場合、ローカル定義せず上記からインポートすること。
+
 ### 重いコンポーネントはdynamic importで遅延読み込み
 
 ```tsx

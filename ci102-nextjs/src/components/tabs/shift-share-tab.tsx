@@ -8,6 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ShiftShareResult } from "@/lib/calculator";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
+import { ReadingGuide } from "@/components/ui/reading-guide";
 
 interface Props {
   precomputed: ShiftShareResult[];
@@ -49,6 +50,13 @@ export default function ShiftShareTab({ precomputed, selectedCity }: Props) {
           <p className="text-xs text-muted-foreground mt-2">シフトシェア分析は都道府県レベルのデータです。市区町村別の経済構造変化は上記指標を参照してください。</p>
         </div>
       )}
+
+      {/* Reading Guide */}
+      <ReadingGuide steps={[
+        { title: "RS（地域シフト）に注目", description: "緑色のRS部分が正の産業は、全国同産業を上回る競争力を持つ「スター産業」。テナント需要の源泉。" },
+        { title: "赤い●と棒の差を見る", description: "赤い●が実際の変化。棒の合計と一致（NS+IM+RS=実績）。IMが負でもRSが正なら地域固有の競争力あり。" },
+        { title: "スター産業×基盤産業の一致を確認", description: "LQタブの基盤産業と、ここのRS>0産業が重なれば、強固な経済基盤。重ならなければ構造転換の兆候。" },
+      ]} />
 
       {/* Stacked bar chart: NS + IM + RS */}
       {(() => {

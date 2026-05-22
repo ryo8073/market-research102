@@ -13,6 +13,7 @@ import {
   development_feasibility,
 } from "@/lib/calculator";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
+import { ReadingGuide } from "@/components/ui/reading-guide";
 
 interface Props {
   localEmp: Record<string, number>;
@@ -85,6 +86,13 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
           <p className="text-xs text-muted-foreground mt-2">EBM/PER・シミュレーションは都道府県レベルの値です。市区町村の基盤雇用を比較参照してください。</p>
         </div>
       )}
+
+      {/* Reading Guide */}
+      <ReadingGuide steps={[
+        { title: "EBMの大きさを見る", description: "EBM=5なら基盤雇用1人増→総雇用5人増。大きいほど地域経済への波及が大きく、テナント需要を喚起しやすい。" },
+        { title: "カスケードの流れを追う", description: "基盤雇用→(×EBM)→総雇用→(×PER)→人口→(÷世帯人員)→住宅需要。各段階の乗数が投資規模を決める。" },
+        { title: "開発フィジビリティを確認", description: "必要年間賃料と市場賃料を比較。市場賃料が上回れば事業として成立する見通し。" },
+      ]} />
 
       {/* Simulation Input */}
       <div className="rounded-lg border p-4">
