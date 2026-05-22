@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList,
 } from "recharts";
@@ -15,19 +15,61 @@ import {
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 import { ReadingGuide } from "@/components/ui/reading-guide";
 
+interface HousingDefaults {
+  avg_unit_area_m2: number;
+  avg_floors: number;
+  avg_units_per_building: number;
+  avg_units_per_floor: number;
+  apartment_units_2023: number | null;
+  data_year: number;
+}
+
+let _housingCache: Record<string, HousingDefaults> | null = null;
+
 interface Props {
   localEmp: Record<string, number>;
   nationalEmp: Record<string, number>;
   population: number;
   totalEmployment: number;
   personsPerHousehold: number;
+  prefCode: number;
   selectedCity?: MunicipalityData | null;
 }
 
-export default function EbmTab({ localEmp, nationalEmp, population, totalEmployment, personsPerHousehold, selectedCity }: Props) {
+export default function EbmTab({ localEmp, nationalEmp, population, totalEmployment, personsPerHousehold, prefCode, selectedCity }: Props) {
   const [newBasicJobs, setNewBasicJobs] = useState(100);
   const [avgUnitSize, setAvgUnitSize] = useState(65);
   const [floorsPerBldg, setFloorsPerBldg] = useState(5);
+  const [housingDefaults, setHousingDefaults] = useState<HousingDefaults | null>(null);
+
+  // Load housing defaults and set initial values based on prefecture
+  useEffect(() => {
+    const load = async () => {
+      if (!_housingCache) {
+        try {
+          const res = await fetch("/data/housing_defaults.json");
+          _housingCache = await res.json();
+        } catch {
+          return;
+        }
+      }
+      const defaults = _housingCache?.[String(prefCode)];
+      if (defaults) {
+        setHousingDefaults(defaults);
+        setAvgUnitSize(Math.round(defaults.avg_unit_area_m2));
+        // avg_floors from data is for all residential (includes detached).
+        // For apartments, use a more realistic estimate:
+        // if units_per_building > 10, likely mid-rise (5F+); otherwise 3F
+        const estFloors = defaults.avg_units_per_building > 15 ? 7
+          : defaults.avg_units_per_building > 8 ? 5 : 3;
+        setFloorsPerBldg(estFloors);
+        // units per floor from data
+        const upf = Math.max(2, Math.round(defaults.avg_units_per_building / estFloors));
+        setUnitsPerFloor(upf);
+      }
+    };
+    load();
+  }, [prefCode]);
   const [unitsPerFloor, setUnitsPerFloor] = useState(4);
   const [landPrice, setLandPrice] = useState(100000);
   const [constructionCost, setConstructionCost] = useState(250000);
@@ -95,57 +137,164 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
       ]} />
 
       {/* Simulation Input */}
-      <div className="rounded-lg border p-4">
-        <h3 className="font-semibold mb-3">シミュレーション（What-If）</h3>
-        <p className="text-xs text-muted-foreground mb-3">基盤雇用が変動した場合の波及効果。予測ではありません。</p>
-        <label htmlFor="new-basic-jobs" className="text-sm">新規基盤雇用</label>
-        <input id="new-basic-jobs" type="number" value={newBasicJobs} onChange={(e) => setNewBasicJobs(Number(e.target.value))}
-          aria-label="新規基盤雇用の人数"
-          className="ml-2 rounded border px-3 py-1 w-28 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-      </div>
-
-      {/* Cascade Results */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{deltaTotal.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })}</div><p className="text-xs text-muted-foreground">総雇用波及</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{deltaPop.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })}</div><p className="text-xs text-muted-foreground">人口波及</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{deltaHousing.toLocaleString(undefined, { signDisplay: "always", maximumFractionDigits: 0 })} 戸</div><p className="text-xs text-muted-foreground">住宅需要</p></CardContent></Card>
-      </div>
-
-      {/* Cascade Bar Chart */}
-      {(() => {
-        const cascadeData = [
-          { name: "基盤雇用", value: newBasicJobs, label: `${newBasicJobs}人`, color: "#2A9D8F" },
-          { name: `総雇用 (×${ebm.toFixed(1)})`, value: Math.round(deltaTotal), label: `${Math.round(deltaTotal)}人`, color: "#3B82F6" },
-          { name: `人口 (×${per.toFixed(1)})`, value: Math.round(deltaPop), label: `${Math.round(deltaPop)}人`, color: "#8B5CF6" },
-          { name: `住戸需要 (÷${personsPerHousehold.toFixed(1)})`, value: Math.round(deltaHousing), label: `${Math.round(deltaHousing)}戸`, color: "#F59E0B" },
-          { name: "延床面積", value: Math.round(floorArea), label: `${Math.round(floorArea)}m²`, color: "#1B2A4A" },
-          { name: "棟数", value: Math.round(bldgCount * 10) / 10, label: `${bldgCount.toFixed(1)}棟`, color: "#6B7280" },
-        ];
-        return (
-          <div aria-label="EBM/PER カスケード棒グラフ">
-            <h3 className="text-sm font-semibold mb-2">EBM/PER カスケード → 不動産開発規模</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={cascadeData} margin={{ top: 30, right: 20, left: 20, bottom: 5 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  formatter={(_value, _name, props) => {
-                    const label = (props?.payload as { label?: string })?.label ?? String(_value);
-                    return [label, "値"];
-                  }}
-                  contentStyle={{ backgroundColor: "var(--background, #fff)", borderColor: "var(--border, #e5e7eb)" }}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  <LabelList dataKey="label" position="top" fontSize={11} />
-                  {cascadeData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+      <div className="rounded-lg border p-4 space-y-4">
+        <div>
+          <h3 className="font-semibold mb-1">シミュレーション（What-If）</h3>
+          <p className="text-xs text-muted-foreground">基盤雇用が変動した場合の波及効果。予測ではありません。</p>
+        </div>
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label htmlFor="new-basic-jobs" className="text-xs font-medium block mb-1">新規基盤雇用</label>
+            <input id="new-basic-jobs" type="number" value={newBasicJobs} onChange={(e) => setNewBasicJobs(Number(e.target.value))}
+              aria-label="新規基盤雇用の人数"
+              className="rounded border px-3 py-1.5 w-24 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
-        );
-      })()}
+          <div>
+            <label htmlFor="avg-unit-size" className="text-xs font-medium block mb-1">平均専有面積 (m2)</label>
+            <input id="avg-unit-size" type="number" value={avgUnitSize} onChange={(e) => setAvgUnitSize(Number(e.target.value))}
+              aria-label="平均専有面積"
+              className="rounded border px-3 py-1.5 w-20 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          </div>
+          <div>
+            <label htmlFor="floors-per-bldg" className="text-xs font-medium block mb-1">階数</label>
+            <input id="floors-per-bldg" type="number" value={floorsPerBldg} onChange={(e) => setFloorsPerBldg(Number(e.target.value))}
+              aria-label="階数"
+              className="rounded border px-3 py-1.5 w-16 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          </div>
+          <div>
+            <label htmlFor="units-per-floor" className="text-xs font-medium block mb-1">各階戸数</label>
+            <input id="units-per-floor" type="number" value={unitsPerFloor} onChange={(e) => setUnitsPerFloor(Number(e.target.value))}
+              aria-label="各階戸数"
+              className="rounded border px-3 py-1.5 w-16 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          </div>
+        </div>
+        {housingDefaults && (
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs space-y-1">
+            <p className="font-semibold text-blue-700 dark:text-blue-400">
+              初期値は建築着工統計（{housingDefaults.data_year}年）に基づく地域データです
+            </p>
+            <p className="text-blue-600 dark:text-blue-400">
+              共同住宅 新築着工実績: 平均専有面積 {housingDefaults.avg_unit_area_m2}m2/戸、
+              棟あたり平均 {housingDefaults.avg_units_per_building}戸
+              {housingDefaults.apartment_units_2023 != null && `（年間 ${housingDefaults.apartment_units_2023.toLocaleString()}戸着工）`}
+            </p>
+            <p className="text-muted-foreground">
+              出典: e-Stat 建築着工統計 年報（国土交通省）。実際の開発計画に合わせて数値を変更してください。
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Cascade Step Flow */}
+      <div aria-label="EBM/PER カスケードフロー">
+        <h3 className="text-sm font-semibold mb-3">EBM/PER カスケード → 不動産開発規模</h3>
+
+        {/* Step flow: each stage as a card connected by arrows with multipliers */}
+        {(() => {
+          const steps = [
+            { label: "基盤雇用", value: `${newBasicJobs}人`, color: "#2A9D8F", multiplier: null },
+            { label: "総雇用", value: `${Math.round(deltaTotal).toLocaleString()}人`, color: "#3B82F6", multiplier: `×${ebm.toFixed(1)}` },
+            { label: "人口", value: `${Math.round(deltaPop).toLocaleString()}人`, color: "#8B5CF6", multiplier: `×${per.toFixed(1)}` },
+            { label: "住戸需要", value: `${Math.round(deltaHousing).toLocaleString()}戸`, color: "#F59E0B", multiplier: `÷${personsPerHousehold.toFixed(1)}` },
+            { label: "延床面積", value: `${Math.round(floorArea).toLocaleString()}m²`, color: "#1B2A4A", multiplier: `×${avgUnitSize}m²` },
+            { label: "棟数", value: `${bldgCount.toFixed(1)}棟`, color: "#6B7280", multiplier: `÷${floorsPerBldg * unitsPerFloor}戸` },
+          ];
+
+          return (
+            <div className="space-y-4">
+              {/* Desktop: horizontal flow */}
+              <div className="hidden md:flex items-center justify-center gap-0 overflow-x-auto py-2">
+                {steps.map((step, i) => (
+                  <div key={i} className="flex items-center shrink-0">
+                    {/* Arrow with multiplier (before each step except first) */}
+                    {i > 0 && (
+                      <div className="flex flex-col items-center mx-1 w-16">
+                        <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: step.color }}>
+                          {step.multiplier}
+                        </span>
+                        <div className="flex items-center w-full">
+                          <div className="flex-1 h-0.5 bg-gray-300 dark:bg-gray-600" />
+                          <span className="text-gray-400 text-lg -ml-1">›</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Step card */}
+                    <div
+                      className="rounded-xl border-2 text-center px-4 py-3 min-w-[110px]"
+                      style={{ borderColor: step.color + "50", backgroundColor: step.color + "08" }}
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{step.label}</p>
+                      <p className="text-xl font-bold mt-0.5" style={{ color: step.color }}>{step.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile: vertical flow */}
+              <div className="md:hidden space-y-1">
+                {steps.map((step, i) => (
+                  <div key={i}>
+                    {/* Arrow with multiplier */}
+                    {i > 0 && (
+                      <div className="flex items-center gap-2 pl-8 py-0.5">
+                        <div className="w-0.5 h-4 bg-gray-300 dark:bg-gray-600" />
+                        <span className="text-xs font-bold" style={{ color: step.color }}>{step.multiplier}</span>
+                        <span className="text-gray-400 text-xs">▼</span>
+                      </div>
+                    )}
+                    {/* Step card */}
+                    <div
+                      className="flex items-center justify-between rounded-lg border-2 px-4 py-2.5"
+                      style={{ borderColor: step.color + "40", backgroundColor: step.color + "06" }}
+                    >
+                      <span className="text-sm font-medium">{step.label}</span>
+                      <span className="text-lg font-bold" style={{ color: step.color }}>{step.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Ratio bars: normalized to show relative multiplier effect */}
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">各段階の相対倍率（基盤雇用 = 1.0）</p>
+                <div className="space-y-1.5">
+                  {(() => {
+                    const baseVal = Math.max(newBasicJobs, 1);
+                    const ratios = [
+                      { label: "基盤雇用", ratio: 1, color: "#2A9D8F" },
+                      { label: "総雇用", ratio: deltaTotal / baseVal, color: "#3B82F6" },
+                      { label: "人口", ratio: deltaPop / baseVal, color: "#8B5CF6" },
+                      { label: "住戸需要", ratio: deltaHousing / baseVal, color: "#F59E0B" },
+                    ];
+                    const maxRatio = Math.max(...ratios.map((r) => Math.abs(r.ratio)), 1);
+                    return ratios.map((r) => (
+                      <div key={r.label} className="flex items-center gap-2">
+                        <span className="text-xs w-20 text-right shrink-0">{r.label}</span>
+                        <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${Math.max((Math.abs(r.ratio) / maxRatio) * 100, 2)}%`,
+                              backgroundColor: r.color,
+                              opacity: 0.75,
+                            }}
+                          />
+                          <span className="absolute inset-0 flex items-center justify-end pr-2 text-[10px] font-bold" style={{ color: r.color }}>
+                            ×{r.ratio.toFixed(1)}
+                          </span>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  人数ベースの波及効果を基盤雇用を1.0とした倍率で表示。延床面積・棟数は単位が異なるため除外。
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
 
       {/* Feasibility */}
       <h3 className="text-lg font-semibold">開発フィジビリティ</h3>

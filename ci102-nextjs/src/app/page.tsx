@@ -136,7 +136,7 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
         {/* Score arc */}
         {pct > 0 && (
           <path
-            d={`M ${100 - r} 90 A ${r} ${r} 0 ${largeArc} 1 ${x.toFixed(1)} ${(90 - (r * Math.sin(endAngle) > 0 ? r * Math.sin(endAngle) : -r * Math.sin(endAngle))).toFixed(1)}`}
+            d={`M ${100 - r} 90 A ${r} ${r} 0 ${largeArc} 1 ${x.toFixed(1)} ${y.toFixed(1)}`}
             fill="none" stroke={color} strokeWidth={14} strokeLinecap="round"
           />
         )}
@@ -857,6 +857,7 @@ function DashboardContent() {
                   population={pref.population}
                   totalEmployment={pref.total_employment}
                   personsPerHousehold={pref.persons_per_household}
+                  prefCode={prefCode}
                   selectedCity={selectedCity}
                 />
                 </ErrorBoundary>

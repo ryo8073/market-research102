@@ -1,0 +1,480 @@
+{
+  "1": {
+    "pref_name": "北海道",
+    "avg_unit_area_m2": 56.8,
+    "avg_floors": 2.0,
+    "avg_units_per_building": 18.5,
+    "avg_units_per_floor": 9.2,
+    "apartment_units_2023": 16687,
+    "apartment_buildings_3f_plus_2023": 902,
+    "data_year": 2023
+  },
+  "2": {
+    "pref_name": "青森県",
+    "avg_unit_area_m2": 42.2,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 25.8,
+    "avg_units_per_floor": 14.3,
+    "apartment_units_2023": 439,
+    "apartment_buildings_3f_plus_2023": 17,
+    "data_year": 2023
+  },
+  "3": {
+    "pref_name": "岩手県",
+    "avg_unit_area_m2": 54.0,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 23.9,
+    "avg_units_per_floor": 13.3,
+    "apartment_units_2023": 1123,
+    "apartment_buildings_3f_plus_2023": 47,
+    "data_year": 2023
+  },
+  "4": {
+    "pref_name": "宮城県",
+    "avg_unit_area_m2": 48.5,
+    "avg_floors": 2.0,
+    "avg_units_per_building": 17.5,
+    "avg_units_per_floor": 8.8,
+    "apartment_units_2023": 5559,
+    "apartment_buildings_3f_plus_2023": 317,
+    "data_year": 2023
+  },
+  "5": {
+    "pref_name": "秋田県",
+    "avg_unit_area_m2": 50.6,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 52.8,
+    "avg_units_per_floor": 20,
+    "apartment_units_2023": 633,
+    "apartment_buildings_3f_plus_2023": 12,
+    "data_year": 2023
+  },
+  "6": {
+    "pref_name": "山形県",
+    "avg_unit_area_m2": 61.6,
+    "avg_floors": 1.9,
+    "avg_units_per_building": 27.2,
+    "avg_units_per_floor": 14.3,
+    "apartment_units_2023": 652,
+    "apartment_buildings_3f_plus_2023": 24,
+    "data_year": 2023
+  },
+  "7": {
+    "pref_name": "福島県",
+    "avg_unit_area_m2": 58.3,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 16.0,
+    "avg_units_per_floor": 8.9,
+    "apartment_units_2023": 1091,
+    "apartment_buildings_3f_plus_2023": 68,
+    "data_year": 2023
+  },
+  "8": {
+    "pref_name": "茨城県",
+    "avg_unit_area_m2": 53.1,
+    "avg_floors": 1.7,
+    "avg_units_per_building": 22.2,
+    "avg_units_per_floor": 13.1,
+    "apartment_units_2023": 2747,
+    "apartment_buildings_3f_plus_2023": 124,
+    "data_year": 2023
+  },
+  "9": {
+    "pref_name": "栃木県",
+    "avg_unit_area_m2": 62.3,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 22.9,
+    "avg_units_per_floor": 12.7,
+    "apartment_units_2023": 1807,
+    "apartment_buildings_3f_plus_2023": 79,
+    "data_year": 2023
+  },
+  "10": {
+    "pref_name": "群馬県",
+    "avg_unit_area_m2": 57.4,
+    "avg_floors": 1.7,
+    "avg_units_per_building": 14.6,
+    "avg_units_per_floor": 8.6,
+    "apartment_units_2023": 1242,
+    "apartment_buildings_3f_plus_2023": 85,
+    "data_year": 2023
+  },
+  "11": {
+    "pref_name": "埼玉県",
+    "avg_unit_area_m2": 51.9,
+    "avg_floors": 2.1,
+    "avg_units_per_building": 4.6,
+    "avg_units_per_floor": 2.2,
+    "apartment_units_2023": 20538,
+    "apartment_buildings_3f_plus_2023": 4445,
+    "data_year": 2023
+  },
+  "12": {
+    "pref_name": "千葉県",
+    "avg_unit_area_m2": 52.5,
+    "avg_floors": 2.0,
+    "avg_units_per_building": 11.4,
+    "avg_units_per_floor": 5.7,
+    "apartment_units_2023": 19352,
+    "apartment_buildings_3f_plus_2023": 1697,
+    "data_year": 2023
+  },
+  "13": {
+    "pref_name": "東京都",
+    "avg_unit_area_m2": 52.0,
+    "avg_floors": 2.5,
+    "avg_units_per_building": 7.2,
+    "avg_units_per_floor": 2.9,
+    "apartment_units_2023": 90236,
+    "apartment_buildings_3f_plus_2023": 12592,
+    "data_year": 2023
+  },
+  "14": {
+    "pref_name": "神奈川県",
+    "avg_unit_area_m2": 53.3,
+    "avg_floors": 2.2,
+    "avg_units_per_building": 6.5,
+    "avg_units_per_floor": 3.0,
+    "apartment_units_2023": 38223,
+    "apartment_buildings_3f_plus_2023": 5914,
+    "data_year": 2023
+  },
+  "15": {
+    "pref_name": "新潟県",
+    "avg_unit_area_m2": 49.1,
+    "avg_floors": 1.9,
+    "avg_units_per_building": 11.2,
+    "avg_units_per_floor": 5.9,
+    "apartment_units_2023": 1281,
+    "apartment_buildings_3f_plus_2023": 114,
+    "data_year": 2023
+  },
+  "16": {
+    "pref_name": "富山県",
+    "avg_unit_area_m2": 52.2,
+    "avg_floors": 1.9,
+    "avg_units_per_building": 32.7,
+    "avg_units_per_floor": 17.2,
+    "apartment_units_2023": 1146,
+    "apartment_buildings_3f_plus_2023": 35,
+    "data_year": 2023
+  },
+  "17": {
+    "pref_name": "石川県",
+    "avg_unit_area_m2": 51.9,
+    "avg_floors": 1.9,
+    "avg_units_per_building": 18.1,
+    "avg_units_per_floor": 9.5,
+    "apartment_units_2023": 1356,
+    "apartment_buildings_3f_plus_2023": 75,
+    "data_year": 2023
+  },
+  "18": {
+    "pref_name": "福井県",
+    "avg_unit_area_m2": 43.9,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 31.3,
+    "avg_units_per_floor": 17.4,
+    "apartment_units_2023": 1157,
+    "apartment_buildings_3f_plus_2023": 37,
+    "data_year": 2023
+  },
+  "19": {
+    "pref_name": "山梨県",
+    "avg_unit_area_m2": 44.3,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 15.6,
+    "avg_units_per_floor": 8.7,
+    "apartment_units_2023": 624,
+    "apartment_buildings_3f_plus_2023": 40,
+    "data_year": 2023
+  },
+  "20": {
+    "pref_name": "長野県",
+    "avg_unit_area_m2": 52.0,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 21.2,
+    "avg_units_per_floor": 11.8,
+    "apartment_units_2023": 1931,
+    "apartment_buildings_3f_plus_2023": 91,
+    "data_year": 2023
+  },
+  "21": {
+    "pref_name": "岐阜県",
+    "avg_unit_area_m2": 57.0,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 16.8,
+    "avg_units_per_floor": 9.3,
+    "apartment_units_2023": 1661,
+    "apartment_buildings_3f_plus_2023": 99,
+    "data_year": 2023
+  },
+  "22": {
+    "pref_name": "静岡県",
+    "avg_unit_area_m2": 58.3,
+    "avg_floors": 1.9,
+    "avg_units_per_building": 10.8,
+    "avg_units_per_floor": 5.7,
+    "apartment_units_2023": 5027,
+    "apartment_buildings_3f_plus_2023": 466,
+    "data_year": 2023
+  },
+  "23": {
+    "pref_name": "愛知県",
+    "avg_unit_area_m2": 52.5,
+    "avg_floors": 2.1,
+    "avg_units_per_building": 9.4,
+    "avg_units_per_floor": 4.5,
+    "apartment_units_2023": 22368,
+    "apartment_buildings_3f_plus_2023": 2385,
+    "data_year": 2023
+  },
+  "24": {
+    "pref_name": "三重県",
+    "avg_unit_area_m2": 45.3,
+    "avg_floors": 1.7,
+    "avg_units_per_building": 26.0,
+    "avg_units_per_floor": 15.3,
+    "apartment_units_2023": 2629,
+    "apartment_buildings_3f_plus_2023": 101,
+    "data_year": 2023
+  },
+  "25": {
+    "pref_name": "滋賀県",
+    "avg_unit_area_m2": 50.3,
+    "avg_floors": 1.9,
+    "avg_units_per_building": 22.9,
+    "avg_units_per_floor": 12.1,
+    "apartment_units_2023": 3163,
+    "apartment_buildings_3f_plus_2023": 138,
+    "data_year": 2023
+  },
+  "26": {
+    "pref_name": "京都府",
+    "avg_unit_area_m2": 52.7,
+    "avg_floors": 2.2,
+    "avg_units_per_building": 8.1,
+    "avg_units_per_floor": 3.7,
+    "apartment_units_2023": 8087,
+    "apartment_buildings_3f_plus_2023": 1002,
+    "data_year": 2023
+  },
+  "27": {
+    "pref_name": "大阪府",
+    "avg_unit_area_m2": 50.1,
+    "avg_floors": 2.4,
+    "avg_units_per_building": 7.8,
+    "avg_units_per_floor": 3.2,
+    "apartment_units_2023": 49353,
+    "apartment_buildings_3f_plus_2023": 6360,
+    "data_year": 2023
+  },
+  "28": {
+    "pref_name": "兵庫県",
+    "avg_unit_area_m2": 54.4,
+    "avg_floors": 2.1,
+    "avg_units_per_building": 7.9,
+    "avg_units_per_floor": 3.8,
+    "apartment_units_2023": 14727,
+    "apartment_buildings_3f_plus_2023": 1870,
+    "data_year": 2023
+  },
+  "29": {
+    "pref_name": "奈良県",
+    "avg_unit_area_m2": 55.0,
+    "avg_floors": 2.0,
+    "avg_units_per_building": 13.0,
+    "avg_units_per_floor": 6.5,
+    "apartment_units_2023": 1490,
+    "apartment_buildings_3f_plus_2023": 115,
+    "data_year": 2023
+  },
+  "30": {
+    "pref_name": "和歌山県",
+    "avg_unit_area_m2": 56.1,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 11.6,
+    "avg_units_per_floor": 6.4,
+    "apartment_units_2023": 545,
+    "apartment_buildings_3f_plus_2023": 47,
+    "data_year": 2023
+  },
+  "31": {
+    "pref_name": "鳥取県",
+    "avg_unit_area_m2": 57.7,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 46.3,
+    "avg_units_per_floor": 20,
+    "apartment_units_2023": 463,
+    "apartment_buildings_3f_plus_2023": 10,
+    "data_year": 2023
+  },
+  "32": {
+    "pref_name": "島根県",
+    "avg_unit_area_m2": 64.9,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 30.3,
+    "avg_units_per_floor": 16.8,
+    "apartment_units_2023": 818,
+    "apartment_buildings_3f_plus_2023": 27,
+    "data_year": 2023
+  },
+  "33": {
+    "pref_name": "岡山県",
+    "avg_unit_area_m2": 61.2,
+    "avg_floors": 1.9,
+    "avg_units_per_building": 23.9,
+    "avg_units_per_floor": 12.6,
+    "apartment_units_2023": 3252,
+    "apartment_buildings_3f_plus_2023": 136,
+    "data_year": 2023
+  },
+  "34": {
+    "pref_name": "広島県",
+    "avg_unit_area_m2": 55.9,
+    "avg_floors": 2.1,
+    "avg_units_per_building": 11.4,
+    "avg_units_per_floor": 5.4,
+    "apartment_units_2023": 8461,
+    "apartment_buildings_3f_plus_2023": 745,
+    "data_year": 2023
+  },
+  "35": {
+    "pref_name": "山口県",
+    "avg_unit_area_m2": 53.3,
+    "avg_floors": 1.7,
+    "avg_units_per_building": 25.5,
+    "avg_units_per_floor": 15.0,
+    "apartment_units_2023": 1607,
+    "apartment_buildings_3f_plus_2023": 63,
+    "data_year": 2023
+  },
+  "36": {
+    "pref_name": "徳島県",
+    "avg_unit_area_m2": 56.1,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 22.1,
+    "avg_units_per_floor": 12.3,
+    "apartment_units_2023": 596,
+    "apartment_buildings_3f_plus_2023": 27,
+    "data_year": 2023
+  },
+  "37": {
+    "pref_name": "香川県",
+    "avg_unit_area_m2": 58.7,
+    "avg_floors": 1.7,
+    "avg_units_per_building": 24.8,
+    "avg_units_per_floor": 14.6,
+    "apartment_units_2023": 1191,
+    "apartment_buildings_3f_plus_2023": 48,
+    "data_year": 2023
+  },
+  "38": {
+    "pref_name": "愛媛県",
+    "avg_unit_area_m2": 60.1,
+    "avg_floors": 1.7,
+    "avg_units_per_building": 22.0,
+    "avg_units_per_floor": 12.9,
+    "apartment_units_2023": 1256,
+    "apartment_buildings_3f_plus_2023": 57,
+    "data_year": 2023
+  },
+  "39": {
+    "pref_name": "高知県",
+    "avg_unit_area_m2": 67.7,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 12.4,
+    "avg_units_per_floor": 6.9,
+    "apartment_units_2023": 420,
+    "apartment_buildings_3f_plus_2023": 34,
+    "data_year": 2023
+  },
+  "40": {
+    "pref_name": "福岡県",
+    "avg_unit_area_m2": 58.3,
+    "avg_floors": 2.0,
+    "avg_units_per_building": 19.2,
+    "avg_units_per_floor": 9.6,
+    "apartment_units_2023": 19946,
+    "apartment_buildings_3f_plus_2023": 1038,
+    "data_year": 2023
+  },
+  "41": {
+    "pref_name": "佐賀県",
+    "avg_unit_area_m2": 58.3,
+    "avg_floors": 1.7,
+    "avg_units_per_building": 34.5,
+    "avg_units_per_floor": 20,
+    "apartment_units_2023": 1551,
+    "apartment_buildings_3f_plus_2023": 45,
+    "data_year": 2023
+  },
+  "42": {
+    "pref_name": "長崎県",
+    "avg_unit_area_m2": 52.9,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 42.8,
+    "avg_units_per_floor": 20,
+    "apartment_units_2023": 3984,
+    "apartment_buildings_3f_plus_2023": 93,
+    "data_year": 2023
+  },
+  "43": {
+    "pref_name": "熊本県",
+    "avg_unit_area_m2": 53.4,
+    "avg_floors": 1.8,
+    "avg_units_per_building": 27.4,
+    "avg_units_per_floor": 15.2,
+    "apartment_units_2023": 6196,
+    "apartment_buildings_3f_plus_2023": 226,
+    "data_year": 2023
+  },
+  "44": {
+    "pref_name": "大分県",
+    "avg_unit_area_m2": 55.0,
+    "avg_floors": 1.7,
+    "avg_units_per_building": 27.0,
+    "avg_units_per_floor": 15.9,
+    "apartment_units_2023": 2001,
+    "apartment_buildings_3f_plus_2023": 74,
+    "data_year": 2023
+  },
+  "45": {
+    "pref_name": "宮崎県",
+    "avg_unit_area_m2": 54.5,
+    "avg_floors": 1.5,
+    "avg_units_per_building": 25.5,
+    "avg_units_per_floor": 17.0,
+    "apartment_units_2023": 1684,
+    "apartment_buildings_3f_plus_2023": 66,
+    "data_year": 2023
+  },
+  "46": {
+    "pref_name": "鹿児島県",
+    "avg_unit_area_m2": 47.0,
+    "avg_floors": 1.5,
+    "avg_units_per_building": 29.5,
+    "avg_units_per_floor": 19.7,
+    "apartment_units_2023": 3366,
+    "apartment_buildings_3f_plus_2023": 114,
+    "data_year": 2023
+  },
+  "47": {
+    "pref_name": "沖縄県",
+    "avg_unit_area_m2": 64.7,
+    "avg_floors": 1.9,
+    "avg_units_per_building": 14.6,
+    "avg_units_per_floor": 7.7,
+    "apartment_units_2023": 6044,
+    "apartment_buildings_3f_plus_2023": 413,
+    "data_year": 2023
+  },
+  "national": {
+    "pref_name": "全国平均",
+    "avg_unit_area_m2": 54.5,
+    "avg_floors": 1.9,
+    "avg_units_per_building": null,
+    "avg_units_per_floor": null,
+    "data_year": 2023
+  }
+}
