@@ -116,40 +116,46 @@ function KpiSkeletonGrid() {
 function ScoreGauge({ score, label }: { score: number; label: string }) {
   const pct = Math.max(0, Math.min(100, score));
   const color = pct >= 80 ? "#2A9D8F" : pct >= 60 ? "#2A9D8F" : pct >= 40 ? "#D4A843" : "#E76F51";
-  // Semi-circle arc: radius=80, center=(100,90)
-  const r = 80;
-  const startAngle = Math.PI;
-  const endAngle = Math.PI * (1 - pct / 100);
-  const x = 100 + r * Math.cos(endAngle);
-  const y = 90 - r * Math.sin(endAngle);
-  const largeArc = pct > 50 ? 1 : 0;
+
+  // Semi-circle gauge using stroke-dasharray on a <circle>.
+  // This avoids arc-endpoint math entirely.
+  const cx = 100, cy = 95, r = 75;
+  const circumference = 2 * Math.PI * r;
+  const halfCircumference = circumference / 2;
+  // Offset to start from left (9 o'clock) going clockwise to right (3 o'clock)
+  const dashOffset = circumference * 0.25; // rotate start to bottom-left
+  const scoreDash = halfCircumference * (pct / 100);
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={200} height={110} viewBox="0 0 200 110">
-        {/* Background arc */}
-        <path
-          d={`M ${100 - r} 90 A ${r} ${r} 0 0 1 ${100 + r} 90`}
+      <svg width={200} height={115} viewBox="0 0 200 115">
+        {/* Background semi-circle (grey) */}
+        <circle
+          cx={cx} cy={cy} r={r}
           fill="none" stroke="#e5e7eb" strokeWidth={14} strokeLinecap="round"
+          strokeDasharray={`${halfCircumference} ${circumference}`}
+          strokeDashoffset={dashOffset}
           className="dark:stroke-gray-700"
         />
-        {/* Score arc */}
+        {/* Score arc (colored) */}
         {pct > 0 && (
-          <path
-            d={`M ${100 - r} 90 A ${r} ${r} 0 ${largeArc} 1 ${x.toFixed(1)} ${y.toFixed(1)}`}
+          <circle
+            cx={cx} cy={cy} r={r}
             fill="none" stroke={color} strokeWidth={14} strokeLinecap="round"
+            strokeDasharray={`${scoreDash} ${circumference}`}
+            strokeDashoffset={dashOffset}
           />
         )}
         {/* Zone labels */}
-        <text x="22" y="105" className="fill-muted-foreground text-[8px]">要注意</text>
-        <text x="70" y="25" className="fill-muted-foreground text-[8px]">標準</text>
-        <text x="120" y="25" className="fill-muted-foreground text-[8px]">良好</text>
-        <text x="165" y="105" className="fill-muted-foreground text-[8px]">優良</text>
+        <text x="15" y="108" className="fill-muted-foreground text-[8px]">要注意</text>
+        <text x="65" y="22" className="fill-muted-foreground text-[8px]">標準</text>
+        <text x="120" y="22" className="fill-muted-foreground text-[8px]">良好</text>
+        <text x="168" y="108" className="fill-muted-foreground text-[8px]">優良</text>
         {/* Score number */}
-        <text x="100" y="80" textAnchor="middle" className="fill-foreground text-3xl font-bold" style={{ fill: color }}>
+        <text x={cx} y="82" textAnchor="middle" className="text-3xl font-bold" style={{ fill: color }}>
           {Math.round(score)}
         </text>
-        <text x="100" y="98" textAnchor="middle" className="fill-muted-foreground text-[10px]">
+        <text x={cx} y="100" textAnchor="middle" className="fill-muted-foreground text-[10px]">
           / 100
         </text>
       </svg>

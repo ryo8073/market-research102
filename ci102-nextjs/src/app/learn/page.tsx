@@ -310,21 +310,25 @@ export default function LearnPage() {
               </p>
             </ClientTip>
 
-            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <h3 className="font-semibold text-lg">知っておくべき制限事項</h3>
             <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
-              <ul className="list-disc list-inside space-y-1">
+              <ul className="list-disc list-inside space-y-2">
                 <li>
-                  <strong>消費パターンの均一性仮定:</strong> LQは「全国の消費パターンが均一」という前提に基づいています。
-                  観光地・軍事基地・大学都市など、域外からの消費や特殊な需要構造を持つ地域では、
-                  LQが基盤雇用を正確に反映しない場合があります。
+                  <strong>「全国どこでも同じ消費パターン」という前提がある:</strong>{" "}
+                  LQは、全国の消費者が同じ割合で各産業のサービスを利用していると仮定して計算しています。
+                  そのため、観光客が多い京都・沖縄、自衛隊基地がある地域、大学が集中する学園都市などでは、
+                  域外からの特殊な需要がLQを歪める場合があります。
                 </li>
                 <li>
-                  <strong>産業分類の粒度:</strong> 大分類レベルのLQは、同一産業内の多様性を隠します。
-                  例えば「製造業」のLQが1.0でも、自動車部品製造と食品製造では不動産需要への影響が大きく異なります。
+                  <strong>「製造業」の中身が見えない:</strong>{" "}
+                  産業大分類のLQでは、同じ「製造業」でも自動車工場と食品工場では
+                  必要な不動産の種類も雇用の質も全く異なります。
+                  LQ=1.0だから基盤産業ではない、と即断しないよう注意してください。
                 </li>
                 <li>
-                  <strong>遅行指標:</strong> 経済センサス（2021年）は調査時点のスナップショットであり、
-                  公表時にはすでに数年遅れています。調査後の企業進出・撤退は反映されていません。
+                  <strong>データは「過去の写真」:</strong>{" "}
+                  経済センサス（2021年6月調査）は、その時点の産業構造を切り取ったスナップショットです。
+                  調査後に進出した企業（例: TSMCの熊本工場）や撤退した企業の影響は反映されていません。
                 </li>
               </ul>
             </div>
@@ -405,21 +409,25 @@ export default function LearnPage() {
               </p>
             </ClientTip>
 
-            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <h3 className="font-semibold text-lg">知っておくべき制限事項</h3>
             <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
-              <ul className="list-disc list-inside space-y-1">
+              <ul className="list-disc list-inside space-y-2">
                 <li>
-                  <strong>静的乗数:</strong> EBMは分析時点のスナップショットであり、
-                  基盤産業の構成が変化すればEBMも変動します。過去のEBMで将来の波及効果を推計する際は、
-                  産業構造の安定性を前提としている点に注意が必要です。
+                  <strong>乗数は「今の写真」でしかない:</strong>{" "}
+                  EBM=20の地域でも、基盤産業が入れ替われば乗数は大きく変わります。
+                  例えば製造業中心の地域にIT企業が参入し始めた場合、5年後のEBMは全く違う値になり得ます。
                 </li>
                 <li>
-                  <strong>線形仮定:</strong> カスケード計算は「基盤雇用の変化が非基盤雇用に線形に波及する」と仮定しています。
-                  実際には、大規模な雇用変動ではインフラ制約・住宅供給制約により非線形な効果が生じます。
+                  <strong>「100人増えたら500人増える」は直線的な仮定:</strong>{" "}
+                  カスケード計算は基盤雇用の変化が比例的に波及すると仮定していますが、
+                  実際には住宅供給の上限・インフラ容量・労働市場の逼迫などで波及効果は頭打ちになります。
+                  特に1,000人以上の大規模変動シミュレーションでは過大推計に注意してください。
                 </li>
                 <li>
-                  <strong>シミュレーション ≠ 予測:</strong> EBMカスケードはWhat-If分析であり、予測ではありません。
-                  「仮にX人増えたら」の仮定に基づく参考値として、実績データと必ず併せて評価してください。
+                  <strong>シミュレーション結果は「予測」ではない:</strong>{" "}
+                  ダッシュボードの数字は「仮にX人増えたら」の参考値であり、
+                  「X人増える見通し」ではありません。お客様に説明する際は、
+                  実績の雇用変化（2016→2021年）と並べて示すことが重要です。
                 </li>
               </ul>
             </div>
@@ -489,17 +497,20 @@ export default function LearnPage() {
               </p>
             </ClientTip>
 
-            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <h3 className="font-semibold text-lg">知っておくべき制限事項</h3>
             <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
-              <ul className="list-disc list-inside space-y-1">
+              <ul className="list-disc list-inside space-y-2">
                 <li>
-                  <strong>通勤圏の影響:</strong> PERは夜間人口（居住者）と雇用の比率です。
-                  東京のように大量の通勤者が流入する地域ではPERが低くなり、雇用増が居住人口増に直結しません。
-                  昼間人口を併せて確認してください。
+                  <strong>「通勤圏」の存在を忘れない:</strong>{" "}
+                  PERは夜間人口（そこに住んでいる人）と雇用の比率です。
+                  東京のように埼玉・千葉・神奈川から大量の通勤者が流入する地域ではPERが低くなります。
+                  つまり「雇用が増えても、住む場所は隣県」ということが起きます。
+                  ダッシュボードの昼間人口と比較して、人口流入の実態を把握してください。
                 </li>
                 <li>
-                  <strong>世帯構成の変化:</strong> 住戸需要への変換に使う世帯人員数は国勢調査時点の値です。
-                  単身世帯化・高齢化の進行により、同じ人口増でも必要住戸数は変動します。
+                  <strong>1世帯あたりの人数は変わり続けている:</strong>{" "}
+                  住戸需要の計算に使う世帯人員数は国勢調査（2020年）時点の値です。
+                  単身世帯の増加・高齢化の進行により、同じ人口100人でも2020年より多くの住戸が必要になっている可能性があります。
                 </li>
               </ul>
             </div>
@@ -584,22 +595,25 @@ export default function LearnPage() {
               </p>
             </ClientTip>
 
-            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <h3 className="font-semibold text-lg">知っておくべき制限事項</h3>
             <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
-              <ul className="list-disc list-inside space-y-1">
+              <ul className="list-disc list-inside space-y-2">
                 <li>
-                  <strong>分析期間への依存:</strong> シフトシェアの結果は分析期間の選び方で大きく変わります。
-                  好況期のみ（2016→2021）と不況期を跨ぐ期間では、同じ地域でもNS/IM/RSの符号が逆転する場合があります。
-                  本アプリは経済センサス2016年→2021年の5年間を使用しています。
+                  <strong>「いつからいつまで」で結果が大きく変わる:</strong>{" "}
+                  本アプリは2016年→2021年の5年間を分析期間に使っています。
+                  もし2011年→2021年の10年間で分析すれば、東日本大震災の影響で全く異なる結果になります。
+                  好況期だけを切り取るか、不況を含むかで、同じ地域でもRSの符号が逆転し得ます。
                 </li>
                 <li>
-                  <strong>コロナ禍の影響:</strong> 2021年はコロナ禍の影響が残る時期です。
-                  飲食・宿泊・娯楽業のRS値は一時的な需要減の影響を受けており、
-                  長期的な競争力を反映していない可能性があります。
+                  <strong>2021年はコロナの影響が色濃く残っている:</strong>{" "}
+                  飲食・宿泊・娯楽業のRSが大きくマイナスに見える地域がありますが、
+                  これは一時的な需要蒸発の影響であり、長期的な競争力の喪失とは限りません。
+                  コロナ後の回復データ（次回2026年経済センサス）と比較する必要があります。
                 </li>
                 <li>
-                  <strong>因果関係ではない:</strong> RSが正でも「なぜその地域が競争力を持つか」は示しません。
-                  立地優位性、政策支援、コスト優位など、RSの背景にある要因は別途調査が必要です。
+                  <strong>「なぜ強いか」は教えてくれない:</strong>{" "}
+                  RSは「全国平均より強い/弱い」を示しますが、その理由（立地、政策、人材、コスト）は示しません。
+                  RS=+10,000人の産業があっても、それが補助金効果なのか本質的な競争力なのかは別途調査が必要です。
                 </li>
               </ul>
             </div>
@@ -695,22 +709,26 @@ export default function LearnPage() {
               </p>
             </ClientTip>
 
-            <h3 className="font-semibold text-lg">この分析手法の制限事項</h3>
+            <h3 className="font-semibold text-lg">知っておくべき制限事項</h3>
             <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2 text-sm">
-              <ul className="list-disc list-inside space-y-1">
+              <ul className="list-disc list-inside space-y-2">
                 <li>
-                  <strong>EC・越境購買の未反映:</strong> 需要推計は人口ベースの按分であり、
-                  ECサイトでの購入、隣接自治体への越境購買、観光消費は反映されません。
-                  EC比率の高いセクター（書籍・家電等）では漏損が過大に見積もられる傾向があります。
+                  <strong>ネット通販（EC）の購買は見えない:</strong>{" "}
+                  需要推計は「住民が地元で買い物する」前提の人口按分です。
+                  Amazonや楽天で購入した金額は域内の売上に計上されないため、
+                  書籍・家電・衣料品などEC比率の高いセクターでは「漏損」が実態より大きく出ます。
+                  漏損=出店機会と即断せず、EC化率の高いセクターかどうかを確認してください。
                 </li>
                 <li>
-                  <strong>需要推計の精度:</strong> 域内需要は「人口 × 全国1人あたり支出額」で按分しており、
-                  所得水準・年齢構成・消費性向の地域差を反映していません。
-                  高所得地域では需要が過小に、低所得地域では過大に推計される可能性があります。
+                  <strong>「港区の住民が銀座で買い物する」は漏損に見える:</strong>{" "}
+                  域内需要は人口ベースで推計するため、隣接自治体で日常的に買い物する行動は
+                  「購買力の流出＝漏損」として計上されます。都市部では商圏が自治体境界と一致しないことに注意してください。
                 </li>
                 <li>
-                  <strong>供給側データの制約:</strong> 供給額は経済センサスの年間商品販売額であり、
-                  新規出店・閉店のタイムラグ、季節変動は反映されていません。
+                  <strong>所得の違いが反映されていない:</strong>{" "}
+                  需要は「人口 × 全国平均の1人あたり支出」で計算しています。
+                  港区のように平均所得が高い地域では実際の購買力が過小に、
+                  地方の低所得地域では過大に推計されている可能性があります。
                 </li>
               </ul>
             </div>
@@ -873,31 +891,39 @@ export default function LearnPage() {
               ))}
             </div>
 
-            <h3 className="font-semibold text-lg mt-6">遅行指標（Lagging Indicators）としてのCI102データ</h3>
+            <h3 className="font-semibold text-lg mt-6">すべてのデータは「過去の写真」である</h3>
             <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-3 text-sm">
               <p>
-                CI102の分析に使用するすべてのデータは<strong>遅行指標（Lagging Indicators）</strong>です。
-                過去の実績を集計した統計であり、現在の市場状況や将来の動向を直接予測するものではありません。
+                CI102で使用するデータはすべて<strong>遅行指標（Lagging Indicators）</strong>
+                ——つまり「過去に何が起きたか」を教えてくれますが、「これから何が起きるか」は教えてくれません。
               </p>
               <InterpTable
-                headers={["データソース", "調査時点", "公表タイミング", "注意点"]}
+                headers={["データソース", "いつの写真？", "今との差", "具体的に何が見えない？"]}
                 rows={[
-                  ["経済センサス", "2021年6月", "2023年公表", "コロナ禍直後。リモートワーク普及前の産業構造。次回2026年"],
-                  ["国勢調査", "2020年10月", "2021年公表", "人口は2015年値の2020年境界組替。次回2025年（結果は2026-27年）"],
-                  ["建築着工統計", "年次更新", "翌年公表", "過去の着工実績。建設コスト・金利変動は未反映"],
-                  ["MLIT取引価格", "四半期更新", "約3ヶ月遅れ", "成約事例のみ。売り出し中・未成約は含まない"],
+                  ["経済センサス", "2021年6月", "約5年前", "TSMC熊本進出、リモートワーク普及後の産業構造変化"],
+                  ["国勢調査", "2020年10月", "約6年前", "コロナ後の人口移動（東京→地方、外国人労働者増）"],
+                  ["建築着工統計", "2023年", "約2-3年前", "直近の建設コスト高騰・金利上昇の影響"],
+                  ["MLIT取引価格", "四半期ごと", "約3ヶ月前", "現在進行中の取引、売り出し中の物件"],
                 ]}
               />
               <p>
-                <strong>統計公表から現在までの市場変化</strong>（企業の進出・撤退、再開発計画、インフラ整備、
-                金利政策の変更、人口移動トレンドの変化等）はこれらのデータに反映されていません。
-                投資判断には、これらの統計分析を<strong>最新の市場調査・物件個別のデューデリジェンス・
-                現地ヒアリング</strong>と組み合わせることが不可欠です。
+                たとえば、2021年の経済センサスでは「飲食業の雇用が大幅減」と出ますが、
+                これはコロナ禍の一時的な影響です。2024年以降の回復は次回センサス（2026年）まで反映されません。
+                同様に、TSMCの熊本進出（2024年稼働開始）による雇用・不動産需要の変化も、
+                現在のデータには全く含まれていません。
+              </p>
+              <p className="font-semibold">
+                CI102テキスト（Mueller &amp; Laposa）でも繰り返し強調されています:
+              </p>
+              <p className="italic border-l-2 border-amber-400 pl-3">
+                &ldquo;Data tells you where you&apos;ve been, not where you&apos;re going.&rdquo;
+                <br />（データは過去を語るが、未来を保証しない）
               </p>
               <p>
-                CI102テキスト（Mueller &amp; Laposa）でも繰り返し強調されているように、
-                「データは過去を語るが、未来を保証しない（Data tells you where you&apos;ve been, not where you&apos;re going）」。
-                分析結果は投資判断の<strong>出発点</strong>であり、<strong>結論</strong>ではありません。
+                この分析は投資判断の<strong>出発点（Starting Point）</strong>です。
+                最終判断には、最新の市場調査、物件個別のデューデリジェンス、
+                現地の不動産業者へのヒアリング、そして何より
+                <strong>自分の目で現地を見ること</strong>が不可欠です。
               </p>
             </div>
 
