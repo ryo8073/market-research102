@@ -117,34 +117,32 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
   const pct = Math.max(0, Math.min(100, score));
   const color = pct >= 80 ? "#2A9D8F" : pct >= 60 ? "#2A9D8F" : pct >= 40 ? "#D4A843" : "#E76F51";
 
-  // Semi-circle gauge using stroke-dasharray on a <circle>.
-  // This avoids arc-endpoint math entirely.
+  // Semi-circle gauge using two <path> arcs.
+  // Center=(100,95), radius=75. Left=(25,95), Right=(175,95).
+  // Background: full semi-circle left→top→right (sweep-flag=0 for counter-clockwise in SVG = upper half).
+  // Score: partial arc from left, angle = pct% of 180°.
   const cx = 100, cy = 95, r = 75;
-  const circumference = 2 * Math.PI * r;
-  const halfCircumference = circumference / 2;
-  // Offset to start from left (9 o'clock) going clockwise to right (3 o'clock)
-  const dashOffset = circumference * 0.25; // rotate start to bottom-left
-  const scoreDash = halfCircumference * (pct / 100);
+
+  // Score arc endpoint: angle from left (π) sweeping toward right (0)
+  // At pct=0: angle=π (left), pct=100: angle=0 (right)
+  const angle = Math.PI * (1 - pct / 100);
+  const ex = cx + r * Math.cos(angle);
+  const ey = cy - r * Math.sin(angle); // SVG y-axis is inverted
+  const largeArc = pct > 50 ? 1 : 0;
+
+  // Background: full upper semi-circle (left to right, going up)
+  const bgPath = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
+  // Score: partial arc from left to (ex, ey)
+  const scorePath = pct > 0 ? `M ${cx - r} ${cy} A ${r} ${r} 0 ${largeArc} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}` : "";
 
   return (
     <div className="flex flex-col items-center">
       <svg width={200} height={115} viewBox="0 0 200 115">
         {/* Background semi-circle (grey) */}
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none" stroke="#e5e7eb" strokeWidth={14} strokeLinecap="round"
-          strokeDasharray={`${halfCircumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
-          className="dark:stroke-gray-700"
-        />
+        <path d={bgPath} fill="none" stroke="#e5e7eb" strokeWidth={14} strokeLinecap="round" className="dark:stroke-gray-700" />
         {/* Score arc (colored) */}
-        {pct > 0 && (
-          <circle
-            cx={cx} cy={cy} r={r}
-            fill="none" stroke={color} strokeWidth={14} strokeLinecap="round"
-            strokeDasharray={`${scoreDash} ${circumference}`}
-            strokeDashoffset={dashOffset}
-          />
+        {scorePath && (
+          <path d={scorePath} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" />
         )}
         {/* Zone labels */}
         <text x="15" y="108" className="fill-muted-foreground text-[8px]">要注意</text>
