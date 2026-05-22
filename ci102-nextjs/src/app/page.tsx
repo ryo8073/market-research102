@@ -608,13 +608,29 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
       </div>
 
       <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
-        <summary className="font-medium cursor-pointer">ℹ️ データの時点と制限</summary>
-        <ul className="mt-2 space-y-1 list-disc list-inside">
-          <li>経済センサス: 2021年6月時点（5年ごと更新、次回2026年）</li>
-          <li>国勢調査: 2020年10月時点（人口は2015年の値を2020年境界に組替）</li>
-          <li>MLIT取引価格: 選択した四半期の実績（リアルタイムではない）</li>
-          <li>これらは過去のスナップショットであり、現在の市場状況と異なる可能性があります</li>
-        </ul>
+        <summary className="font-medium cursor-pointer">ℹ️ データの時点と制限（Lagging Indicators）</summary>
+        <div className="mt-2 space-y-3">
+          <ul className="space-y-1 list-disc list-inside">
+            <li>経済センサス: 2021年6月時点（5年ごと更新、次回2026年）</li>
+            <li>国勢調査: 2020年10月時点（人口は2015年の値を2020年境界に組替）</li>
+            <li>建築着工統計: 2023年実績（年次更新）</li>
+            <li>MLIT取引価格: 選択した四半期の実績（リアルタイムではない）</li>
+          </ul>
+          <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 space-y-1">
+            <p className="font-semibold text-amber-700 dark:text-amber-400 text-xs">
+              本ダッシュボードの全指標は遅行指標（Lagging Indicators）です
+            </p>
+            <p>
+              経済センサス・国勢調査・建築着工統計はいずれも過去の実績を集計した統計であり、
+              公表時点から現在までの市場変化（企業の進出・撤退、リモートワーク普及による人口移動、
+              金利・建設コストの変動、都市計画の変更等）は反映されていません。
+            </p>
+            <p>
+              特に経済センサス（2021年）はコロナ禍直後のデータであり、その後の経済回復・構造変化を含みません。
+              投資判断には最新の市場調査・物件個別のデューデリジェンスと組み合わせてご利用ください。
+            </p>
+          </div>
+        </div>
       </details>
     </div>
   );

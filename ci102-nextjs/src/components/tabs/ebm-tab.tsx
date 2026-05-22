@@ -193,10 +193,25 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
                 </p>
               )}
             </div>
-            <p className="text-muted-foreground">
-              出典: e-Stat 建築着工統計 年報（国土交通省）Table 16（戸数・床面積）/ Table 4（階数別建物数）。
-              実際の開発計画に合わせて数値を変更してください。
-            </p>
+            <div className="text-muted-foreground space-y-1 border-t border-blue-200 dark:border-blue-800 pt-2 mt-1">
+              <p>
+                出典: e-Stat 建築着工統計 年報（国土交通省）Table 16（戸数・床面積）/ Table 4（階数別建物数）。
+                実際の開発計画に合わせて数値を変更してください。
+              </p>
+              <p className="font-semibold text-amber-700 dark:text-amber-400">
+                Lagging Indicator（遅行指標）に関する注意:
+              </p>
+              <p>
+                建築着工統計は過去の着工実績を集計したものであり、現在の市場状況を直接反映するものではありません。
+                統計公表時点（{housingDefaults.data_year}年実績）から現在まで、建設コスト・金利・用地価格・建築基準の変化により、
+                実際の開発パラメータは変動している可能性があります。
+              </p>
+              <p>
+                また、EBM/PERカスケード全体が経済センサス（2021年）・国勢調査（2020年）に基づくスナップショットです。
+                これらはいずれも遅行指標であり、直近の産業構造変化（企業誘致・撤退、リモートワーク普及等）は反映されていません。
+                投資判断には最新の市場調査と組み合わせてご利用ください。
+              </p>
+            </div>
           </div>
         )}
       </div>
