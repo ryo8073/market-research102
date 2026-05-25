@@ -3,13 +3,13 @@
 import { useMemo } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  ScatterChart, Scatter, ZAxis,
+  ScatterChart, Scatter, ZAxis, CartesianGrid, ReferenceArea, ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
 import { ReadingGuide } from "@/components/ui/reading-guide";
-import { RiskAlert, InfoBox } from "@/components/ui/callouts";
+import { RiskAlert, InfoBox, CaseStudy, ClientTip, InterpTable } from "@/components/ui/callouts";
 
 interface Props {
   prefCode: number;
@@ -18,15 +18,77 @@ interface Props {
   allData: Record<string, PrefectureData> | null;
 }
 
+/** Cap Rate adjustment by flood risk level (basis points) */
+function floodRiskPremiumBps(riskPct: number): number {
+  if (riskPct >= 50) return 200;
+  if (riskPct >= 30) return 150;
+  if (riskPct >= 15) return 100;
+  if (riskPct >= 5) return 50;
+  return 0;
+}
+
+/** Infrastructure resilience score (0-100) */
+function resilienceScore(m: MunicipalityData): number {
+  const medicalPts = Math.min((m.num_medical ?? 0) * 10, 40);
+  const busPts = Math.min((m.num_bus_stops ?? 0) * 2, 30);
+  const stationPts = Math.min((m.num_stations ?? 0) * 15, 30);
+  return Math.round(medicalPts + busPts + stationPts);
+}
+
 export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
   const { data: municipalities } = useMunicipalityData(prefCode);
 
-  // Sort municipalities by flood risk
-  const floodRanking = useMemo(() => {
+  // Risk × Land Price scatter data (investment decision matrix)
+  const riskPriceScatter = useMemo(() => {
+    return municipalities
+      .filter((m) => m.flood_risk_pct != null && m.land_price_median != null && m.land_price_median > 0)
+      .map((m) => ({
+        name: m.area_name,
+        risk: m.flood_risk_pct!,
+        price: Math.round(m.land_price_median! / 1000), // 千円/m²
+        resilience: resilienceScore(m),
+        premium: floodRiskPremiumBps(m.flood_risk_pct!),
+      }));
+  }, [municipalities]);
+
+  // Median values for quadrant reference lines
+  const medianRisk = useMemo(() => {
+    const risks = riskPriceScatter.map((d) => d.risk).sort((a, b) => a - b);
+    return risks.length > 0 ? risks[Math.floor(risks.length / 2)] : 15;
+  }, [riskPriceScatter]);
+  const medianPrice = useMemo(() => {
+    const prices = riskPriceScatter.map((d) => d.price).sort((a, b) => a - b);
+    return prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 100;
+  }, [riskPriceScatter]);
+
+  // Cap Rate adjustment table by municipality
+  const capRateAdjustment = useMemo(() => {
     return municipalities
       .filter((m) => m.flood_risk_pct != null && m.flood_risk_pct > 0)
-      .sort((a, b) => (b.flood_risk_pct ?? 0) - (a.flood_risk_pct ?? 0))
-      .slice(0, 20);
+      .map((m) => ({
+        name: m.area_name,
+        floodRisk: m.flood_risk_pct!,
+        premium: floodRiskPremiumBps(m.flood_risk_pct!),
+        landPrice: m.land_price_median ?? 0,
+        resilience: resilienceScore(m),
+      }))
+      .sort((a, b) => b.premium - a.premium)
+      .slice(0, 15);
+  }, [municipalities]);
+
+  // Risk × Resilience: municipalities with high risk but low infrastructure
+  const vulnerableMunis = useMemo(() => {
+    return municipalities
+      .filter((m) => (m.flood_risk_pct ?? 0) > 10)
+      .map((m) => ({
+        name: m.area_name,
+        risk: m.flood_risk_pct ?? 0,
+        resilience: resilienceScore(m),
+        medical: m.num_medical ?? 0,
+        busStops: m.num_bus_stops ?? 0,
+      }))
+      .sort((a, b) => b.risk - a.risk - (b.resilience - a.resilience))
+      .slice(0, 10);
   }, [municipalities]);
 
   // National comparison
@@ -43,77 +105,213 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
       .slice(0, 20);
   }, [allData, prefCode]);
 
-  const hasFloodData = floodRanking.length > 0 || nationalFloodData.length > 0;
+  const hasFloodData = capRateAdjustment.length > 0 || nationalFloodData.length > 0;
 
   return (
     <div className="space-y-6">
       <ReadingGuide
         steps={[
-          { title: "浸水リスクを確認", description: "市区町村ごとの浸水想定面積割合を確認" },
-          { title: "全国比較", description: "都道府県の平均浸水リスクを全国と比較" },
-          { title: "投資判断に反映", description: "高リスク地域は利回り上乗せや回避を検討" },
+          { title: "リスク×地価を可視化", description: "散布図で高リスク＋高地価エリア（危険ゾーン）を特定" },
+          { title: "利回り調整幅を確認", description: "浸水リスク度に応じたCap Rate上乗せ幅を把握" },
+          { title: "インフラ回復力を評価", description: "医療・交通インフラの充実度で被災後の回復力を判定" },
         ]}
       />
 
       {!hasFloodData ? (
         <InfoBox title="データ未取得">
           災害リスクデータは国土数値情報からダウンロードが必要です。
-          <code className="text-xs block mt-1">python scripts/download_nlni.py --dataset flood</code>
+          <code className="text-xs block mt-1">python scripts/download_nlni.py --dataset flood land_prices</code>
         </InfoBox>
       ) : (
         <>
-          {/* Prefecture summary */}
+          {/* Summary KPIs with investment context */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-4 text-center">
                 <p className="text-xs text-muted-foreground">平均浸水リスク</p>
-                <p className="text-2xl font-bold">
+                <p className={`text-2xl font-bold ${(pref.flood_risk_avg_pct ?? 0) > 15 ? "text-red-600" : (pref.flood_risk_avg_pct ?? 0) > 5 ? "text-amber-600" : "text-green-600"}`}>
                   {pref.flood_risk_avg_pct != null ? `${pref.flood_risk_avg_pct}%` : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  想定利回り調整: +{floodRiskPremiumBps(pref.flood_risk_avg_pct ?? 0)}bps
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <p className="text-xs text-muted-foreground">リスクあり自治体</p>
-                <p className="text-2xl font-bold">{floodRanking.length}</p>
+                <p className="text-xs text-muted-foreground">高リスク自治体</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {municipalities.filter((m) => (m.flood_risk_pct ?? 0) > 30).length}
+                </p>
+                <p className="text-[10px] text-muted-foreground">浸水率30%超</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <p className="text-xs text-muted-foreground">医療施設数</p>
-                <p className="text-2xl font-bold">{pref.num_medical?.toLocaleString() ?? "—"}</p>
+                <p className="text-xs text-muted-foreground">医療施設密度</p>
+                <p className="text-2xl font-bold">
+                  {pref.num_medical != null && pref.population > 0
+                    ? (pref.num_medical / pref.population * 10000).toFixed(1)
+                    : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">施設/万人（回復力指標）</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <p className="text-xs text-muted-foreground">道路セグメント</p>
-                <p className="text-2xl font-bold">{pref.total_road_segments?.toLocaleString() ?? "—"}</p>
+                <p className="text-xs text-muted-foreground">全国順位</p>
+                <p className="text-2xl font-bold">
+                  {nationalFloodData.length > 0
+                    ? `${nationalFloodData.findIndex((d) => d.isCurrent) + 1}/${nationalFloodData.length}`
+                    : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">リスクが高い順</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Municipality flood risk ranking */}
-          {floodRanking.length > 0 && (
+          {/* Risk × Land Price Investment Matrix (4 quadrants) */}
+          {riskPriceScatter.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">{prefName} 浸水リスク上位（市区町村別）</CardTitle>
+                <CardTitle className="text-sm">投資判断マトリクス — 浸水リスク × 地価</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  4象限で各市区町村の投資ポジションを可視化。右上が最もリスクの高い「危険ゾーン」
+                </p>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={Math.max(300, floodRanking.length * 28)}>
-                  <BarChart data={floodRanking} layout="vertical" margin={{ left: 80 }}>
-                    <XAxis type="number" tickFormatter={(v) => `${v}%`} />
-                    <YAxis type="category" dataKey="area_name" width={75} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, "浸水面積率"]} />
-                    <Bar dataKey="flood_risk_pct" name="浸水面積率">
-                      {floodRanking.map((entry, i) => (
-                        <Cell
-                          key={i}
-                          fill={(entry.flood_risk_pct ?? 0) > 30 ? "#EF4444" : (entry.flood_risk_pct ?? 0) > 10 ? "#F59E0B" : "#3B82F6"}
-                        />
+                <ResponsiveContainer width="100%" height={400}>
+                  <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    {/* 4 quadrant backgrounds */}
+                    <ReferenceArea x1={0} x2={medianRisk} y1={medianPrice} y2={999}
+                      fill="#22C55E" fillOpacity={0.06} label={{ value: "優良立地", position: "insideTopLeft", fontSize: 10, fill: "#16A34A" }} />
+                    <ReferenceArea x1={medianRisk} x2={100} y1={medianPrice} y2={999}
+                      fill="#EF4444" fillOpacity={0.06} label={{ value: "危険ゾーン", position: "insideTopRight", fontSize: 10, fill: "#DC2626" }} />
+                    <ReferenceArea x1={0} x2={medianRisk} y1={0} y2={medianPrice}
+                      fill="#3B82F6" fillOpacity={0.06} label={{ value: "バリュー", position: "insideBottomLeft", fontSize: 10, fill: "#2563EB" }} />
+                    <ReferenceArea x1={medianRisk} x2={100} y1={0} y2={medianPrice}
+                      fill="#F59E0B" fillOpacity={0.06} label={{ value: "利回り狙い", position: "insideBottomRight", fontSize: 10, fill: "#D97706" }} />
+                    <ReferenceLine x={medianRisk} stroke="#6B7280" strokeDasharray="3 3" />
+                    <ReferenceLine y={medianPrice} stroke="#6B7280" strokeDasharray="3 3" />
+                    <XAxis type="number" dataKey="risk" name="浸水リスク" unit="%"
+                      label={{ value: "浸水リスク(%)", position: "bottom", fontSize: 11 }} />
+                    <YAxis type="number" dataKey="price" name="地価" unit="千円"
+                      label={{ value: "地価(千円/m²)", angle: -90, position: "insideLeft", fontSize: 11 }} />
+                    <ZAxis type="number" dataKey="resilience" range={[40, 200]} name="回復力" />
+                    <Tooltip
+                      content={({ payload }) => {
+                        if (!payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="bg-white dark:bg-gray-800 p-2 border rounded shadow text-xs">
+                            <p className="font-bold">{d.name}</p>
+                            <p>浸水リスク: {d.risk}%</p>
+                            <p>地価: {d.price}千円/m²</p>
+                            <p>利回り上乗せ: +{d.premium}bps</p>
+                            <p>回復力スコア: {d.resilience}/100</p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Scatter data={riskPriceScatter} fill="#2A9D8F" fillOpacity={0.7} />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Cap Rate Adjustment Table */}
+          {capRateAdjustment.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Cap Rate 調整モデル — 災害リスクプレミアム</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  浸水リスクが高いエリアは、利回り上乗せ（リスクプレミアム）を織り込んだ投資判断が必要
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-1">市区町村</th>
+                        <th className="text-right py-2 px-1">浸水率</th>
+                        <th className="text-right py-2 px-1">利回り上乗せ</th>
+                        <th className="text-right py-2 px-1">地価(円/m²)</th>
+                        <th className="text-right py-2 px-1">回復力</th>
+                        <th className="text-center py-2 px-1">判定</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {capRateAdjustment.map((row) => (
+                        <tr key={row.name} className="border-b hover:bg-muted/50">
+                          <td className="py-1.5 px-1">{row.name}</td>
+                          <td className="text-right py-1.5 px-1">
+                            <span className={row.floodRisk > 30 ? "text-red-600 font-bold" : row.floodRisk > 10 ? "text-amber-600" : ""}>
+                              {row.floodRisk.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="text-right py-1.5 px-1 font-mono">+{row.premium}bps</td>
+                          <td className="text-right py-1.5 px-1">{row.landPrice > 0 ? row.landPrice.toLocaleString() : "—"}</td>
+                          <td className="text-right py-1.5 px-1">
+                            <span className={row.resilience >= 50 ? "text-green-600" : row.resilience >= 25 ? "text-amber-600" : "text-red-600"}>
+                              {row.resilience}/100
+                            </span>
+                          </td>
+                          <td className="text-center py-1.5 px-1">
+                            {row.floodRisk > 30 && row.resilience < 30
+                              ? <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px]">回避推奨</span>
+                              : row.floodRisk > 15
+                              ? <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px]">要検討</span>
+                              : <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px]">許容</span>
+                            }
+                          </td>
+                        </tr>
                       ))}
-                    </Bar>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Vulnerability Analysis: High Risk + Low Infrastructure */}
+          {vulnerableMunis.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">脆弱性分析 — 高リスク × 低インフラ</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  浸水リスクが高く、かつ医療・交通インフラが不足しているエリア。被災時の回復に時間を要する
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={Math.max(250, vulnerableMunis.length * 28)}>
+                  <BarChart data={vulnerableMunis} layout="vertical" margin={{ left: 80 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" domain={[0, 100]} />
+                    <YAxis type="category" dataKey="name" width={75} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      content={({ payload }) => {
+                        if (!payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="bg-white dark:bg-gray-800 p-2 border rounded shadow text-xs">
+                            <p className="font-bold">{d.name}</p>
+                            <p>浸水リスク: {d.risk}% / 回復力: {d.resilience}/100</p>
+                            <p>医療施設: {d.medical} / バス停: {d.busStops}</p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar dataKey="risk" name="浸水リスク(%)" fill="#EF4444" fillOpacity={0.7} stackId="a" />
+                    <Bar dataKey="resilience" name="回復力スコア" fill="#22C55E" fillOpacity={0.5} stackId="b" />
                   </BarChart>
                 </ResponsiveContainer>
+                <div className="flex gap-4 mt-2 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-400 inline-block rounded" />浸水リスク(%)</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-400 inline-block rounded" />回復力スコア</span>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -141,10 +339,30 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
             </Card>
           )}
 
-          <RiskAlert title="災害リスクの解釈">
-            浸水想定区域データは「想定最大規模降雨」に基づくシミュレーション結果です。
-            実際の被災確率とは異なります。投資判断には地盤情報・ハザードマップ・保険料率も
-            併せて確認してください。データ出典: 国土数値情報 洪水浸水想定区域（国土交通省）
+          {/* Interpretation guide */}
+          <InterpTable
+            headers={["浸水率", "利回り上乗せ", "投資判断", "根拠"]}
+            rows={[
+              ["50%以上", "+200bps", "原則回避", "建物価値の大幅毀損リスク、保険料高騰"],
+              ["30-50%", "+150bps", "慎重検討", "RC造限定、1F非居住設計が条件"],
+              ["15-30%", "+100bps", "条件付き可", "ハザードマップ・地盤調査で個別判断"],
+              ["5-15%", "+50bps", "通常範囲", "一般的な保険付保で対応可能"],
+              ["5%未満", "+0bps", "良好", "リスクプレミアム不要"],
+            ]}
+          />
+
+          <ClientTip>
+            「この地域の浸水リスクは{pref.flood_risk_avg_pct?.toFixed(1) ?? "—"}%です。
+            不動産鑑定では、災害リスクに応じて利回りに{floodRiskPremiumBps(pref.flood_risk_avg_pct ?? 0)}bps
+            （{(floodRiskPremiumBps(pref.flood_risk_avg_pct ?? 0) / 100).toFixed(2)}%）の上乗せを想定します。
+            これは保険料コストや将来の修繕リスクを織り込んだ数値です。」
+          </ClientTip>
+
+          <RiskAlert title="災害リスクデータの限界">
+            浸水想定区域データは「想定最大規模降雨」に基づくシミュレーション結果であり、
+            実際の被災確率とは異なります。Cap Rate調整幅は教育目的の参考値であり、
+            実務では地盤調査・過去の災害履歴・保険見積もりに基づいて個別判断してください。
+            データ出典: 国土数値情報 洪水浸水想定区域（国土交通省, H24）
           </RiskAlert>
         </>
       )}
