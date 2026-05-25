@@ -136,6 +136,27 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
         ]}
       />
 
+      {/* So What? — 結論サマリー */}
+      {hasData && (
+        <Card className="border-2 border-[#1B2A4A] bg-[#1B2A4A]/5">
+          <CardContent className="pt-4">
+            <p className="text-sm font-bold text-[#1B2A4A] dark:text-white mb-1">
+              {prefName}の人口動態判定
+            </p>
+            <p className="text-sm">
+              {(() => {
+                const change = pref.pop_change_pct ?? 0;
+                const planCount = pref.has_location_plan_count ?? 0;
+                if (change > 0) return `人口増加傾向（推計+${change.toFixed(1)}%）。住宅需要は堅調で、新築開発・バリューアップ両方が検討可能です。立地適正化計画${planCount}自治体が策定済みで、居住誘導区域内は特に有望。`;
+                if (change > -10) return `緩やかな人口減少（推計${change.toFixed(1)}%）。全体の住宅需要は縮小傾向ですが、DID内の高密度エリアや立地適正化計画区域（${planCount}自治体）は需要維持が見込めます。選別投資が重要。`;
+                if (change > -20) return `明確な人口減少（推計${change.toFixed(1)}%）。新規開発は原則回避し、既存高稼働物件のみ選別投資。立地適正化計画区域外は撤退・用途転換も視野に入れてください。`;
+                return `急激な人口流出（推計${change.toFixed(1)}%）。不動産投資は原則回避。やむを得ない場合は医療・介護等のディフェンシブ用途に限定し、出口戦略を最初から計画してください。`;
+              })()}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {!hasData ? (
         <InfoBox title="データ未取得">
           人口推計データは国土数値情報からダウンロードが必要です。

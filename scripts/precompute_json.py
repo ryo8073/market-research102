@@ -311,6 +311,30 @@ def _enrich_prefecture_with_nlni(result: dict, pref_code: int, nlni: dict[str, p
         if not pref_df.empty:
             result["total_road_segments"] = int(pref_df["total_road_segments"].sum())
 
+    # --- Enhanced Investment Score (integrates NLNI spatial data) ---
+    # Original score is economic-only. This adds risk/access/population.
+    base_score = result.get("suitability_score", {}).get("total_score", 50)
+    # Risk adjustment: -0 to -15 points for flood risk
+    flood_pct = result.get("flood_risk_avg_pct", 0) or 0
+    risk_penalty = min(15, flood_pct * 0.5)
+    # Access bonus: 0 to +10 for transit density
+    pop = result.get("population", 1) or 1
+    riders = result.get("total_daily_riders", 0) or 0
+    transit_density = riders / pop * 100
+    access_bonus = min(10, transit_density * 0.1)
+    # Population trend: -10 to +5
+    pop_change = result.get("pop_change_pct", 0) or 0
+    pop_adj = max(-10, min(5, pop_change * 0.5))
+
+    enhanced = round(max(0, min(100, base_score - risk_penalty + access_bonus + pop_adj)), 1)
+    result["enhanced_score"] = enhanced
+    result["score_adjustments"] = {
+        "base": round(base_score, 1),
+        "risk_penalty": round(-risk_penalty, 1),
+        "access_bonus": round(access_bonus, 1),
+        "pop_adjustment": round(pop_adj, 1),
+    }
+
 
 def _enrich_municipality_with_nlni(rec: dict, pref_code: int, nlni: dict[str, pd.DataFrame]):
     """Add NLNI metrics to a single municipality record."""

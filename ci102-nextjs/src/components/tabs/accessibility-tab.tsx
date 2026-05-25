@@ -121,6 +121,29 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
         ]}
       />
 
+      {/* So What? — 結論サマリー */}
+      {hasData && (
+        <Card className="border-2 border-[#1B2A4A] bg-[#1B2A4A]/5">
+          <CardContent className="pt-4">
+            <p className="text-sm font-bold text-[#1B2A4A] dark:text-white mb-1">
+              {prefName}の交通アクセス判定
+            </p>
+            <p className="text-sm">
+              {(() => {
+                const density = pref.total_daily_riders && pref.population
+                  ? (pref.total_daily_riders / pref.population) * 100 : 0;
+                const coverage = municipalities.length > 0
+                  ? municipalities.filter((m) => (m.num_stations ?? 0) > 0 || (m.num_bus_stops ?? 0) > 3).length / municipalities.length * 100 : 0;
+                if (density >= 80) return `交通インフラが非常に充実（利用密度${density.toFixed(0)}%）。駅近物件は低利回りでも安定稼働が期待でき、商業・オフィス用途で幅広いテナント誘致が可能です。`;
+                if (density >= 30) return `交通環境は良好（利用密度${density.toFixed(0)}%）。駅徒歩10分圏内に10-30%の賃料プレミアムが存在します。公共交通カバー率${coverage.toFixed(0)}%で、カバー外エリアは駐車場必須。`;
+                if (density >= 10) return `交通利便性は中程度（利用密度${density.toFixed(0)}%）。公共交通カバー率${coverage.toFixed(0)}%で、多くの自治体が車依存です。ロードサイド商業・物流拠点が有望。`;
+                return `交通アクセスが限定的（利用密度${density.toFixed(0)}%）。車社会型の市場です。駐車場台数・幹線道路接道・視認性が不動産価値の主要ドライバーになります。`;
+              })()}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {!hasData ? (
         <InfoBox title="データ未取得">
           交通データは国土数値情報からダウンロードが必要です。

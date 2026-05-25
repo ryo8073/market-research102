@@ -117,6 +117,27 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
         ]}
       />
 
+      {/* So What? — 結論サマリー */}
+      {hasFloodData && (
+        <Card className="border-2 border-[#1B2A4A] bg-[#1B2A4A]/5">
+          <CardContent className="pt-4">
+            <p className="text-sm font-bold text-[#1B2A4A] dark:text-white mb-1">
+              {prefName}の災害リスク判定
+            </p>
+            <p className="text-sm">
+              {(pref.flood_risk_avg_pct ?? 0) >= 20
+                ? `浸水リスクが高い地域です（平均${pref.flood_risk_avg_pct?.toFixed(1)}%）。RC造高層階・1F非居住設計を条件とし、Cap Rate +${floodRiskPremiumBps(pref.flood_risk_avg_pct ?? 0)}bps以上の利回りが取れない物件は回避を推奨します。`
+                : (pref.flood_risk_avg_pct ?? 0) >= 5
+                ? `中程度の浸水リスク（平均${pref.flood_risk_avg_pct?.toFixed(1)}%）。個別物件ごとにハザードマップを確認し、Cap Rate +${floodRiskPremiumBps(pref.flood_risk_avg_pct ?? 0)}bpsのリスクプレミアムを織り込んだ投資判断を行ってください。`
+                : `浸水リスクは低い水準です（平均${pref.flood_risk_avg_pct?.toFixed(1) ?? "—"}%）。リスクプレミアムの上乗せは不要ですが、局所的な低地の確認は必要です。`}
+              {" "}医療施設密度{pref.num_medical != null && pref.population > 0
+                ? `${(pref.num_medical / pref.population * 10000).toFixed(1)}施設/万人`
+                : "—"}で、被災時の回復力は{(pref.num_medical ?? 0) / Math.max(pref.population, 1) * 10000 > 5 ? "良好" : "限定的"}。
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {!hasFloodData ? (
         <InfoBox title="データ未取得">
           災害リスクデータは国土数値情報からダウンロードが必要です。

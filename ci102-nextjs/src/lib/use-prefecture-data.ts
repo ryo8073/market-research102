@@ -45,6 +45,13 @@ export interface PrefectureData {
   pop_change_pct?: number;
   has_location_plan_count?: number;
   total_road_segments?: number;
+  enhanced_score?: number;
+  score_adjustments?: {
+    base: number;
+    risk_penalty: number;
+    access_bonus: number;
+    pop_adjustment: number;
+  };
   lq_table: Array<{
     industry: string;
     local_emp: number;

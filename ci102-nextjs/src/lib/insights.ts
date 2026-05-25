@@ -340,9 +340,76 @@ export function generateNarrative(
     `改善余地: ${weakest.name}（${weakest.score.toFixed(0)}点/${weakest.weight}点満点）。` +
     `全国${scoreBench.rank}位/47都道府県。`;
 
+  // --- Section: 空間データ分析（NLNIデータ統合） ---
+  const spatialItems: string[] = [];
+
+  // Flood risk
+  if (pref.flood_risk_avg_pct != null) {
+    const floodLabel = pref.flood_risk_avg_pct >= 20 ? "高リスク"
+      : pref.flood_risk_avg_pct >= 10 ? "中程度のリスク"
+      : pref.flood_risk_avg_pct >= 3 ? "低リスク" : "極めて低い";
+    const premiumBps = pref.flood_risk_avg_pct >= 50 ? 200
+      : pref.flood_risk_avg_pct >= 30 ? 150
+      : pref.flood_risk_avg_pct >= 15 ? 100
+      : pref.flood_risk_avg_pct >= 5 ? 50 : 0;
+    spatialItems.push(
+      `浸水リスク: ${floodLabel}（平均${pref.flood_risk_avg_pct.toFixed(1)}%）。` +
+      (premiumBps > 0 ? `Cap Rate +${premiumBps}bps の上乗せを推奨。` : "リスクプレミアムは不要。")
+    );
+  }
+
+  // Transit access
+  if (pref.total_daily_riders != null && pref.population > 0) {
+    const density = (pref.total_daily_riders / pref.population) * 100;
+    const transitLabel = density >= 100 ? "最上位の交通集積"
+      : density >= 50 ? "良好な交通環境"
+      : density >= 20 ? "中程度の交通利便性"
+      : "交通アクセスが限定的（車依存）";
+    spatialItems.push(
+      `交通利用密度: ${transitLabel}（人口比${density.toFixed(0)}%）。` +
+      (density < 20 ? "駐車場確保・ロードサイド立地が価値に直結。" : "駅近物件に賃料プレミアム。")
+    );
+    if (pref.num_stations != null && pref.num_stations > 0) {
+      const efficiency = Math.round(pref.total_daily_riders / pref.num_stations);
+      spatialItems.push(`1駅あたり${efficiency.toLocaleString()}人/日が利用（${pref.num_stations}駅）。`);
+    }
+  }
+
+  // Population trend
+  if (pref.pop_change_pct != null) {
+    const popLabel = pref.pop_change_pct > 0 ? "人口増加" : pref.pop_change_pct > -10 ? "緩やかな減少" : "急激な人口流出";
+    spatialItems.push(
+      `人口動態: ${popLabel}（推計${pref.pop_change_pct > 0 ? "+" : ""}${pref.pop_change_pct.toFixed(1)}%）。` +
+      (pref.pop_change_pct < -15
+        ? "住宅需要の構造的縮小に注意。立地適正化計画エリアに集中投資が安全。"
+        : pref.pop_change_pct < 0
+        ? "DID内高密度エリアは需要維持の見込み。"
+        : "住宅需要は堅調。新築・バリューアップ両方検討可。")
+    );
+  }
+
+  // DID
+  if (pref.did_total_area_ha != null && pref.did_total_population != null && pref.did_total_area_ha > 0) {
+    const didDensity = Math.round(pref.did_total_population / pref.did_total_area_ha);
+    spatialItems.push(
+      `DID密度: ${didDensity}人/ha（都市集約度）。` +
+      (didDensity >= 80 ? "高密度都市化 — インフラ効率が高く不動産価値が持続しやすい。"
+        : didDensity >= 40 ? "中密度 — コンパクトシティ政策の効果に注目。"
+        : "低密度 — スプロール型で維持コストが高い。")
+    );
+  }
+
+  // Location plan
+  if (pref.has_location_plan_count != null && pref.has_location_plan_count > 0) {
+    spatialItems.push(
+      `立地適正化計画: ${pref.has_location_plan_count}自治体が策定済み。居住誘導区域内は行政のインフラ投資が集中する。`
+    );
+  }
+
   const sections: NarrativeSection[] = [
     { icon: "chart", title: "経済の特徴", items: economyItems, level: "neutral" },
     { icon: "target", title: "投資判断のポイント", items: investItems, level: "positive" },
+    { icon: "map", title: "空間データ分析", items: spatialItems.length > 0 ? spatialItems : ["国土数値情報データ未取得。scripts/generate_overlays.py を実行してください。"], level: "neutral" },
     { icon: "alert", title: "リスク要因", items: riskItems, level: "negative" },
   ];
 
