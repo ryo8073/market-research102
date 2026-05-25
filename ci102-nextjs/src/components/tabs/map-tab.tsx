@@ -225,20 +225,46 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
         <CardContent>
           <MapLayerControls activeLayers={activeLayers} onToggle={toggleLayer} />
           <p className="text-[10px] text-muted-foreground mt-2">
-            レイヤーを選択すると県内マップ上に重ねて表示されます。データ未取得のレイヤーは表示されません。
+            レイヤーを選択すると県内マップ上に重ねて表示されます。地価公示・鉄道はホバーで詳細表示。
           </p>
-          {/* Active overlay legend */}
+          {/* Active overlay status messages */}
           {activeLayers.size > 0 && (
-            <div className="mt-3 flex flex-wrap gap-3">
-              {NLNI_LAYERS.filter((l) => activeLayers.has(l.id)).map((layer) => (
-                <span key={layer.id} className="inline-flex items-center gap-1.5 text-[11px]">
-                  <span
-                    className="inline-block w-4 h-3 rounded-sm border border-gray-300"
-                    style={{ backgroundColor: layer.color, opacity: layer.id === "zoning" ? 0.5 : layer.opacity }}
-                  />
-                  {layer.label}
-                </span>
-              ))}
+            <div className="mt-3 space-y-1.5">
+              <div className="flex flex-wrap gap-3">
+                {NLNI_LAYERS.filter((l) => activeLayers.has(l.id)).map((layer) => {
+                  const overlay = nlniOverlays[layer.id];
+                  const featureCount = overlay?.features?.length ?? 0;
+                  const hasData = overlay != null && featureCount > 0;
+                  return (
+                    <span key={layer.id} className="inline-flex items-center gap-1.5 text-[11px]">
+                      <span
+                        className="inline-block w-4 h-3 rounded-sm border border-gray-300"
+                        style={{ backgroundColor: layer.color, opacity: hasData ? (layer.id === "zoning" ? 0.5 : layer.opacity) : 0.2 }}
+                      />
+                      {layer.label}
+                      {hasData
+                        ? <span className="text-muted-foreground">({featureCount.toLocaleString()}件)</span>
+                        : <span className="text-red-500">(データなし)</span>}
+                    </span>
+                  );
+                })}
+              </div>
+              {/* Specific status messages for missing data */}
+              {activeLayers.has("location_opt") && (!nlniOverlays.location_opt || nlniOverlays.location_opt?.features?.length === 0) && (
+                <p className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/20 rounded px-2 py-1">
+                  {prefName}には立地適正化計画の策定済み区域データがありません。全自治体が未策定、またはデータが国土数値情報に未登録の可能性があります。
+                </p>
+              )}
+              {activeLayers.has("flood") && (!nlniOverlays.flood || nlniOverlays.flood?.features?.length === 0) && (
+                <p className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/20 rounded px-2 py-1">
+                  {prefName}の洪水浸水想定区域データがありません。データ未取得またはシミュレーション未公表の可能性があります。
+                </p>
+              )}
+              {activeLayers.has("zoning") && nlniOverlays.zoning && nlniOverlays.zoning?.features?.length > 10000 && (
+                <p className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/20 rounded px-2 py-1">
+                  用途地域データが{nlniOverlays.zoning.features.length.toLocaleString()}件と大量のため、描画に時間がかかる場合があります。ズームインすると表示されやすくなります。
+                </p>
+              )}
             </div>
           )}
         </CardContent>
