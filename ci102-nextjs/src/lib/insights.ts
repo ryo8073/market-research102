@@ -325,19 +325,20 @@ export function generateNarrative(
 
   // --- Score interpretation ---
   const ss = pref.suitability_score;
+  // Each sub-score is 0-100, weight is the % contribution to total
   const scoreBreakdown = [
     { name: "EBM", score: ss.ebm_score, weight: 20 },
     { name: "基盤比率", score: ss.ratio_score, weight: 20 },
     { name: "RS", score: ss.rs_score, weight: 25 },
-    { name: "Gap", score: ss.gap_score, weight: 15 },
-    { name: "規模", score: ss.scale_score, weight: 20 },
+    { name: "Gap", score: ss.gap_score, weight: 20 },
+    { name: "規模", score: ss.scale_score, weight: 15 },
   ];
   const strongest = scoreBreakdown.reduce((a, b) => (a.score > b.score ? a : b));
   const weakest = scoreBreakdown.reduce((a, b) => (a.score < b.score ? a : b));
   const scoreInterpretation =
     `総合${ss.total_score.toFixed(0)}点（${scoreLabel}）。` +
-    `最大の強み: ${strongest.name}（${strongest.score.toFixed(0)}点/${strongest.weight}点満点）。` +
-    `改善余地: ${weakest.name}（${weakest.score.toFixed(0)}点/${weakest.weight}点満点）。` +
+    `最大の強み: ${strongest.name}（${(strongest.score * strongest.weight / 100).toFixed(1)}/${strongest.weight}点）。` +
+    `改善余地: ${weakest.name}（${(weakest.score * weakest.weight / 100).toFixed(1)}/${weakest.weight}点）。` +
     `全国${scoreBench.rank}位/47都道府県。`;
 
   // --- Section: 空間データ分析（NLNIデータ統合） ---

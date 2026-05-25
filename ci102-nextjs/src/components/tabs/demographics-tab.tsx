@@ -157,6 +157,72 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
         </Card>
       )}
 
+      {/* 構造矛盾の解説: 雇用増 × 人口減 */}
+      {hasData && pref.actual_emp_change != null && (pref.pop_change_pct ?? 0) < 0 && (
+        <Card className="border-l-4 border-l-[#D4A843]">
+          <CardHeader>
+            <CardTitle className="text-sm">なぜ雇用は増えているのに人口は減るのか？</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-3">
+            <p>
+              {prefName}では2016→2021年に雇用が
+              <strong className={pref.actual_emp_change > 0 ? "text-green-600" : "text-red-600"}>
+                {pref.actual_emp_change > 0 ? "+" : ""}{pref.actual_emp_change.toLocaleString()}人
+              </strong>
+              {pref.actual_emp_change > 0 ? "増加" : "減少"}した一方、
+              将来推計人口は2020→2040年で
+              <strong className="text-red-600">{pref.pop_change_pct?.toFixed(1)}%</strong>の減少が見込まれています。
+              {pref.actual_emp_change > 0 && " この一見矛盾する現象は、日本全体で起きている構造変化です。"}
+            </p>
+
+            {pref.actual_emp_change > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-1.5 px-2 font-semibold">要因</th>
+                      <th className="text-left py-1.5 px-2 font-semibold">説明</th>
+                      <th className="text-left py-1.5 px-2 font-semibold">投資への影響</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="py-1.5 px-2 font-medium">労働参加率の上昇</td>
+                      <td className="py-1.5 px-2">女性・高齢者の就業率が過去最高。人口減でも「働く人」は増加</td>
+                      <td className="py-1.5 px-2">テナント需要は短期的に維持されるが、退職に伴う急減リスクあり</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-1.5 px-2 font-medium">外国人労働者の増加</td>
+                      <td className="py-1.5 px-2">2016→2021で約50万人増。住民票上の人口には反映されにくい</td>
+                      <td className="py-1.5 px-2">工場・物流エリアの賃貸住宅需要を支える</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-1.5 px-2 font-medium">パート・非正規の増加</td>
+                      <td className="py-1.5 px-2">サービス業を中心に雇用者数は増加、1人あたり労働時間は横ばい</td>
+                      <td className="py-1.5 px-2">雇用の「質」が低いと賃料負担力に限界がある</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-1.5 px-2 font-medium">データの時点差</td>
+                      <td className="py-1.5 px-2">雇用=2016-2021実績、人口=2020-2040推計。過去と将来が混在</td>
+                      <td className="py-1.5 px-2">短期(雇用実績)は強気、長期(人口推計)は慎重に</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3">
+              <p className="text-xs font-semibold text-amber-700 mb-1">投資判断への示唆</p>
+              <p className="text-xs">
+                {pref.actual_emp_change > 0
+                  ? `短期（5-10年）では雇用増がテナント需要を支えますが、長期（20年超）では人口減少による住宅需要の構造的縮小が不可避です。「今の雇用成長」で買い、「人口減少が顕在化する前」に売る — 出口戦略を最初から計画した投資が合理的です。EBMタブの雇用分析は短期の需要見通し、この人口動態タブは長期の構造リスクを示しています。`
+                  : `雇用も人口もともに減少傾向であり、需要の構造的縮小フェーズにあります。投資する場合は、立地適正化計画の居住誘導区域内に限定し、ディフェンシブ用途（医療・介護・生活必需品）を優先してください。`}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {!hasData ? (
         <InfoBox title="データ未取得">
           人口推計データは国土数値情報からダウンロードが必要です。

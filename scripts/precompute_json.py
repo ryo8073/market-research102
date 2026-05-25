@@ -290,12 +290,16 @@ def _enrich_prefecture_with_nlni(result: dict, pref_code: int, nlni: dict[str, p
                 if not year_df.empty:
                     proj[str(year)] = int(year_df["population"].sum())
             result["pop_projection"] = proj
-            if len(proj) >= 2:
-                earliest = min(int(k) for k in proj.keys())
-                latest = max(int(k) for k in proj.keys())
-                if proj[str(earliest)] > 0:
-                    change = (proj[str(latest)] - proj[str(earliest)]) / proj[str(earliest)] * 100
-                    result["pop_change_pct"] = round(change, 1)
+            # pop_change_pct: 20-year outlook (2020→2040) for investment decisions
+            # Also compute 10-year (2020→2030) for short-term perspective
+            base_pop = proj.get("2020", 0)
+            if base_pop > 0:
+                if "2040" in proj:
+                    change_20y = (proj["2040"] - base_pop) / base_pop * 100
+                    result["pop_change_pct"] = round(change_20y, 1)
+                if "2030" in proj:
+                    change_10y = (proj["2030"] - base_pop) / base_pop * 100
+                    result["pop_change_10y_pct"] = round(change_10y, 1)
 
     # Location optimization plan count
     if "location_opt" in nlni:

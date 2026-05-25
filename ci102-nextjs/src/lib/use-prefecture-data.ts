@@ -42,7 +42,8 @@ export interface PrefectureData {
   num_commercial?: number;
   total_bus_stops?: number;
   pop_projection?: Record<string, number>;
-  pop_change_pct?: number;
+  pop_change_pct?: number;     // 20-year (2020→2040)
+  pop_change_10y_pct?: number; // 10-year (2020→2030)
   has_location_plan_count?: number;
   total_road_segments?: number;
   enhanced_score?: number;

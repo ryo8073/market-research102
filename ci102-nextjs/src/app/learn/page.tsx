@@ -748,13 +748,13 @@ export default function LearnPage() {
 
             <h3 className="font-semibold text-lg">5つの評価要素</h3>
             <InterpTable
-              headers={["要素", "重み", "内容", "高スコアの条件"]}
+              headers={["要素", "配点", "内容", "高スコアの条件"]}
               rows={[
-                ["EBMスコア", "20%", "経済基盤乗数の大きさ", "EBMが高い（波及効果が大きい）"],
-                ["基盤比率スコア", "20%", "基盤雇用の割合", "基盤比率が高い（域外依存の産業が充実）"],
-                ["RSスコア", "25%", "地域シフトの合計", "RS合計が正（地域固有の競争力あり）"],
-                ["ギャップスコア", "15%", "小売ギャップの状態", "適度な漏損（出店機会あり）"],
-                ["規模スコア", "20%", "経済圏の大きさ（総雇用）", "総雇用が大きい（市場規模が十分）"],
+                ["EBMスコア", "20点", "経済基盤乗数の大きさ", "EBMが高い（波及効果が大きい）"],
+                ["基盤比率スコア", "20点", "基盤雇用の割合", "基盤比率が高い（域外依存の産業が充実）"],
+                ["RSスコア", "25点", "地域シフトの合計", "RS合計が正（地域固有の競争力あり）"],
+                ["ギャップスコア", "20点", "小売ギャップの状態", "適度な漏損（出店機会あり）"],
+                ["規模スコア", "15点", "経済圏の大きさ（総雇用）", "総雇用が大きい（市場規模が十分）"],
               ]}
             />
 
@@ -776,57 +776,61 @@ export default function LearnPage() {
                   <thead>
                     <tr>
                       <th className="text-left border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">地域</th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">総合</th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">EBM</th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">基盤比率</th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">RS</th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">ギャップ</th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">規模</th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">総合<br/><span className="text-[10px] font-normal text-muted-foreground">/100</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">EBM<br/><span className="text-[10px] font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">基盤比率<br/><span className="text-[10px] font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">RS<br/><span className="text-[10px] font-normal text-muted-foreground">/25</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">ギャップ<br/><span className="text-[10px] font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">規模<br/><span className="text-[10px] font-normal text-muted-foreground">/15</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="border-b border-foreground/10">
                       <td className="px-3 py-2 font-medium">大阪府</td>
                       <td className="px-3 py-2 text-right font-bold text-[#2A9D8F]">69.3</td>
-                      <td className="px-3 py-2 text-right">100.0</td>
-                      <td className="px-3 py-2 text-right">16.2</td>
-                      <td className="px-3 py-2 text-right">100.0</td>
-                      <td className="px-3 py-2 text-right">30.3</td>
-                      <td className="px-3 py-2 text-right">100.0</td>
+                      <td className="px-3 py-2 text-right">20.0</td>
+                      <td className="px-3 py-2 text-right">3.2</td>
+                      <td className="px-3 py-2 text-right">25.0</td>
+                      <td className="px-3 py-2 text-right">6.1</td>
+                      <td className="px-3 py-2 text-right">15.0</td>
                     </tr>
                     <tr className="border-b border-foreground/10">
                       <td className="px-3 py-2 font-medium">東京都</td>
                       <td className="px-3 py-2 text-right font-bold text-[#2A9D8F]">62.2</td>
-                      <td className="px-3 py-2 text-right">53.2</td>
-                      <td className="px-3 py-2 text-right">57.6</td>
-                      <td className="px-3 py-2 text-right">100.0</td>
+                      <td className="px-3 py-2 text-right">10.6</td>
+                      <td className="px-3 py-2 text-right">11.5</td>
+                      <td className="px-3 py-2 text-right">25.0</td>
                       <td className="px-3 py-2 text-right">0.0</td>
-                      <td className="px-3 py-2 text-right">100.0</td>
+                      <td className="px-3 py-2 text-right">15.0</td>
                     </tr>
                     <tr className="border-b border-foreground/10">
                       <td className="px-3 py-2 font-medium">北海道</td>
                       <td className="px-3 py-2 text-right font-bold text-[#D4A843]">53.3</td>
-                      <td className="px-3 py-2 text-right">100.0</td>
-                      <td className="px-3 py-2 text-right">29.4</td>
+                      <td className="px-3 py-2 text-right">20.0</td>
+                      <td className="px-3 py-2 text-right">5.9</td>
                       <td className="px-3 py-2 text-right">0.0</td>
-                      <td className="px-3 py-2 text-right">61.9</td>
-                      <td className="px-3 py-2 text-right">100.0</td>
+                      <td className="px-3 py-2 text-right">12.4</td>
+                      <td className="px-3 py-2 text-right">15.0</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
               <p className="text-sm mt-3">
-                大阪府（69.3点）はEBMとRS、規模が満点で、波及効果と競争力が強み。
-                ただし基盤比率スコアが16.2と低く、少数の基盤産業への依存が課題です。
+                各要素のスコアは配点（EBM・基盤比率・ギャップ=各20点、RS=25点、規模=15点）に対する
+                寄与点で表示。5要素の合計が100点満点の総合スコアになります。
               </p>
               <p className="text-sm">
-                東京都（62.2点）はRSと規模が満点だが、ギャップスコアが0.0。
+                大阪府（69.3点）はEBM 20.0/20、RS 25.0/25、規模 15.0/15 が満点で、波及効果と競争力が強み。
+                ただし基盤比率が3.2/20と低く、少数の基盤産業への依存が課題です。
+              </p>
+              <p className="text-sm">
+                東京都（62.2点）はRS 25.0/25と規模 15.0/15が満点だが、ギャップが0.0/20。
                 小売市場が供給過多のため、商業施設の新規投資には不向きです。
                 オフィス・住宅が投資対象として適しています。
               </p>
               <p className="text-sm">
-                北海道（53.3点）はRSが0.0（地域シフトが負）。
-                産業の競争力低下が構造的な課題です。一方でギャップスコアは61.9と高く、
+                北海道（53.3点）はRS 0.0/25（地域シフトが負）。
+                産業の競争力低下が構造的な課題です。一方でギャップが12.4/20と高く、
                 小売漏損が大きいため、商業施設への投資機会は存在します。
               </p>
             </CaseStudy>
