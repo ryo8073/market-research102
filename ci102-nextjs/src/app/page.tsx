@@ -217,6 +217,107 @@ function BenchmarkBar({ value, min, max, median, label, unit, higherIsBetter = t
 }
 
 /* ------------------------------------------------------------------ */
+/*  Spatial Risk/Access Adjustment                                     */
+/* ------------------------------------------------------------------ */
+
+function SpatialAdjustment({ pref }: { pref: PrefectureData }) {
+  const adj = pref.score_adjustments!;
+  const enhanced = pref.enhanced_score!;
+  const diff = enhanced - adj.base;
+
+  const items = [
+    { label: "経済スコア（CI102）", value: adj.base, color: "#1B2A4A", desc: "EBM・基盤比率・RS・ギャップ・規模の5要素" },
+    { label: "洪水リスク", value: adj.risk_penalty, color: adj.risk_penalty < 0 ? "#E76F51" : "#6B7280", desc: "浸水想定区域の面積比率に基づくペナルティ" },
+    { label: "交通アクセス", value: adj.access_bonus, color: adj.access_bonus > 0 ? "#2A9D8F" : "#6B7280", desc: "鉄道乗降客数÷人口（公共交通利用密度）" },
+    { label: "人口動態", value: adj.pop_adjustment, color: adj.pop_adjustment >= 0 ? "#2A9D8F" : "#E76F51", desc: "20年間の推計人口変動率" },
+  ];
+
+  return (
+    <Card className="border-l-4 border-l-[#6366F1]">
+      <CardHeader>
+        <CardTitle className="text-sm">空間データ補正 — CI102経済スコアへの実地調整</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          CI102の経済分析（第1-6章）に対し、国土数値情報の空間データで実地リスク/利便性を補正。
+          投資適格スコアとは別軸の参考情報です。
+        </p>
+      </CardHeader>
+      <CardContent>
+        {/* Waterfall-style breakdown */}
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div key={item.label} className="flex items-center gap-3">
+              <span className="text-xs w-28 shrink-0 text-right font-medium">{item.label}</span>
+              <div className="flex-1 relative h-6 bg-gray-100 dark:bg-gray-800 rounded">
+                {/* Bar from center or left */}
+                {item.label === "経済スコア（CI102）" ? (
+                  <div
+                    className="absolute top-0 left-0 h-6 rounded"
+                    style={{ width: `${Math.min(100, item.value)}%`, backgroundColor: item.color, opacity: 0.7 }}
+                  />
+                ) : (
+                  <div
+                    className="absolute top-0 h-6 rounded"
+                    style={{
+                      left: item.value >= 0 ? "50%" : `${50 + item.value * 2.5}%`,
+                      width: `${Math.min(50, Math.abs(item.value) * 2.5)}%`,
+                      backgroundColor: item.color,
+                      opacity: 0.6,
+                    }}
+                  />
+                )}
+              </div>
+              <span className={`text-xs font-bold w-14 text-right ${item.value > 0 && item.label !== "経済スコア（CI102）" ? "text-green-600" : item.value < 0 ? "text-red-600" : ""}`}>
+                {item.label === "経済スコア（CI102）" ? item.value.toFixed(1) : `${item.value > 0 ? "+" : ""}${item.value.toFixed(1)}`}
+              </span>
+            </div>
+          ))}
+          {/* Result */}
+          <div className="flex items-center gap-3 border-t pt-2 mt-1">
+            <span className="text-xs w-28 shrink-0 text-right font-bold">補正後スコア</span>
+            <div className="flex-1 relative h-6 bg-gray-100 dark:bg-gray-800 rounded">
+              <div
+                className="absolute top-0 left-0 h-6 rounded"
+                style={{ width: `${Math.min(100, enhanced)}%`, backgroundColor: "#6366F1", opacity: 0.7 }}
+              />
+            </div>
+            <span className="text-xs font-bold w-14 text-right">
+              {enhanced.toFixed(1)}
+            </span>
+          </div>
+        </div>
+
+        {/* Interpretation */}
+        <div className="mt-4 rounded-lg bg-slate-50 dark:bg-slate-900/50 p-3 text-xs space-y-1">
+          <p className="font-semibold">
+            経済スコア {adj.base.toFixed(1)} → 補正後 {enhanced.toFixed(1)}
+            <span className={`ml-2 ${diff >= 0 ? "text-green-600" : "text-red-600"}`}>
+              （{diff >= 0 ? "+" : ""}{diff.toFixed(1)}点）
+            </span>
+          </p>
+          <p className="text-muted-foreground">
+            {adj.risk_penalty < -5
+              ? "洪水リスクが大きく、Cap Rateの上乗せ（リスクプレミアム）を検討してください。"
+              : adj.risk_penalty < -1
+              ? "一定の浸水リスクがあります。物件個別のハザードマップ確認を推奨します。"
+              : "浸水リスクは低い地域です。"}
+            {adj.access_bonus >= 3
+              ? " 公共交通の利便性が高く、駅近物件は賃料プレミアムが期待できます。"
+              : adj.access_bonus >= 1
+              ? " 公共交通は一定の利用があります。"
+              : " 公共交通の利用密度が低く、車依存度の高い地域です。"}
+            {adj.pop_adjustment >= 0
+              ? " 人口動態はプラスまたは横ばいで、住宅需要は維持される見通しです。"
+              : adj.pop_adjustment > -5
+              ? " 緩やかな人口減少が見込まれ、長期保有時の出口戦略に注意が必要です。"
+              : " 人口減少が顕著で、長期投資には慎重な判断が求められます。"}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Scorecard Radar Chart                                              */
 /* ------------------------------------------------------------------ */
 
@@ -538,6 +639,14 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
           </Card>
         </div>
       </div>
+
+      {/* ---- Spatial Risk/Access Adjustment (enhanced_score) ---- */}
+      {pref.enhanced_score != null && pref.score_adjustments && (
+        <>
+          <Separator />
+          <SpatialAdjustment pref={pref} />
+        </>
+      )}
 
       {/* ---- Municipality data (enhanced) ---- */}
       {selectedCity && (
