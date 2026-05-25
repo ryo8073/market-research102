@@ -117,8 +117,10 @@ def _read_shapefile_as_geojson(shp_path: Path, simplify: bool = True) -> list[di
 def _round_coordinates(geom: dict, decimals: int = 4) -> dict:
     """Round all coordinates in a GeoJSON geometry to reduce file size."""
     def _round_coords(coords):
+        if not coords:
+            return coords
         if isinstance(coords[0], (list, tuple)):
-            return [_round_coords(c) for c in coords]
+            return [_round_coords(c) for c in coords if c]
         return [round(c, decimals) for c in coords]
 
     return {
