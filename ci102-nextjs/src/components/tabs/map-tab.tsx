@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PREFECTURES } from "@/lib/codes";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
 import { useNlniOverlay, NLNI_LAYERS, type NlniLayerId } from "@/lib/use-nlni-overlay";
@@ -11,6 +10,7 @@ import MapLayerControls from "@/components/map-layer-controls";
 
 // Dynamic import to avoid SSR issues with MapLibre
 const MapView = dynamic(() => import("@/components/maplibre-map"), { ssr: false });
+const MuniMapInner = dynamic(() => import("@/components/muni-map-inner"), { ssr: false });
 
 // Prefecture centers for zoom
 const PREF_CENTERS: Record<number, [number, number]> = {
@@ -32,21 +32,15 @@ const PREF_CENTERS: Record<number, [number, number]> = {
   46: [130.56, 31.56], 47: [127.68, 26.34],
 };
 
-type MapMetric = "basic_ratio" | "rs_total" | "suitability";
+export type MapMetric = "basic_ratio" | "rs_total" | "suitability";
 
-const METRIC_CONFIG: Record<MapMetric, { label: string; colorScale: [string, string, string]; midpoint: number }> = {
+export const METRIC_CONFIG: Record<MapMetric, { label: string; colorScale: [string, string, string]; midpoint: number }> = {
   basic_ratio: { label: "基盤雇用比率(%)", colorScale: ["#2166ac", "#f7f7f7", "#b2182b"], midpoint: 10 },
   rs_total: { label: "RS合計(地域シフト)", colorScale: ["#d73027", "#ffffbf", "#1a9850"], midpoint: 0 },
   suitability: { label: "投資適格スコア", colorScale: ["#d73027", "#fee08b", "#1a9850"], midpoint: 50 },
 };
 
-interface Props {
-  prefCode: number;
-  prefName: string;
-  allData: Record<string, PrefectureData> | null;
-}
-
-const SEGMENTS = [
+export const SEGMENTS = [
   { key: "都市サービス集積型", icon: "🏢", color: "#1B2A4A", desc: "第3次産業比率が高く、若年〜生産年齢が多い都市部" },
   { key: "工業基盤型", icon: "⚙️", color: "#2A9D8F", desc: "製造業・建設業が強く、生産年齢人口が安定" },
   { key: "商業・観光型", icon: "🛒", color: "#D4A843", desc: "小売・宿泊飲食が突出、昼間人口が多い" },
@@ -54,6 +48,12 @@ const SEGMENTS = [
   { key: "高齢縮小型", icon: "📉", color: "#E76F51", desc: "高齢化率が高く、第1次産業依存、人口減少" },
   { key: "均衡型", icon: "⚖️", color: "#9CA3AF", desc: "特定の偏りがなくバランスの取れた経済構造" },
 ] as const;
+
+interface Props {
+  prefCode: number;
+  prefName: string;
+  allData: Record<string, PrefectureData> | null;
+}
 
 export default function MapTab({ prefCode, prefName, allData }: Props) {
   const [metric, setMetric] = useState<MapMetric>("basic_ratio");
@@ -78,14 +78,14 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
     location_opt: locationOptOverlay.data,
   }), [railwaysOverlay.data, floodOverlay.data, landPricesOverlay.data, didOverlay.data, zoningOverlay.data, locationOptOverlay.data]);
 
-  const toggleLayer = (layerId: NlniLayerId) => {
+  const toggleLayer = useCallback((layerId: NlniLayerId) => {
     setActiveLayers((prev) => {
       const next = new Set(prev);
       if (next.has(layerId)) next.delete(layerId);
       else next.add(layerId);
       return next;
     });
-  };
+  }, []);
 
   // Load municipality TopoJSON and convert to GeoJSON
   useEffect(() => {
@@ -125,6 +125,58 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
     });
   }, [allData, metric]);
 
+  // Enrich GeoJSON with municipality data (stable reference)
+  const enrichedGeojson = useMemo(() => {
+    if (!muniGeojson?.features) return muniGeojson;
+    const muniMap = new Map(municipalities.map((m) => [m.area_code, m]));
+    return {
+      ...muniGeojson,
+      features: muniGeojson.features.map((f: any) => {
+        const code = f.properties?.N03_007;
+        const m = code ? muniMap.get(code) : null;
+        return {
+          ...f,
+          properties: {
+            ...f.properties,
+            basic_ratio: m?.basic_ratio ?? 0,
+            segment: m?.segment ?? "均衡型",
+            area_name: m?.area_name ?? f.properties?.N03_004 ?? f.properties?.N03_003 ?? "",
+            total_emp: m?.total_emp ?? 0,
+            max_lq: m?.max_lq ?? 0,
+            max_lq_industry: m?.max_lq_industry ?? "",
+          },
+        };
+      }),
+    };
+  }, [muniGeojson, municipalities]);
+
+  // Build fill-color expression based on metric
+  const fillColor = useMemo(() => {
+    if (metric === "basic_ratio") {
+      return [
+        "interpolate", ["linear"], ["get", "basic_ratio"],
+        0, "#f7fbff",
+        5, "#c6dbef",
+        10, "#6baed6",
+        20, "#2171b5",
+        35, "#08306b",
+      ] as any;
+    }
+    const segColors: Record<string, string> = {
+      "都市サービス集積型": "#1B2A4A",
+      "工業基盤型": "#2A9D8F",
+      "商業・観光型": "#D4A843",
+      "公務・教育型": "#6B7280",
+      "高齢縮小型": "#E76F51",
+      "均衡型": "#9CA3AF",
+    };
+    return [
+      "match", ["get", "segment"],
+      ...Object.entries(segColors).flat(),
+      "#9CA3AF",
+    ] as any;
+  }, [metric]);
+
   const cfg = METRIC_CONFIG[metric];
   const center = PREF_CENTERS[prefCode] ?? [137.0, 37.5];
 
@@ -160,6 +212,8 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
             midpoint={cfg.midpoint}
             height={500}
           />
+          {/* National map legend */}
+          <MapLegend metric={metric} />
         </CardContent>
       </Card>
 
@@ -173,6 +227,20 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
           <p className="text-[10px] text-muted-foreground mt-2">
             レイヤーを選択すると県内マップ上に重ねて表示されます。データ未取得のレイヤーは表示されません。
           </p>
+          {/* Active overlay legend */}
+          {activeLayers.size > 0 && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              {NLNI_LAYERS.filter((l) => activeLayers.has(l.id)).map((layer) => (
+                <span key={layer.id} className="inline-flex items-center gap-1.5 text-[11px]">
+                  <span
+                    className="inline-block w-4 h-3 rounded-sm border border-gray-300"
+                    style={{ backgroundColor: layer.color, opacity: layer.id === "zoning" ? 0.5 : layer.opacity }}
+                  />
+                  {layer.label}
+                </span>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -182,15 +250,23 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
           <CardTitle className="text-sm">{prefName} 県内マップ（市区町村別）</CardTitle>
         </CardHeader>
         <CardContent>
-          {muniGeojson ? (
+          {enrichedGeojson ? (
             <div style={{ height: 500 }} className="rounded-lg overflow-hidden border">
-              <MuniMap geojson={muniGeojson} center={center} municipalities={municipalities} metric={metric} overlays={nlniOverlays} activeLayers={activeLayers} />
+              <MuniMapInner
+                geojson={enrichedGeojson}
+                center={center}
+                fillColor={fillColor}
+                overlays={nlniOverlays}
+                activeLayers={Array.from(activeLayers)}
+              />
             </div>
           ) : (
             <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
               市区町村境界データを読込中...
             </div>
           )}
+          {/* Municipality map legend */}
+          <MapLegend metric={metric} />
         </CardContent>
       </Card>
 
@@ -256,16 +332,13 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
       </Card>
       {/* Educational content */}
       <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
-        <summary className="font-medium cursor-pointer">ℹ️ 地図の見方</summary>
+        <summary className="font-medium cursor-pointer">地図の見方</summary>
         <div className="mt-2 space-y-2">
           <p>
             <strong>【基盤雇用比率】</strong>色が濃いほど基盤産業の雇用比率が高い地域。外部資金の流入基盤が強い。
           </p>
           <p>
-            <strong>【RS合計】</strong>緑 = 地域シフト(RS)合計が正 → 全国トレンドを上回る競争優位。赤 = RS合計が負 → 全国の同産業と比べ雇用が減少傾向。期間: 2016年→2021年。
-          </p>
-          <p>
-            <strong>【投資スコア】</strong>複合指標（EBM・基盤比率・RS・ギャップ・規模）を100点満点でスコアリング。
+            <strong>【RS合計 / 投資スコア】</strong>市区町村の経済構造セグメントで色分け。ホバーで詳細表示。
           </p>
           <p className="font-medium">市区町村セグメント:</p>
           <ul className="list-disc list-inside text-xs space-y-1">
@@ -282,169 +355,32 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
   );
 }
 
-/** Municipality map with data-driven coloring + NLNI overlays */
-function MuniMap({ geojson, center, municipalities, metric, overlays, activeLayers }: {
-  geojson: any; center: [number, number];
-  municipalities: MunicipalityData[]; metric: MapMetric;
-  overlays: Record<string, any>; activeLayers: Set<NlniLayerId>;
-}) {
-  // Merge municipality data into GeoJSON features
-  const enrichedGeojson = useMemo(() => {
-    if (!geojson?.features) return geojson;
-    const muniMap = new Map(municipalities.map((m) => [m.area_code, m]));
-    return {
-      ...geojson,
-      features: geojson.features.map((f: any) => {
-        const code = f.properties?.N03_007;
-        const m = code ? muniMap.get(code) : null;
-        return {
-          ...f,
-          properties: {
-            ...f.properties,
-            basic_ratio: m?.basic_ratio ?? 0,
-            segment: m?.segment ?? "均衡型",
-            area_name: m?.area_name ?? f.properties?.N03_004 ?? f.properties?.N03_003 ?? "",
-            total_emp: m?.total_emp ?? 0,
-            max_lq: m?.max_lq ?? 0,
-            max_lq_industry: m?.max_lq_industry ?? "",
-          },
-        };
-      }),
-    };
-  }, [geojson, municipalities]);
+/** Visual color legend for the active metric */
+function MapLegend({ metric }: { metric: MapMetric }) {
+  if (metric === "basic_ratio") {
+    return (
+      <div className="mt-3 flex items-center gap-1 text-[10px] text-muted-foreground">
+        <span>低 0%</span>
+        <div className="flex h-3 flex-1 max-w-[200px] rounded-sm overflow-hidden">
+          {["#f7fbff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"].map((c) => (
+            <div key={c} className="flex-1" style={{ backgroundColor: c }} />
+          ))}
+        </div>
+        <span>高 35%+</span>
+        <span className="ml-2">— 基盤雇用比率</span>
+      </div>
+    );
+  }
 
-  // Build fill-color expression based on metric
-  const fillColor = useMemo(() => {
-    if (metric === "basic_ratio") {
-      // Interpolate: 0% → light blue, 15% → mid, 30%+ → dark red
-      return [
-        "interpolate", ["linear"], ["get", "basic_ratio"],
-        0, "#f7fbff",
-        5, "#c6dbef",
-        10, "#6baed6",
-        20, "#2171b5",
-        35, "#08306b",
-      ] as any;
-    }
-    // For rs_total / suitability, color by segment
-    const segColors: Record<string, string> = {
-      "都市サービス集積型": "#1B2A4A",
-      "工業基盤型": "#2A9D8F",
-      "商業・観光型": "#D4A843",
-      "公務・教育型": "#6B7280",
-      "高齢縮小型": "#E76F51",
-      "均衡型": "#9CA3AF",
-    };
-    return [
-      "match", ["get", "segment"],
-      ...Object.entries(segColors).flat(),
-      "#9CA3AF",
-    ] as any;
-  }, [metric]);
-
-  const MapInner = dynamic(
-    () =>
-      import("react-map-gl/maplibre").then((mod) => {
-        const { default: MapGL, Source, Layer, Popup } = mod;
-        return function MuniMapInner() {
-          const [hover, setHover] = useState<{
-            lng: number; lat: number; name: string;
-            basicRatio?: number; segment?: string; totalEmp?: number;
-            maxLq?: number; maxLqIndustry?: string;
-          } | null>(null);
-
-          return (
-            <MapGL
-              initialViewState={{ longitude: center[0], latitude: center[1], zoom: 9 }}
-              style={{ width: "100%", height: "100%" }}
-              mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
-              interactiveLayerIds={["muni-fill"]}
-              onMouseMove={(e: any) => {
-                const f = e.features?.[0];
-                if (f) {
-                  setHover({
-                    lng: e.lngLat.lng,
-                    lat: e.lngLat.lat,
-                    name: f.properties?.area_name ?? f.properties?.N03_004 ?? "",
-                    basicRatio: f.properties?.basic_ratio,
-                    segment: f.properties?.segment,
-                    totalEmp: f.properties?.total_emp,
-                    maxLq: f.properties?.max_lq,
-                    maxLqIndustry: f.properties?.max_lq_industry,
-                  });
-                } else {
-                  setHover(null);
-                }
-              }}
-              onMouseLeave={() => setHover(null)}
-            >
-              <Source id="muni" type="geojson" data={enrichedGeojson}>
-                <Layer
-                  id="muni-fill"
-                  type="fill"
-                  paint={{
-                    "fill-color": fillColor,
-                    "fill-opacity": 0.6,
-                  }}
-                />
-                <Layer
-                  id="muni-line"
-                  type="line"
-                  paint={{
-                    "line-color": "#1B2A4A",
-                    "line-width": 1,
-                  }}
-                />
-              </Source>
-              {/* NLNI Overlays */}
-              {activeLayers.has("railways") && overlays.railways && (
-                <Source id="nlni-railways" type="geojson" data={overlays.railways}>
-                  <Layer id="nlni-railways-circle" type="circle" paint={{ "circle-radius": 4, "circle-color": "#1B2A4A", "circle-opacity": 0.8 }} />
-                </Source>
-              )}
-              {activeLayers.has("land_prices") && overlays.land_prices && (
-                <Source id="nlni-land-prices" type="geojson" data={overlays.land_prices}>
-                  <Layer id="nlni-land-prices-circle" type="circle" paint={{ "circle-radius": 3, "circle-color": "#E76F51", "circle-opacity": 0.7 }} />
-                </Source>
-              )}
-              {activeLayers.has("flood") && overlays.flood && (
-                <Source id="nlni-flood" type="geojson" data={overlays.flood}>
-                  <Layer id="nlni-flood-fill" type="fill" paint={{ "fill-color": "#3B82F6", "fill-opacity": 0.3 }} />
-                </Source>
-              )}
-              {activeLayers.has("did") && overlays.did && (
-                <Source id="nlni-did" type="geojson" data={overlays.did}>
-                  <Layer id="nlni-did-fill" type="fill" paint={{ "fill-color": "#2A9D8F", "fill-opacity": 0.25 }} />
-                </Source>
-              )}
-              {activeLayers.has("zoning") && overlays.zoning && (
-                <Source id="nlni-zoning" type="geojson" data={overlays.zoning}>
-                  <Layer id="nlni-zoning-fill" type="fill" paint={{ "fill-color": "#D4A843", "fill-opacity": 0.2 }} />
-                </Source>
-              )}
-              {activeLayers.has("location_opt") && overlays.location_opt && (
-                <Source id="nlni-location-opt" type="geojson" data={overlays.location_opt}>
-                  <Layer id="nlni-location-opt-fill" type="fill" paint={{ "fill-color": "#8B5CF6", "fill-opacity": 0.3 }} />
-                </Source>
-              )}
-
-              {hover && (
-                <Popup longitude={hover.lng} latitude={hover.lat} closeButton={false} anchor="top">
-                  <div className="text-xs">
-                    <p className="font-bold">{hover.name}</p>
-                    {hover.basicRatio != null && <p>基盤比率: {hover.basicRatio.toFixed(1)}%</p>}
-                    {hover.segment && <p>セグメント: {hover.segment}</p>}
-                    {hover.totalEmp != null && hover.totalEmp > 0 && <p>総雇用: {hover.totalEmp.toLocaleString()}</p>}
-                    {hover.maxLqIndustry && <p>最大LQ: {hover.maxLqIndustry} ({hover.maxLq?.toFixed(2)})</p>}
-                  </div>
-                </Popup>
-              )}
-            </MapGL>
-          );
-        };
-      }),
-    { ssr: false },
+  // RS / Suitability → segment colors
+  return (
+    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+      {SEGMENTS.map((seg) => (
+        <span key={seg.key} className="inline-flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: seg.color }} />
+          {seg.key}
+        </span>
+      ))}
+    </div>
   );
-
-  return <MapInner />;
 }
