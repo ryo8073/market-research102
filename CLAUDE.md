@@ -131,6 +131,62 @@ PER・小売ギャップ需要推計はすべてこの2015年人口を使用し�
 | 国勢調査 | 2020年10月 | 5年ごと | 2025年（結果公表2026〜2027年） |
 | MLIT取引価格 | 四半期更新 | 3ヶ月ごと | 随時 |
 
+## NLNI（国土数値情報）データ管理
+
+### git で追跡するもの / しないもの
+
+```
+data/nlni/
+├── __init__.py          ← git追跡 ✓
+├── downloader.py        ← git追跡 ✓
+├── spatial.py           ← git追跡 ✓
+├── processors/*.py      ← git追跡 ✓
+├── raw/                 ← .gitignore（Shapefileは再ダウンロード可能）
+└── cache/               ← .gitignore（CSVは再生成可能）
+```
+
+- `raw/` と `cache/` は合計13,000+ファイル。git addすると数十分ハングする
+- ソースコード（.py）のみ追跡し、データは `scripts/download_nlni.py` で再取得
+
+### 事前計算アーキテクチャ
+
+```
+[1回だけ] scripts/download_nlni.py     → raw Shapefile取得
+[1回だけ] scripts/compute_driving_distances.py → OSRM経由で到達時間算出 (~31分)
+[1回だけ] scripts/precompute_json.py   → 静的JSON生成 (~2分)
+[毎回]   ユーザーがページを開く       → 静的JSONを読むだけ（即時表示）
+```
+
+事前計算の所要時間はユーザーの表示速度に一切影響しない。
+
+### git コマンドをバックグラウンドにしない
+
+大量ファイルの `git add` はバックグラウンド実行禁止。index.lock を保持し続け、後続のgit操作が全て失敗する。
+フォアグラウンド + timeout=60000 で実行すること。
+
+## Windows 環境固有ルール（Python スクリプト）
+
+### stdout のエンコーディング対策
+
+```python
+import io, sys
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+```
+
+**理由**: Windows PowerShell/cmd は cp932。日本語・em-dash・矢印記号を print すると UnicodeEncodeError で即死。
+新しいスクリプトを作成する際は冒頭に必ず追加。
+
+### pd.read_csv の空ファイル対策
+
+```python
+try:
+    df = pd.read_csv(path)
+except (pd.errors.EmptyDataError, pd.errors.ParserError):
+    df = pd.DataFrame()  # 前回クラッシュで0バイトCSVが残っている場合
+```
+
 ## シミュレーションと実績の区別（絶対ルール）
 
 EBM×PERカスケード（基盤雇用N人増→総雇用→人口→住宅需要）は**What-Ifシミュレーション**であり、予測・見通しではない。
@@ -251,21 +307,19 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 
 新しいタブや画面にこれらが必要な場合、ローカル定義せず上記からインポートすること。
 
-### SVG半円ゲージは `<path>` アーク + 三角関数で描く
+### 半円スコアゲージは CSS conic-gradient 方式（現行実装を維持）
 
 ```tsx
-// ❌ NG: <circle> + stroke-dasharray — offsetの計算が直感的でなくズレやすい
-// ❌ NG: <path> のy座標をインラインで再計算 — 変数と二重計算でバグ
+// ❌ NG: <circle> + stroke-dasharray — offsetの計算が非直感的
+// ❌ NG: <path> + 三角関数 — 過去3回バグ修正を繰り返した
 
-// ✅ OK: <path> + 明示的なアーク終点計算
-const angle = Math.PI * (1 - pct / 100); // pct=0→左端, pct=100→右端
-const ex = cx + r * Math.cos(angle);
-const ey = cy - r * Math.sin(angle);      // SVG y軸は下向きなので引く
-const largeArc = pct > 50 ? 1 : 0;
-const path = `M ${cx - r} ${cy} A ${r} ${r} 0 ${largeArc} 1 ${ex} ${ey}`;
+// ✅ OK: CSS conic-gradient + overflow:hidden（現在のpage.tsx実装）
+const scoreDeg = (pct / 100) * 180;
+// borderRadius + overflow:hidden で半円��クリップ
+// conic-gradient(from 270deg, color 0deg Xdeg, #e5e7eb Xdeg 180deg, transparent 180deg)
 ```
 
-**理由**: stroke-dasharray方式は描画開始位置のoffset計算が非直感的で3回バグった。`<path>` のアーク終点を三角関数で明示的に計算する方が確実。`ey` は必ず事前計算した変数を使い、インラインで再計算しないこと。
+**理由**: SVG `<path>`方式は3回以上バグ修正を繰り返し、conic-gradient方式で安定稼働を確認済���（localhostで検証完了）。**この実装は変更しないこと。**
 
 ### チャートの4象限・背景色は ReferenceArea で描く
 
