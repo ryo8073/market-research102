@@ -217,6 +217,7 @@ def _load_nlni_data() -> dict[str, pd.DataFrame]:
         ("pop_proj", "mesh_pop_projection.csv"),
         ("location_opt", "location_optimization.csv"),
         ("roads", "roads_by_muni.csv"),
+        ("driving", "driving_distances.csv"),
     ]
 
     for name, csv_name in csv_names:
@@ -386,6 +387,21 @@ def _enrich_municipality_with_nlni(rec: dict, pref_code: int, nlni: dict[str, pd
         if not muni_df.empty and "zone_name" in muni_df.columns:
             dominant = muni_df["zone_name"].value_counts().index[0]
             rec["zoning_dominant"] = dominant
+
+    # Driving distances (OSRM-based)
+    if "driving" in nlni:
+        df = nlni["driving"]
+        muni_df = df[df["muni_code"].astype(str) == str(muni_code)]
+        if not muni_df.empty:
+            row = muni_df.iloc[0]
+            rec["nearest_station_km"] = _safe_float(row.get("nearest_station_km"), 1)
+            rec["nearest_station_min"] = _safe_float(row.get("nearest_station_min"), 1)
+            rec["nearest_station_name"] = str(row.get("nearest_station_name", ""))
+            rec["nearest_medical_km"] = _safe_float(row.get("nearest_medical_km"), 1)
+            rec["nearest_medical_min"] = _safe_float(row.get("nearest_medical_min"), 1)
+            rec["nearest_commercial_km"] = _safe_float(row.get("nearest_commercial_km"), 1)
+            rec["nearest_commercial_min"] = _safe_float(row.get("nearest_commercial_min"), 1)
+            rec["car_dependency_score"] = _safe_int(row.get("car_dependency_score"))
 
 
 def _classify_municipality(

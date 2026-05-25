@@ -27,6 +27,15 @@ export interface MunicipalityData {
   pop_2050?: number;
   has_location_plan?: boolean;
   zoning_dominant?: string;
+  // Driving distance (OSRM)
+  nearest_station_km?: number;
+  nearest_station_min?: number;
+  nearest_station_name?: string;
+  nearest_medical_km?: number;
+  nearest_medical_min?: number;
+  nearest_commercial_km?: number;
+  nearest_commercial_min?: number;
+  car_dependency_score?: number;
 }
 
 const _cache: Record<number, MunicipalityData[]> = {};

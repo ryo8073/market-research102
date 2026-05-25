@@ -283,6 +283,146 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
             </Card>
           )}
 
+          {/* Driving Distance Analysis (CI102 Driving Distance) */}
+          {(() => {
+            const drivingData = municipalities
+              .filter((m) => m.nearest_station_min != null && m.nearest_station_min > 0)
+              .sort((a, b) => (b.car_dependency_score ?? 0) - (a.car_dependency_score ?? 0))
+              .slice(0, 20);
+            const carDependentCount = municipalities.filter((m) => (m.car_dependency_score ?? 0) >= 70).length;
+            if (drivingData.length === 0) return null;
+            return (
+              <Card className="border-l-4 border-l-[#E76F51]">
+                <CardHeader>
+                  <CardTitle className="text-sm">
+                    Driving Distance分析 — 車での到達時間（OSRM実走行ルート）
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    各市区町村の重心から最寄り駅・医療・商業施設への実走行距離/時間。
+                    車依存度スコアが高い地域は公共交通でのアクセスが困難
+                    {carDependentCount > 0 && (
+                      <span className="text-red-600 font-semibold ml-1">
+                        （車依存度70以上: {carDependentCount}自治体）
+                      </span>
+                    )}
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-1">市区町村</th>
+                          <th className="text-right py-2 px-1">最寄り駅</th>
+                          <th className="text-right py-2 px-1">距離</th>
+                          <th className="text-right py-2 px-1">医療施設</th>
+                          <th className="text-right py-2 px-1">商業施設</th>
+                          <th className="text-right py-2 px-1">車依存度</th>
+                          <th className="text-center py-2 px-1">判定</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {drivingData.map((m) => {
+                          const dep = m.car_dependency_score ?? 0;
+                          return (
+                            <tr key={m.area_code} className="border-b hover:bg-muted/50">
+                              <td className="py-1.5 px-1 font-medium">{m.area_name}</td>
+                              <td className="text-right py-1.5 px-1">
+                                <span className={`${(m.nearest_station_min ?? 0) > 30 ? "text-red-600" : ""}`}>
+                                  {m.nearest_station_min?.toFixed(0) ?? "—"}分
+                                </span>
+                                <span className="text-muted-foreground ml-1 text-[10px]">
+                                  {m.nearest_station_name ? `(${m.nearest_station_name})` : ""}
+                                </span>
+                              </td>
+                              <td className="text-right py-1.5 px-1 text-muted-foreground">
+                                {m.nearest_station_km?.toFixed(1) ?? "—"}km
+                              </td>
+                              <td className="text-right py-1.5 px-1">
+                                {m.nearest_medical_min?.toFixed(0) ?? "—"}分
+                              </td>
+                              <td className="text-right py-1.5 px-1">
+                                {m.nearest_commercial_min?.toFixed(0) ?? "—"}分
+                              </td>
+                              <td className="text-right py-1.5 px-1">
+                                <span className={dep >= 70 ? "text-red-600 font-bold" : dep >= 40 ? "text-amber-600" : "text-green-600"}>
+                                  {dep}/100
+                                </span>
+                              </td>
+                              <td className="text-center py-1.5 px-1">
+                                {dep >= 70
+                                  ? <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px]">車必須</span>
+                                  : dep >= 40
+                                  ? <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px]">車優位</span>
+                                  : <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px]">公共交通可</span>
+                                }
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    ルーティング: OSRM (Open Source Routing Machine) 車プロファイル。
+                    市区町村の地理的重心から各施設までの最短実走行ルート。
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Car Dependency Score Distribution */}
+          {(() => {
+            const depScores = municipalities
+              .filter((m) => m.car_dependency_score != null)
+              .map((m) => ({
+                name: m.area_name,
+                score: m.car_dependency_score!,
+                stationMin: m.nearest_station_min ?? 0,
+              }))
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 20);
+            if (depScores.length === 0) return null;
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">車依存度スコア分布（上位20 — 車依存が高い順）</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    地方都市の不動産は駐車場確保・ロードサイド立地が価値に直結。車依存度70超のエリアは商業テナントの業種が限定される
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={Math.max(300, depScores.length * 24)}>
+                    <BarChart data={depScores} layout="vertical" margin={{ left: 80 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" domain={[0, 100]} />
+                      <YAxis type="category" dataKey="name" width={75} tick={{ fontSize: 10 }} />
+                      <Tooltip
+                        content={({ payload }) => {
+                          if (!payload?.length) return null;
+                          const d = payload[0].payload;
+                          return (
+                            <div className="bg-white dark:bg-gray-800 p-2 border rounded shadow text-xs">
+                              <p className="font-bold">{d.name}</p>
+                              <p>車依存度: {d.score}/100</p>
+                              <p>最寄り駅まで: {d.stationMin.toFixed(0)}分</p>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Bar dataKey="score" name="車依存度">
+                        {depScores.map((entry, i) => (
+                          <Cell key={i} fill={entry.score >= 70 ? "#EF4444" : entry.score >= 40 ? "#F59E0B" : "#22C55E"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Transit Score Distribution */}
           {scoreDistribution.length > 0 && (
             <Card>
@@ -348,11 +488,13 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
             徒歩10分圏内で10-30%の価格差が一般的です。」
           </ClientTip>
 
-          <CaseStudy title="CI102 Trade Area分析との接続">
-            CI102で学ぶDriving Distance（商圏距離）分析は、「ある施設からどの範囲に顧客が存在するか」を定量化する手法です。
-            本タブの交通スコアは、その逆方向—「ある地点からどれだけ多くの施設・人にアクセスできるか」—を評価しています。
-            駅効率が高いエリアは、自然と商圏が形成されやすく、テナント誘致において優位性があります。
-            データ出典: 国土数値情報 鉄道(N02)・駅別乗降客数(S12)・バス停留所(P11)・商業施設(P33)
+          <CaseStudy title="CI102 Driving Distance / Trade Area分析">
+            CI102で学ぶDriving Distance分析は「ある施設の商圏が車で何分圏内か」を定量化する手法です。
+            本タブではOSRM（実走行ルーティング）を用い、各市区町村から最寄り施設への到達時間を算出しています。
+            都市部では駅徒歩圏が価値を決め、地方では車での到達時間がTrade Areaの実質的な範囲を決定します。
+            車依存度スコアが高いエリアでは、駐車場台数・ロードサイド視認性・幹線道路接道が
+            不動産価値の主要ドライバーになります。
+            データ出典: 国土数値情報 鉄道(N02)・駅別乗降客数(S12)・バス停留所(P11)・商業施設(P33) + OSRM
           </CaseStudy>
         </>
       )}
