@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PREFECTURES } from "@/lib/codes";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
+import { useNlniOverlay, NLNI_LAYERS, type NlniLayerId } from "@/lib/use-nlni-overlay";
+import MapLayerControls from "@/components/map-layer-controls";
 
 // Dynamic import to avoid SSR issues with MapLibre
 const MapView = dynamic(() => import("@/components/maplibre-map"), { ssr: false });
@@ -56,7 +58,34 @@ const SEGMENTS = [
 export default function MapTab({ prefCode, prefName, allData }: Props) {
   const [metric, setMetric] = useState<MapMetric>("basic_ratio");
   const [muniGeojson, setMuniGeojson] = useState<any>(null);
+  const [activeLayers, setActiveLayers] = useState<Set<NlniLayerId>>(new Set());
   const { data: municipalities } = useMunicipalityData(prefCode);
+
+  // NLNI overlay data (lazy-loaded per active layer)
+  const railwaysOverlay = useNlniOverlay(prefCode, "railways", activeLayers.has("railways"));
+  const floodOverlay = useNlniOverlay(prefCode, "flood", activeLayers.has("flood"));
+  const landPricesOverlay = useNlniOverlay(prefCode, "land_prices", activeLayers.has("land_prices"));
+  const didOverlay = useNlniOverlay(prefCode, "did", activeLayers.has("did"));
+  const zoningOverlay = useNlniOverlay(prefCode, "zoning", activeLayers.has("zoning"));
+  const locationOptOverlay = useNlniOverlay(prefCode, "location_opt", activeLayers.has("location_opt"));
+
+  const nlniOverlays = useMemo(() => ({
+    railways: railwaysOverlay.data,
+    flood: floodOverlay.data,
+    land_prices: landPricesOverlay.data,
+    did: didOverlay.data,
+    zoning: zoningOverlay.data,
+    location_opt: locationOptOverlay.data,
+  }), [railwaysOverlay.data, floodOverlay.data, landPricesOverlay.data, didOverlay.data, zoningOverlay.data, locationOptOverlay.data]);
+
+  const toggleLayer = (layerId: NlniLayerId) => {
+    setActiveLayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(layerId)) next.delete(layerId);
+      else next.add(layerId);
+      return next;
+    });
+  };
 
   // Load municipality TopoJSON and convert to GeoJSON
   useEffect(() => {
@@ -134,6 +163,19 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
         </CardContent>
       </Card>
 
+      {/* NLNI Layer Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">空間データレイヤー（国土数値情報）</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MapLayerControls activeLayers={activeLayers} onToggle={toggleLayer} />
+          <p className="text-[10px] text-muted-foreground mt-2">
+            レイヤーを選択すると県内マップ上に重ねて表示されます。データ未取得のレイヤーは表示されません。
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Prefecture municipality map */}
       <Card>
         <CardHeader>
@@ -142,7 +184,7 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
         <CardContent>
           {muniGeojson ? (
             <div style={{ height: 500 }} className="rounded-lg overflow-hidden border">
-              <MuniMap geojson={muniGeojson} center={center} municipalities={municipalities} metric={metric} />
+              <MuniMap geojson={muniGeojson} center={center} municipalities={municipalities} metric={metric} overlays={nlniOverlays} activeLayers={activeLayers} />
             </div>
           ) : (
             <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
@@ -240,10 +282,11 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
   );
 }
 
-/** Municipality map with data-driven coloring */
-function MuniMap({ geojson, center, municipalities, metric }: {
+/** Municipality map with data-driven coloring + NLNI overlays */
+function MuniMap({ geojson, center, municipalities, metric, overlays, activeLayers }: {
   geojson: any; center: [number, number];
   municipalities: MunicipalityData[]; metric: MapMetric;
+  overlays: Record<string, any>; activeLayers: Set<NlniLayerId>;
 }) {
   // Merge municipality data into GeoJSON features
   const enrichedGeojson = useMemo(() => {
@@ -353,6 +396,38 @@ function MuniMap({ geojson, center, municipalities, metric }: {
                   }}
                 />
               </Source>
+              {/* NLNI Overlays */}
+              {activeLayers.has("railways") && overlays.railways && (
+                <Source id="nlni-railways" type="geojson" data={overlays.railways}>
+                  <Layer id="nlni-railways-circle" type="circle" paint={{ "circle-radius": 4, "circle-color": "#1B2A4A", "circle-opacity": 0.8 }} />
+                </Source>
+              )}
+              {activeLayers.has("land_prices") && overlays.land_prices && (
+                <Source id="nlni-land-prices" type="geojson" data={overlays.land_prices}>
+                  <Layer id="nlni-land-prices-circle" type="circle" paint={{ "circle-radius": 3, "circle-color": "#E76F51", "circle-opacity": 0.7 }} />
+                </Source>
+              )}
+              {activeLayers.has("flood") && overlays.flood && (
+                <Source id="nlni-flood" type="geojson" data={overlays.flood}>
+                  <Layer id="nlni-flood-fill" type="fill" paint={{ "fill-color": "#3B82F6", "fill-opacity": 0.3 }} />
+                </Source>
+              )}
+              {activeLayers.has("did") && overlays.did && (
+                <Source id="nlni-did" type="geojson" data={overlays.did}>
+                  <Layer id="nlni-did-fill" type="fill" paint={{ "fill-color": "#2A9D8F", "fill-opacity": 0.25 }} />
+                </Source>
+              )}
+              {activeLayers.has("zoning") && overlays.zoning && (
+                <Source id="nlni-zoning" type="geojson" data={overlays.zoning}>
+                  <Layer id="nlni-zoning-fill" type="fill" paint={{ "fill-color": "#D4A843", "fill-opacity": 0.2 }} />
+                </Source>
+              )}
+              {activeLayers.has("location_opt") && overlays.location_opt && (
+                <Source id="nlni-location-opt" type="geojson" data={overlays.location_opt}>
+                  <Layer id="nlni-location-opt-fill" type="fill" paint={{ "fill-color": "#8B5CF6", "fill-opacity": 0.3 }} />
+                </Source>
+              )}
+
               {hover && (
                 <Popup longitude={hover.lng} latitude={hover.lat} closeButton={false} anchor="top">
                   <div className="text-xs">
