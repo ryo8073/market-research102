@@ -12,6 +12,21 @@ export interface MunicipalityData {
   max_lq: number;
   max_lq_industry: string;
   segment?: string;
+  // NLNI spatial data (optional)
+  num_stations?: number;
+  daily_riders?: number;
+  land_price_median?: number;
+  flood_risk_pct?: number;
+  max_flood_depth?: number;
+  did_area_ha?: number;
+  did_population?: number;
+  num_medical?: number;
+  num_commercial?: number;
+  num_bus_stops?: number;
+  pop_2030?: number;
+  pop_2050?: number;
+  has_location_plan?: boolean;
+  zoning_dominant?: string;
 }
 
 const _cache: Record<number, MunicipalityData[]> = {};

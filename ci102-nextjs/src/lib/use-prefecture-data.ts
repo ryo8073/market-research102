@@ -31,6 +31,20 @@ export interface PrefectureData {
   };
   daytime_population: number;
   median_unit_price: number | null;
+  // NLNI spatial data (optional — populated when NLNI data is downloaded)
+  num_stations?: number;
+  total_daily_riders?: number;
+  land_price_median_l01?: number;
+  flood_risk_avg_pct?: number;
+  did_total_area_ha?: number;
+  did_total_population?: number;
+  num_medical?: number;
+  num_commercial?: number;
+  total_bus_stops?: number;
+  pop_projection?: Record<string, number>;
+  pop_change_pct?: number;
+  has_location_plan_count?: number;
+  total_road_segments?: number;
   lq_table: Array<{
     industry: string;
     local_emp: number;

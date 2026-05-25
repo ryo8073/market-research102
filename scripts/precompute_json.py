@@ -34,6 +34,41 @@ from calculator import (
 from data.codes import PREFECTURES
 from data_sources import MarketDataAccessor
 
+# NLNI processors (optional — if data not downloaded, gracefully skip)
+try:
+    from data.nlni.downloader import load_cached_csv
+    NLNI_AVAILABLE = True
+except ImportError:
+    NLNI_AVAILABLE = False
+
+
+def _safe_int(val, default: int = 0) -> int:
+    """NaN/None/非数値を安全にintに変換。JSON serialization対策。"""
+    if val is None:
+        return default
+    try:
+        import math
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return default
+        return int(f)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_float(val, default: float = 0.0, decimals: int = 1) -> float:
+    """NaN/None/非数値を安全にfloatに変換。"""
+    if val is None:
+        return default
+    try:
+        import math
+        f = float(val)
+        if math.isnan(f) or math.isinf(f):
+            return default
+        return round(f, decimals)
+    except (ValueError, TypeError):
+        return default
+
 
 def _get_median_unit_price(accessor: MarketDataAccessor, pref_code: int) -> float | None:
     """Fetch MLIT median unit price (yen/m2) for a prefecture."""
@@ -164,6 +199,195 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
         return None
 
 
+def _load_nlni_data() -> dict[str, pd.DataFrame]:
+    """Load all available NLNI processed CSVs. Returns {name: DataFrame}."""
+    if not NLNI_AVAILABLE:
+        return {}
+
+    datasets = {}
+    csv_names = [
+        ("railways", "railways_stations.csv"),
+        ("land_prices", "land_prices.csv"),
+        ("flood", "flood_risk_by_muni.csv"),
+        ("zoning", "zoning_by_muni.csv"),
+        ("did", "did_by_muni.csv"),
+        ("medical", "facilities_medical.csv"),
+        ("commercial", "facilities_commercial.csv"),
+        ("bus", "bus_coverage_by_muni.csv"),
+        ("pop_proj", "mesh_pop_projection.csv"),
+        ("location_opt", "location_optimization.csv"),
+        ("roads", "roads_by_muni.csv"),
+    ]
+
+    for name, csv_name in csv_names:
+        df = load_cached_csv(csv_name)
+        if df is not None and not df.empty:
+            datasets[name] = df
+            print(f"  NLNI loaded: {name} ({len(df)} rows)")
+
+    return datasets
+
+
+def _enrich_prefecture_with_nlni(result: dict, pref_code: int, nlni: dict[str, pd.DataFrame]):
+    """Add NLNI aggregate metrics to prefecture result dict."""
+    pc_str = f"{pref_code:02d}"
+
+    # Railways: station count + total ridership
+    if "railways" in nlni:
+        df = nlni["railways"]
+        pref_df = df[df["pref_code"] == pc_str]
+        result["num_stations"] = int(len(pref_df))
+        riders_col = "daily_riders" if "daily_riders" in pref_df.columns else None
+        result["total_daily_riders"] = int(pref_df[riders_col].sum()) if riders_col else 0
+
+    # Land prices
+    if "land_prices" in nlni:
+        df = nlni["land_prices"]
+        pref_df = df[df["pref_code"] == pc_str]
+        if not pref_df.empty and "price_per_m2" in pref_df.columns:
+            valid = pd.to_numeric(pref_df["price_per_m2"], errors="coerce").dropna()
+            if not valid.empty:
+                result["land_price_median_l01"] = round(float(valid.median()), 0)
+
+    # Flood risk: average across municipalities
+    if "flood" in nlni:
+        df = nlni["flood"]
+        pref_df = df[df["pref_code"] == pc_str]
+        if not pref_df.empty:
+            result["flood_risk_avg_pct"] = round(float(pref_df["flood_area_pct"].mean()), 1)
+
+    # DID
+    if "did" in nlni:
+        df = nlni["did"]
+        pref_df = df[df["pref_code"] == pc_str]
+        if not pref_df.empty:
+            result["did_total_area_ha"] = round(float(pref_df["did_area_ha"].sum()), 1)
+            result["did_total_population"] = int(pref_df["did_population"].sum())
+
+    # Medical & Commercial facilities
+    for key, field in [("medical", "num_medical"), ("commercial", "num_commercial")]:
+        if key in nlni:
+            df = nlni[key]
+            pref_df = df[df["pref_code"] == pc_str]
+            result[field] = int(len(pref_df))
+
+    # Bus coverage
+    if "bus" in nlni:
+        df = nlni["bus"]
+        pref_df = df[df["pref_code"] == pc_str]
+        if not pref_df.empty:
+            result["total_bus_stops"] = int(pref_df["num_bus_stops"].sum())
+
+    # Population projection
+    if "pop_proj" in nlni:
+        df = nlni["pop_proj"]
+        pref_munis = df[df["pref_code"] == pc_str]
+        if not pref_munis.empty:
+            proj = {}
+            for year in [2020, 2025, 2030, 2035, 2040, 2045, 2050, 2055, 2060, 2065, 2070]:
+                year_df = pref_munis[pref_munis["year"] == year]
+                if not year_df.empty:
+                    proj[str(year)] = int(year_df["population"].sum())
+            result["pop_projection"] = proj
+            if len(proj) >= 2:
+                earliest = min(int(k) for k in proj.keys())
+                latest = max(int(k) for k in proj.keys())
+                if proj[str(earliest)] > 0:
+                    change = (proj[str(latest)] - proj[str(earliest)]) / proj[str(earliest)] * 100
+                    result["pop_change_pct"] = round(change, 1)
+
+    # Location optimization plan count
+    if "location_opt" in nlni:
+        df = nlni["location_opt"]
+        pref_df = df[df["pref_code"] == pc_str]
+        if not pref_df.empty:
+            result["has_location_plan_count"] = int(pref_df["muni_code"].nunique())
+
+    # Roads
+    if "roads" in nlni:
+        df = nlni["roads"]
+        pref_df = df[df["pref_code"] == pc_str]
+        if not pref_df.empty:
+            result["total_road_segments"] = int(pref_df["total_road_segments"].sum())
+
+
+def _enrich_municipality_with_nlni(rec: dict, pref_code: int, nlni: dict[str, pd.DataFrame]):
+    """Add NLNI metrics to a single municipality record."""
+    muni_code = rec.get("area_code", "")
+    pc_str = f"{pref_code:02d}"
+
+    # Railways
+    if "railways" in nlni:
+        df = nlni["railways"]
+        muni_df = df[df["muni_code"] == muni_code]
+        rec["num_stations"] = int(len(muni_df))
+        if "daily_riders" in muni_df.columns:
+            rec["daily_riders"] = int(muni_df["daily_riders"].sum())
+
+    # Land prices
+    if "land_prices" in nlni:
+        df = nlni["land_prices"]
+        muni_df = df[df["muni_code"] == muni_code]
+        if not muni_df.empty and "price_per_m2" in muni_df.columns:
+            valid = pd.to_numeric(muni_df["price_per_m2"], errors="coerce").dropna()
+            if not valid.empty:
+                rec["land_price_median"] = round(float(valid.median()), 0)
+
+    # Flood risk
+    if "flood" in nlni:
+        df = nlni["flood"]
+        muni_df = df[df["muni_code"] == muni_code]
+        if not muni_df.empty:
+            rec["flood_risk_pct"] = float(muni_df["flood_area_pct"].iloc[0])
+            rec["max_flood_depth"] = int(muni_df["max_depth_class"].iloc[0])
+
+    # DID
+    if "did" in nlni:
+        df = nlni["did"]
+        muni_df = df[df["muni_code"] == muni_code]
+        if not muni_df.empty:
+            rec["did_area_ha"] = round(float(muni_df["did_area_ha"].sum()), 1)
+            rec["did_population"] = int(muni_df["did_population"].sum())
+
+    # Facilities
+    for key, field in [("medical", "num_medical"), ("commercial", "num_commercial")]:
+        if key in nlni:
+            df = nlni[key]
+            muni_df = df[df["muni_code"] == muni_code]
+            rec[field] = int(len(muni_df))
+
+    # Bus
+    if "bus" in nlni:
+        df = nlni["bus"]
+        muni_df = df[df["muni_code"] == muni_code]
+        if not muni_df.empty:
+            rec["num_bus_stops"] = int(muni_df["num_bus_stops"].iloc[0])
+
+    # Population projection
+    if "pop_proj" in nlni:
+        df = nlni["pop_proj"]
+        muni_df = df[df["muni_code"] == muni_code]
+        if not muni_df.empty:
+            for year in [2030, 2050]:
+                year_df = muni_df[muni_df["year"] == year]
+                if not year_df.empty:
+                    rec[f"pop_{year}"] = int(year_df["population"].sum())
+
+    # Location optimization
+    if "location_opt" in nlni:
+        df = nlni["location_opt"]
+        muni_df = df[df["muni_code"] == muni_code]
+        rec["has_location_plan"] = bool(len(muni_df) > 0)
+
+    # Zoning dominant
+    if "zoning" in nlni:
+        df = nlni["zoning"]
+        muni_df = df[df["muni_code"] == muni_code]
+        if not muni_df.empty and "zone_name" in muni_df.columns:
+            dominant = muni_df["zone_name"].value_counts().index[0]
+            rec["zoning_dominant"] = dominant
+
+
 def _classify_municipality(
     emp_data: dict[str, float],
     total_emp: float,
@@ -258,14 +482,26 @@ def main():
     os.makedirs(MUNI_DIR, exist_ok=True)
 
     accessor = MarketDataAccessor()
+
+    # Load NLNI data (optional — if not downloaded, skip gracefully)
+    print("Loading NLNI spatial data...")
+    nlni = _load_nlni_data()
+    if nlni:
+        print(f"  {len(nlni)} NLNI datasets available")
+    else:
+        print("  No NLNI data found (run scripts/download_nlni.py first)")
+
     all_prefs = {}
 
-    print("Computing prefecture data...")
+    print("\nComputing prefecture data...")
     for pc in range(1, 48):
         name = PREFECTURES.get(pc, "")
         print(f"  [{pc:02d}/47] {name}...", end=" ")
         result = compute_prefecture_full(accessor, pc)
         if result:
+            # Enrich with NLNI data
+            if nlni:
+                _enrich_prefecture_with_nlni(result, pc, nlni)
             all_prefs[str(pc)] = result
             print("OK")
         else:
@@ -285,6 +521,10 @@ def main():
         print(f"  [{pc:02d}/47] {name}...", end=" ")
         munis = compute_municipalities(accessor, pc)
         if munis:
+            # Enrich each municipality with NLNI data
+            if nlni:
+                for rec in munis:
+                    _enrich_municipality_with_nlni(rec, pc, nlni)
             muni_path = MUNI_DIR / f"{pc}.json"
             with open(muni_path, "w", encoding="utf-8") as f:
                 json.dump(munis, f, ensure_ascii=False, separators=(",", ":"))

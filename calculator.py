@@ -389,6 +389,57 @@ def investment_suitability_score(
     }
 
 
+def enhanced_investment_score(
+    base_score: dict,
+    flood_risk_pct: float = 0.0,
+    num_stations: int = 0,
+    daily_riders: int = 0,
+    num_bus_stops: int = 0,
+    pop_change_pct: float = 0.0,
+) -> dict:
+    """Extend investment suitability score with NLNI spatial data.
+
+    Reweights: existing 5 components (75%) + disaster(10%) + accessibility(10%) + demographics(5%).
+    Returns dict with all component scores.
+    """
+    def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
+        return max(lo, min(hi, v))
+
+    # Disaster score: lower flood exposure = higher score
+    # 0%→100, 20%→60, 50%→25, 100%→0
+    disaster_score = _clamp(100 - flood_risk_pct * 2)
+
+    # Accessibility score: composite of rail + bus
+    # Stations: 0→0, 10→40, 50→70, 200→100
+    station_score = _clamp(num_stations / 2.0)
+    # Ridership: 0→0, 50K→50, 500K→100
+    rider_score = _clamp(daily_riders / 5000)
+    # Bus: 0→0, 50→50, 200→100
+    bus_score = _clamp(num_bus_stops / 2.0)
+    accessibility_score = station_score * 0.4 + rider_score * 0.4 + bus_score * 0.2
+
+    # Demographics score: population trend
+    # -30%→0, 0%→50, +10%→100
+    demographic_score = _clamp(50 + pop_change_pct * 2.5)
+
+    # Reweight existing scores
+    base_total = base_score["total_score"]
+    total = (
+        base_total * 0.75
+        + disaster_score * 0.10
+        + accessibility_score * 0.10
+        + demographic_score * 0.05
+    )
+
+    result = dict(base_score)
+    result["total_score"] = round(total, 1)
+    result["disaster_score"] = round(disaster_score, 1)
+    result["accessibility_score"] = round(accessibility_score, 1)
+    result["demographic_score"] = round(demographic_score, 1)
+    result["base_score"] = round(base_total, 1)
+    return result
+
+
 def estimate_daytime_population(
     nighttime_population: float,
     basic_employment: float,

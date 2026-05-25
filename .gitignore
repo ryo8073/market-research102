@@ -15,3 +15,12 @@ data/cache/
 
 # ローカル参照のロードマップ（必要なら個別に許可）
 不動産市場分析アプリ開発ロードマップ.docx
+
+# 国土数値情報: raw Shapefile/GeoJSON + 処理済みキャッシュCSV（再生成可能）
+data/nlni/raw/
+data/nlni/cache/
+data/nlni/__pycache__/
+data/nlni/processors/__pycache__/
+
+# Next.js ビルド成果物
+.next/

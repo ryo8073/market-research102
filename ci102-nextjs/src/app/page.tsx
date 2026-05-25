@@ -53,6 +53,15 @@ const MapTab = dynamic(() => import("@/components/tabs/map-tab"), {
 const CrossTab = dynamic(() => import("@/components/tabs/cross-tab"), {
   loading: () => <TabSkeleton />,
 });
+const RiskTab = dynamic(() => import("@/components/tabs/risk-tab"), {
+  loading: () => <TabSkeleton />,
+});
+const AccessibilityTab = dynamic(() => import("@/components/tabs/accessibility-tab"), {
+  loading: () => <TabSkeleton />,
+});
+const DemographicsTab = dynamic(() => import("@/components/tabs/demographics-tab"), {
+  loading: () => <TabSkeleton />,
+});
 
 const COLORS = {
   primary: "#1B2A4A",
@@ -117,46 +126,57 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
   const pct = Math.max(0, Math.min(100, score));
   const color = pct >= 80 ? "#2A9D8F" : pct >= 60 ? "#2A9D8F" : pct >= 40 ? "#D4A843" : "#E76F51";
 
-  // Semi-circle gauge using two <path> arcs.
-  // Center=(100,95), radius=75. Left=(25,95), Right=(175,95).
-  // Background: full semi-circle left→top→right (sweep-flag=0 for counter-clockwise in SVG = upper half).
-  // Score: partial arc from left, angle = pct% of 180°.
-  const cx = 100, cy = 95, r = 75;
-
-  // Score arc endpoint: angle from left (π) sweeping toward right (0)
-  // At pct=0: angle=π (left), pct=100: angle=0 (right)
-  const angle = Math.PI * (1 - pct / 100);
-  const ex = cx + r * Math.cos(angle);
-  const ey = cy - r * Math.sin(angle); // SVG y-axis is inverted
-  const largeArc = pct > 50 ? 1 : 0;
-
-  // Background: full upper semi-circle (left to right, going up)
-  const bgPath = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
-  // Score: partial arc from left to (ex, ey)
-  const scorePath = pct > 0 ? `M ${cx - r} ${cy} A ${r} ${r} 0 ${largeArc} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}` : "";
+  // CSS conic-gradient semicircle gauge — no SVG arc math needed.
+  // The gauge is a half-circle (180°) where pct maps to 0°–180°.
+  const scoreDeg = (pct / 100) * 180;
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={200} height={115} viewBox="0 0 200 115">
-        {/* Background semi-circle (grey) */}
-        <path d={bgPath} fill="none" stroke="#e5e7eb" strokeWidth={14} strokeLinecap="round" className="dark:stroke-gray-700" />
-        {/* Score arc (colored) */}
-        {scorePath && (
-          <path d={scorePath} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" />
-        )}
+      <div className="relative" style={{ width: 200, height: 110 }}>
+        {/* Half-circle gauge container */}
+        <div
+          style={{
+            width: 180,
+            height: 90,
+            margin: "0 auto",
+            borderRadius: "90px 90px 0 0",
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          {/* Full circle with conic-gradient, clipped to upper half */}
+          <div
+            style={{
+              width: 180,
+              height: 180,
+              borderRadius: "50%",
+              background: `conic-gradient(from 270deg, ${color} 0deg ${scoreDeg}deg, #e5e7eb ${scoreDeg}deg 180deg, transparent 180deg 360deg)`,
+            }}
+          />
+          {/* Inner cutout (donut hole) */}
+          <div
+            className="bg-background"
+            style={{
+              position: "absolute",
+              top: 14,
+              left: 14,
+              width: 152,
+              height: 152,
+              borderRadius: "50%",
+            }}
+          />
+        </div>
         {/* Zone labels */}
-        <text x="15" y="108" className="fill-muted-foreground text-[8px]">要注意</text>
-        <text x="65" y="22" className="fill-muted-foreground text-[8px]">標準</text>
-        <text x="120" y="22" className="fill-muted-foreground text-[8px]">良好</text>
-        <text x="168" y="108" className="fill-muted-foreground text-[8px]">優良</text>
+        <span className="absolute text-[8px] text-muted-foreground" style={{ left: 4, bottom: 0 }}>要注意</span>
+        <span className="absolute text-[8px] text-muted-foreground" style={{ left: 52, top: 8 }}>標準</span>
+        <span className="absolute text-[8px] text-muted-foreground" style={{ right: 52, top: 8 }}>良好</span>
+        <span className="absolute text-[8px] text-muted-foreground" style={{ right: 4, bottom: 0 }}>優良</span>
         {/* Score number */}
-        <text x={cx} y="82" textAnchor="middle" className="text-3xl font-bold" style={{ fill: color }}>
-          {Math.round(score)}
-        </text>
-        <text x={cx} y="100" textAnchor="middle" className="fill-muted-foreground text-[10px]">
-          / 100
-        </text>
-      </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
+          <span className="text-3xl font-bold" style={{ color }}>{Math.round(score)}</span>
+          <span className="text-[10px] text-muted-foreground">/ 100</span>
+        </div>
+      </div>
       <p className="text-sm font-semibold mt-1" style={{ color }}>{label}</p>
     </div>
   );
@@ -203,13 +223,14 @@ function BenchmarkBar({ value, min, max, median, label, unit, higherIsBetter = t
 function ScorecardRadar({ pref, allData }: { pref: PrefectureData; allData: Record<string, PrefectureData> | null }) {
   const allPrefs = allData ? Object.values(allData) : [];
 
-  // Normalize each sub-score to 0-100 using min-max across all prefs
+  // Normalize each sub-score to 5-100 using min-max across all prefs.
+  // Floor of 5 prevents the polygon from collapsing when a value is at minimum.
   function norm(val: number, getter: (p: PrefectureData) => number): number {
     const vals = allPrefs.map(getter);
     const min = Math.min(...vals);
     const max = Math.max(...vals);
     if (max === min) return 50;
-    return ((val - min) / (max - min)) * 100;
+    return 5 + ((val - min) / (max - min)) * 95;
   }
 
   const medianVal = (getter: (p: PrefectureData) => number): number => {
@@ -834,6 +855,18 @@ function DashboardContent() {
                 <span className="md:hidden">⑦</span>
                 <span className="hidden md:inline">⑦ クロス分析</span>
               </TabsTrigger>
+              <TabsTrigger value="risk" className="text-xs md:text-sm">
+                <span className="md:hidden">⑧</span>
+                <span className="hidden md:inline">⑧ 災害リスク</span>
+              </TabsTrigger>
+              <TabsTrigger value="access" className="text-xs md:text-sm">
+                <span className="md:hidden">⑨</span>
+                <span className="hidden md:inline">⑨ 交通アクセス</span>
+              </TabsTrigger>
+              <TabsTrigger value="demographics" className="text-xs md:text-sm">
+                <span className="md:hidden">⑩</span>
+                <span className="hidden md:inline">⑩ 人口動態</span>
+              </TabsTrigger>
             </TabsList>
 
             <div className="mt-6">
@@ -919,6 +952,27 @@ function DashboardContent() {
               <TabsContent value="cross">
                 <ErrorBoundary>
                 <CrossTab areas={crossAreas} highlightPrefCode={prefCode} />
+                </ErrorBoundary>
+              </TabsContent>
+
+              {/* Tab 8: Disaster Risk */}
+              <TabsContent value="risk">
+                <ErrorBoundary>
+                <RiskTab prefCode={prefCode} prefName={pref.pref_name} pref={pref} allData={allData} />
+                </ErrorBoundary>
+              </TabsContent>
+
+              {/* Tab 9: Accessibility */}
+              <TabsContent value="access">
+                <ErrorBoundary>
+                <AccessibilityTab prefCode={prefCode} prefName={pref.pref_name} pref={pref} allData={allData} />
+                </ErrorBoundary>
+              </TabsContent>
+
+              {/* Tab 10: Demographics */}
+              <TabsContent value="demographics">
+                <ErrorBoundary>
+                <DemographicsTab prefCode={prefCode} prefName={pref.pref_name} pref={pref} allData={allData} />
                 </ErrorBoundary>
               </TabsContent>
             </div>
