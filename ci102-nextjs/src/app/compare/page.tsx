@@ -484,6 +484,108 @@ function RadarSection({ prefs, allData }: { prefs: PrefectureData[]; allData: Re
 /*  Spatial Cross-Analysis: Scatter Plots side by side                  */
 /* ================================================================== */
 
+/** 4軸クロス散布図: 基盤雇用比率 × 地価、サイズ=人口、色=洪水リスク
+ *  CI102の経済指標と NLNI の空間指標を1枚に統合した投資判断ビジュアル */
+function FourAxisScatter({ prefs, allPrefs }: { prefs: PrefectureData[]; allPrefs: PrefectureData[] }) {
+  const data = useMemo(() => {
+    return allPrefs
+      .filter((p) => p.land_price_median_l01 != null)
+      .map((p) => {
+        const flood = p.flood_risk_avg_pct ?? 0;
+        return {
+          name: p.pref_name,
+          basicRatio: p.basic_ratio,
+          price: Math.round(p.land_price_median_l01! / 1000),
+          population: p.population,
+          flood,
+          isSelected: prefs.some((s) => s.pref_code === p.pref_code),
+          color:
+            flood < 3 ? "#10B981" :    // 低リスク 緑
+            flood < 8 ? "#F59E0B" :    // 中リスク 黄
+            flood < 15 ? "#F97316" :   // やや高 オレンジ
+            "#DC2626",                 // 高リスク 赤
+        };
+      });
+  }, [allPrefs, prefs]);
+
+  if (data.length === 0) return null;
+
+  return (
+    <div className="col-span-1 md:col-span-2">
+      <p className="text-xs font-semibold text-center mb-1">🎯 4軸統合クロス: 基盤雇用比率 × 地価 × 人口 × 洪水リスク</p>
+      <p className="text-[10px] text-center text-slate-500 mb-2">
+        X=基盤雇用比率 / Y=地価 / バブルサイズ=人口規模 / 色=洪水リスク（緑〜赤）/
+        選択地域は黒枠
+      </p>
+      <ResponsiveContainer width="100%" height={350}>
+        <ScatterChart margin={{ top: 10, right: 10, bottom: 30, left: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <ReferenceArea x1={15} x2={30} y1={0} y2={1000000} fill="#10B981" fillOpacity={0.04} />
+          <ReferenceLine x={15} stroke="#10B981" strokeDasharray="2 2" label={{ value: "教科書下限15%", position: "top", fontSize: 9, fill: "#10B981" }} />
+          <XAxis type="number" dataKey="basicRatio" name="基盤雇用比率" unit="%"
+            label={{ value: "基盤雇用比率(%) — Orlando 20.2%が教科書値", position: "bottom", fontSize: 10 }} />
+          <YAxis type="number" dataKey="price" name="地価" unit="千円/m²"
+            label={{ value: "地価中央値(千円/m²)", angle: -90, position: "insideLeft", fontSize: 10 }} />
+          <ZAxis type="number" dataKey="population" range={[40, 800]} name="人口" />
+          <Tooltip content={({ payload }) => {
+            if (!payload?.length) return null;
+            const d = payload[0].payload;
+            return (
+              <div className="bg-white dark:bg-gray-800 p-2 border rounded shadow text-xs">
+                <p className="font-bold">{d.name}</p>
+                <p>基盤雇用比率: <strong>{d.basicRatio.toFixed(1)}%</strong></p>
+                <p>地価中央値: <strong>{d.price}千円/m²</strong></p>
+                <p>人口: {d.population.toLocaleString()}人</p>
+                <p>浸水リスク: <span style={{ color: d.color, fontWeight: "bold" }}>{d.flood.toFixed(1)}%</span></p>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  {/* 簡易判断 */}
+                  {d.basicRatio >= 15 && d.basicRatio <= 30 && d.flood < 5
+                    ? "✅ 投資適格圏(健全経済+低リスク)"
+                    : d.flood >= 15
+                    ? "⚠️ 洪水リスク高"
+                    : d.basicRatio < 8
+                    ? "△ 経済基盤弱め"
+                    : "中位"}
+                </p>
+              </div>
+            );
+          }} />
+          {/* 非選択点 */}
+          <Scatter data={data.filter((d) => !d.isSelected)} fillOpacity={0.6}>
+            {data.filter((d) => !d.isSelected).map((d, i) => (
+              <Cell key={i} fill={d.color} />
+            ))}
+          </Scatter>
+          {/* 選択点 */}
+          <Scatter data={data.filter((d) => d.isSelected)} fillOpacity={1}>
+            {data.filter((d) => d.isSelected).map((d, i) => (
+              <Cell key={i} fill={d.color} stroke="#000" strokeWidth={2} />
+            ))}
+          </Scatter>
+        </ScatterChart>
+      </ResponsiveContainer>
+      <div className="text-xs flex flex-wrap gap-3 justify-center mt-2">
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: "#10B981" }} /> 洪水&lt;3%
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: "#F59E0B" }} /> 3-8%
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: "#F97316" }} /> 8-15%
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: "#DC2626" }} /> 15%以上
+        </span>
+      </div>
+      <p className="text-[10px] text-slate-500 text-center mt-2">
+        <strong>緑色エリア（基盤率15-30%・洪水&lt;5%）</strong>が CI102 教科書 + 防災視点で『投資適格圏』。
+        バブルが大きい = 人口規模が大きい = 市場流動性が高い。
+      </p>
+    </div>
+  );
+}
+
 function SpatialCrossSection({ prefs, allPrefs }: { prefs: PrefectureData[]; allPrefs: PrefectureData[] }) {
   // Access vs Land Price scatter
   const accessPriceData = useMemo(() => {
@@ -548,6 +650,9 @@ function SpatialCrossSection({ prefs, allPrefs }: { prefs: PrefectureData[]; all
               </ResponsiveContainer>
             </div>
           )}
+
+          {/* 4軸クロス: 基盤雇用比率 × 地価 × 人口（サイズ）× 洪水リスク（色） */}
+          <FourAxisScatter prefs={prefs} allPrefs={allPrefs} />
 
           {/* Risk vs Population */}
           {riskPopData.length > 0 && (

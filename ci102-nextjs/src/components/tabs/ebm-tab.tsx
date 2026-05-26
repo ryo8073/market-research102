@@ -90,6 +90,14 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
 
   return (
     <div className="space-y-6">
+      {/* 粒度ガイド */}
+      <div className="rounded-lg border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs">
+        <strong>📐 業種粒度: 大分類17業種</strong>。需要予測カスケード(基盤雇用→総雇用→人口→住宅)も大分類版で算出。
+        中分類版での比較は <strong>スコアカード(⓪)の粒度トグル</strong>のKPIで確認可能。
+        <strong>⚠️ EBM は『高いほど経済が強い』ではなく『多角化度の逆数』</strong>。EBM 3-6 が教科書 MSA 健全レンジ。
+        詳細解説は <a href="/learn#ch9-granularity" className="underline text-blue-700">学習第9章</a>。
+      </div>
+
       {/* EBM/PER KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card>

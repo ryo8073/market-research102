@@ -44,6 +44,13 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
 
   return (
     <div className="space-y-6">
+      {/* 粒度ガイド */}
+      <div className="rounded-lg border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs">
+        <strong>📐 業種粒度: 大分類17業種</strong>（CCIM教科書整合）。
+        中分類95業種・農林業補完での詳細LQは <strong>スコアカード(⓪)の粒度トグル</strong>でTOP10を確認可能。
+        競争力分析(RS)は次タブ <strong>③シフトシェア分析</strong>へ。
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>

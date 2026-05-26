@@ -73,6 +73,9 @@ const CustomMetroTab = dynamic(() => import("@/components/tabs/custom-metro-tab"
 const TradeAreaTab = dynamic(() => import("@/components/tabs/trade-area-tab"), {
   loading: () => <TabSkeleton />,
 });
+const DecisionHubTab = dynamic(() => import("@/components/tabs/decision-hub-tab"), {
+  loading: () => <TabSkeleton />,
+});
 
 const COLORS = {
   primary: "#1B2A4A",
@@ -1604,6 +1607,10 @@ function DashboardContent() {
                 <span className="md:hidden">⑬</span>
                 <span className="hidden md:inline">⑬ 商圏分析（住所）</span>
               </TabsTrigger>
+              <TabsTrigger value="decision_hub" className="text-xs md:text-sm bg-emerald-50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
+                <span className="md:hidden">⑭🎯</span>
+                <span className="hidden md:inline">⑭ 投資判断ハブ 🎯</span>
+              </TabsTrigger>
             </TabsList>
 
             <div className="mt-6">
@@ -1737,6 +1744,13 @@ function DashboardContent() {
               <TabsContent value="trade_area">
                 <ErrorBoundary>
                 <TradeAreaTab />
+                </ErrorBoundary>
+              </TabsContent>
+
+              {/* Tab 14: Decision Hub (統合判断) */}
+              <TabsContent value="decision_hub">
+                <ErrorBoundary>
+                <DecisionHubTab pref={pref} selectedCity={selectedCity} />
                 </ErrorBoundary>
               </TabsContent>
             </div>
