@@ -687,6 +687,115 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
         </div>
       </div>
 
+      {/* ---- 業種分類粒度の影響（3列比較）---- */}
+      {pref.ebm_mid != null && (
+        <Card className="p-4">
+          <details>
+            <summary className="cursor-pointer text-sm font-semibold">
+              📊 大分類 vs 中分類 vs +農林業センサス — なぜEBMが大きく異なるのか
+            </summary>
+            <div className="mt-3 space-y-3 text-sm text-slate-700">
+              <p>
+                同じ地域でも<strong>業種分類の粒度</strong>によってEBM・基盤雇用比率が大きく変わります。これは
+                LQ計算の<strong>凸性質（Mulligan &amp; Murphy 1995）</strong>に由来する数学的必然です。
+              </p>
+
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="border-b bg-slate-50">
+                    <th className="text-left py-2 px-2">指標</th>
+                    <th className="text-right py-2 px-2">大分類17業種<br/>（CCIM教科書粒度）</th>
+                    <th className="text-right py-2 px-2">中分類95業種<br/>（詳細補正）</th>
+                    <th className="text-right py-2 px-2">+農林業補完<br/>（家族農家込み）</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b">
+                    <td className="py-1.5 px-2">EBM</td>
+                    <td className="text-right">{pref.ebm.toFixed(2)}</td>
+                    <td className="text-right font-semibold">{pref.ebm_mid?.toFixed(2) ?? "—"}</td>
+                    <td className="text-right">{pref.ebm_mid_extended?.toFixed(2) ?? "—"}</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-1.5 px-2">基盤雇用比率</td>
+                    <td className="text-right">{pref.basic_ratio.toFixed(1)}%</td>
+                    <td className="text-right font-semibold">{pref.basic_ratio_mid?.toFixed(1) ?? "—"}%</td>
+                    <td className="text-right">{pref.basic_ratio_mid_extended?.toFixed(1) ?? "—"}%</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 px-2">基盤産業数</td>
+                    <td className="text-right">{pref.top_lq_industries.filter(i => i.lq > 1.0).length}</td>
+                    <td className="text-right font-semibold">{pref.n_basic_industries_mid ?? "—"}</td>
+                    <td className="text-right">{pref.n_basic_industries_mid ?? "—"}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="bg-amber-50 border border-amber-200 rounded p-3">
+                <p className="font-semibold">💡 なぜここまで差が出るのか — 鹿児島県の例</p>
+                <p className="mt-2">
+                  <strong>大分類で『卸売・小売業』を1つの業種として見る場合</strong>:
+                </p>
+                <ul className="list-disc pl-5 mt-1">
+                  <li>地域雇用 131,647人 / 全国雇用 11,477,197人 → LQ = 0.992</li>
+                  <li>LQ &lt; 1.0 なので<strong>基盤雇用 = 0 人</strong>と判定される</li>
+                </ul>
+                <p className="mt-2">
+                  <strong>中分類で12業種に分解すると</strong>:
+                </p>
+                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                  <li>飲食料品卸売業（地域の物流ハブ）LQ=1.38 → 基盤 3,271人</li>
+                  <li>各種商品小売業（地元百貨店等）LQ=1.37 → 基盤 1,233人</li>
+                  <li>飲食料品小売業 LQ=1.12 → 基盤 4,381人</li>
+                  <li>機械器具小売業 LQ=1.15 → 基盤 1,553人</li>
+                  <li>その他の小売業 LQ=1.15 → 基盤 3,997人</li>
+                  <li>合計 <strong>14,456人の基盤雇用が『発見』</strong>される</li>
+                </ul>
+                <p className="mt-2 text-xs">
+                  大分類で「平均的」に見える業種でも、中分類で見れば特化している細分があり、
+                  それが地域の経済基盤を担っている — これが「分類粒度」の本質的な意味。
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border rounded p-3">
+                <p className="font-semibold mb-2">どの指標に影響するか</p>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-1">指標</th>
+                      <th className="text-left py-1">影響</th>
+                      <th className="text-left py-1">理由</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b"><td>LQ・基盤雇用</td><td className="text-rose-700">大</td><td>細分化で隠れた特化が見える</td></tr>
+                    <tr className="border-b"><td>EBM</td><td className="text-rose-700">大</td><td>1 / 基盤雇用比率の双曲関係</td></tr>
+                    <tr className="border-b"><td>シフトシェアRS</td><td className="text-amber-700">中</td><td>業種数で NS/IM/RS 分解が変わる</td></tr>
+                    <tr className="border-b"><td>投資適格スコア</td><td className="text-amber-700">中</td><td>EBM・基盤比率を使うため</td></tr>
+                    <tr className="border-b"><td>需要予測カスケード</td><td className="text-amber-700">中</td><td>EBM変化が総雇用→人口→住宅に波及</td></tr>
+                    <tr className="border-b"><td>PER</td><td className="text-slate-500">小</td><td>分母の雇用範囲（公務含む/民営のみ）で僅差</td></tr>
+                    <tr><td>小売ギャップ・地価・人口</td><td className="text-emerald-700">なし</td><td>独立データソース</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded p-3">
+                <p className="font-semibold">どの数値を信じるべきか — 用途別の使い分け</p>
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li><strong>CI102教科書通りの分析</strong> → 大分類17業種版（CCIM Activity 4-1 と同じ16業種粒度）</li>
+                  <li><strong>詳細な地域経済診断</strong> → 中分類95業種版（隠れた特化を捉える）</li>
+                  <li><strong>地方都市・農業地域の現実評価</strong> → +農林業センサス補完版（家族農家を含む）</li>
+                </ul>
+                <p className="mt-2 text-xs">
+                  → どれが「正しい」ではなく、<strong>目的に応じて使い分ける</strong>。
+                  詳細は <a href="/learn#ch9-granularity" className="text-emerald-700 underline">学習ページ第9章「業種分類粒度とCI102分析」</a> を参照。
+                </p>
+              </div>
+            </div>
+          </details>
+        </Card>
+      )}
+
       {/* ---- EBM Structural Decomposition (educational) ---- */}
       {pref.lq_above1_share != null && pref.avg_excess_coef != null && (
         <Card className="p-4">

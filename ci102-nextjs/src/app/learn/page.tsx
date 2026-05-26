@@ -16,6 +16,7 @@ const TOC = [
   { id: "ch6-score", label: "第6章: 投資適格スコア" },
   { id: "ch7-spatial", label: "第7章: 空間データ分析" },
   { id: "ch8-compare", label: "第8章: 地域比較分析" },
+  { id: "ch9-granularity", label: "第9章: 業種分類粒度とCI102分析" },
   { id: "summary", label: "まとめ: 投資判断に活かす" },
 ];
 
@@ -1018,6 +1019,155 @@ export default function LearnPage() {
                 <li>プリセットの重み付けは教育目的の参考値。実務では案件ごとに調整が必要</li>
                 <li>パーセンタイルは全47都道府県のmin-maxスケーリング。母数が47のため個別値の微差に過大な意味を持たせない</li>
                 <li>enhanced_scoreのリスク/アクセス/人口調整値はNLNIデータに依存。未取得の場合は経済スコアのみ</li>
+              </ul>
+            </div>
+          </Section>
+
+          {/* ======================== 第9章: 業種分類粒度 ======================== */}
+          <Section id="ch9-granularity" title="第9章: 業種分類粒度とCI102分析 — なぜ数値が大きく変わるのか">
+            <h3 className="font-semibold text-lg">同じ地域でも『業種を何種類に分けるか』で結果が変わる</h3>
+            <p>
+              本ツールでは同じ地域に対して<strong>3つの業種分類粒度</strong>でLQ・EBM・基盤雇用比率を計算しています。
+              鹿児島県を例にすると、大分類で EBM=8.93 ですが、中分類で EBM=4.82、農林業センサス補完で EBM=4.55。
+              <strong>数値が約2倍違います</strong>。これは「データのバラつき」ではなく、
+              <strong>業種分類の粒度に対するLQ計算の数学的性質（凸性質）</strong>に由来します。
+            </p>
+
+            <h3 className="font-semibold text-lg mt-6">3つの分類粒度の内訳</h3>
+            <InterpTable
+              headers={["分類", "業種数", "データソース", "範囲", "教科書対応"]}
+              rows={[
+                ["大分類17業種", "17", "経済センサス 0003449718", "民営+公務（S）、A農林・B漁業を除く", "CCIM CI102 Activity 4-1 (16業種) に最も近い"],
+                ["中分類95業種", "95", "経済センサス 0004005684", "民営事業所のみ（公務S除外）、農業も含む", "教科書の補正版"],
+                ["+農林業センサス補完", "95+補正", "0004005684 + 農林業センサス2020 (0001938798)", "民営+農林業センサス基幹的農業従事者", "日本固有の補完"],
+              ]}
+            />
+
+            <h3 className="font-semibold text-lg mt-6">大分類と中分類の対応関係（例）</h3>
+            <p>
+              大分類1業種が、中分類では複数業種に細分されます:
+            </p>
+            <InterpTable
+              headers={["大分類", "中分類への細分", "業種数"]}
+              rows={[
+                ["E 製造業", "食料品/飲料/繊維/木材/家具/パルプ/印刷/化学/石油/プラスチック/ゴム/革/窯業/鉄鋼/非鉄/金属製品/はん用機械/生産機械/業務機械/電子部品/電気機械/情報通信機械/輸送機械/その他", "24業種"],
+                ["I 卸売業，小売業", "卸売6業種（各種商品/繊維/飲食料品/建材/機械器具/その他）+ 小売6業種（各種商品/衣服/飲食料品/機械器具/その他/無店舗）", "12業種"],
+                ["G 情報通信業", "通信業/放送業/情報サービス業/インターネット附随/映像・音声・文字情報制作", "5業種"],
+                ["J 金融業，保険業", "銀行/協同組織金融/貸金業/金融商品取引/補助的金融/保険業", "6業種"],
+                ["H 運輸業，郵便業", "鉄道/道路旅客/道路貨物/水運/航空/倉庫/附帯サービス/郵便", "8業種"],
+              ]}
+            />
+
+            <h3 className="font-semibold text-lg mt-6">なぜここまで差が出るのか — 鹿児島県の卸売・小売業を例に</h3>
+            <CaseStudy title="集計問題（Aggregation Problem）の実例">
+              <p className="mb-3"><strong>大分類で『卸売・小売業』を1つの業種として見ると</strong>:</p>
+              <ul className="list-disc list-inside space-y-1 mb-3">
+                <li>地域雇用 131,647人 / 全国雇用 11,477,197人 → LQ = 0.992</li>
+                <li>LQ &lt; 1.0 のため、<strong>基盤雇用 = 0 人</strong>と判定</li>
+                <li>「鹿児島県は卸売・小売業で特化していない」と見える</li>
+              </ul>
+              <p className="mb-3"><strong>中分類で12業種に分解すると</strong>:</p>
+              <table className="w-full text-sm border-collapse mb-3">
+                <thead><tr className="border-b"><th className="text-left py-1">業種</th><th className="text-right py-1">LQ</th><th className="text-right py-1">基盤雇用</th></tr></thead>
+                <tbody>
+                  <tr className="border-b"><td>飲食料品卸売業（地域の物流ハブ）</td><td className="text-right">1.38</td><td className="text-right">3,271</td></tr>
+                  <tr className="border-b"><td>各種商品小売業（地元百貨店）</td><td className="text-right">1.37</td><td className="text-right">1,233</td></tr>
+                  <tr className="border-b"><td>飲食料品小売業</td><td className="text-right">1.12</td><td className="text-right">4,381</td></tr>
+                  <tr className="border-b"><td>機械器具小売業</td><td className="text-right">1.15</td><td className="text-right">1,553</td></tr>
+                  <tr className="border-b"><td>その他の小売業</td><td className="text-right">1.15</td><td className="text-right">3,997</td></tr>
+                  <tr><td><strong>合計</strong></td><td></td><td className="text-right font-bold">14,456人</td></tr>
+                </tbody>
+              </table>
+              <p>
+                大分類で「平均的（LQ=0.99）」に見える業種でも、中分類で見れば特化している細分があり、
+                それが地域の経済基盤を支えている — これが業種分類粒度の本質的な意味です。
+              </p>
+            </CaseStudy>
+
+            <h3 className="font-semibold text-lg mt-6">数学的説明 — LQ計算の凸性質</h3>
+            <p>
+              <strong>Mulligan &amp; Murphy (1995)、Isard (1956)</strong> 等の地域経済学では、
+              業種分類を細分化すると基盤雇用は<strong>必ず増える方向（または不変）</strong>であることが
+              証明されています。直感的には:
+            </p>
+            <ul className="list-disc list-inside space-y-1">
+              <li><strong>大分類『情報通信業』LQ=1.0</strong>: 内訳は通信業 LQ=0.5、情報サービス業 LQ=1.5、放送業 LQ=1.0 だったとしても、合算するとLQ≈1.0で『特化なし』判定</li>
+              <li><strong>中分類化で『情報サービス業 LQ=1.5』が単独で評価</strong>: 基盤雇用 = 雇用×(1-1/1.5) = 雇用×0.333 と算入される</li>
+              <li>結果として基盤雇用合計は増え、EBM (=1/基盤率) は下がる</li>
+            </ul>
+            <p className="mt-2 text-sm text-slate-600">
+              参考: 米国 BLS の QCEW でも、Supersector レベル（11業種）と NAICS 4桁レベル（300業種以上）で
+              同じ地域のLQが大きく変わる現象が報告されています。CI102 教科書 Activity 4-1 が16業種を使うのは
+              「中粒度のバランス点」を取ったものです。
+            </p>
+
+            <h3 className="font-semibold text-lg mt-6">各指標への影響範囲</h3>
+            <InterpTable
+              headers={["指標", "影響度", "影響の方向", "理由"]}
+              rows={[
+                ["LQ（業種別）", "🔴 大", "細分化で隠れた特化が見える", "基盤判定対象の業種数が増える"],
+                ["基盤雇用合計", "🔴 大", "細分化で必ず増える方向", "LQ計算の凸性質（数学的必然）"],
+                ["基盤雇用比率", "🔴 大", "細分化で上昇", "基盤雇用 ÷ 総雇用"],
+                ["EBM", "🔴 大", "細分化で低下（健全化）", "1 / 基盤雇用比率の双曲関係"],
+                ["シフトシェアRS", "🟡 中", "業種数で分解構成が変化", "NS+IM+RS の恒等式は維持されるが各成分が変わる"],
+                ["投資適格スコア", "🟡 中", "EBM・基盤比率に依存", "5要素のうち2要素が変化"],
+                ["需要予測カスケード", "🟡 中", "EBM変化が波及", "基盤雇用×EBM=総雇用×PER=人口"],
+                ["PER", "🟢 小", "分母の雇用範囲で僅差", "民営+公務(大分類) vs 民営のみ(中分類)"],
+                ["小売漏損係数", "⚪ なし", "影響なし", "小売販売額のみ使用、産業分類と独立"],
+                ["人口・世帯", "⚪ なし", "影響なし", "国勢調査データ、産業分類と独立"],
+                ["地価・MLIT", "⚪ なし", "影響なし", "別データソース"],
+              ]}
+            />
+
+            <h3 className="font-semibold text-lg mt-6">需要予測カスケードへの具体的影響</h3>
+            <p>
+              基盤雇用 +100人のシミュレーションでの違いを鹿児島県で見てみます:
+            </p>
+            <InterpTable
+              headers={["指標", "大分類17", "中分類95", "+農林業"]}
+              rows={[
+                ["EBM", "8.93", "4.82", "4.55"],
+                ["PER", "2.32", "2.50", "2.41"],
+                ["基盤雇用 +100人 → 総雇用波及", "+893人", "+482人", "+455人"],
+                ["総雇用 → 人口波及", "+2,072人", "+1,205人", "+1,097人"],
+                ["人口 → 住宅需要（÷2.2人/世帯）", "+942戸", "+548戸", "+499戸"],
+              ]}
+            />
+            <p className="mt-2">
+              <strong>大分類版の方が需要予測の規模が大きく出る</strong>のは、基盤雇用比率が低く（11.2%）EBMが高い（8.93）ため。
+              中分類版・農林業補完版は<strong>実態（家族農家含む全産業構造）に近い</strong>需要予測を返します。
+              ただし<strong>CCIM CI102 教科書の枠組み（米国 Supersector ≈ 日本の大分類）と整合的</strong>なのは大分類版です。
+            </p>
+
+            <h3 className="font-semibold text-lg mt-6">シフトシェア分析への影響</h3>
+            <p>
+              シフトシェア分析（NS + IM + RS = 実雇用変化）の恒等式は分類粒度に関係なく成立しますが、
+              <strong>各成分の構成は業種数で変わります</strong>:
+            </p>
+            <ul className="list-disc list-inside space-y-1">
+              <li><strong>大分類17業種</strong>: 『情報通信業』全体としてのRSが算出される。内訳の通信業と情報サービス業のRSは相殺されている</li>
+              <li><strong>中分類95業種</strong>: 『情報サービス業』のRSが単独で見える。地域でこの業種が他県より成長していれば +、衰退していれば −</li>
+              <li><strong>テナント戦略への影響</strong>: 大分類だと『サービス業（他に分類されないもの）』全体しか見えないが、中分類なら『廃棄物処理業』『機械等修理業』など個別の RS が把握できる</li>
+            </ul>
+
+            <h3 className="font-semibold text-lg mt-6">どの数値を信じるべきか — 用途別の使い分け</h3>
+            <ClientTip>
+              <p className="mb-2">「CI102の数値に複数のバージョンがあるとのことですが、どれを信じればよいでしょうか？」とお客様に聞かれたら:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>CI102教科書の枠組みで議論する場合</strong> → 大分類17業種版（米国 BLS Supersector と整合）</li>
+                <li><strong>詳細な地域経済診断・物件マーケティング</strong> → 中分類95業種版（隠れた特化を捉える）</li>
+                <li><strong>地方都市・農業地域の現実評価</strong> → +農林業センサス補完版（家族農家を含む）</li>
+                <li>「数値の絶対値ではなく、<strong>3つの版がどう違うか</strong>が地域の経済特性を物語る」と説明できます</li>
+              </ul>
+            </ClientTip>
+
+            <div className="rounded-lg border-l-4 border-l-amber-400 bg-amber-50 dark:bg-amber-950/20 p-4 mt-4">
+              <p className="font-semibold text-amber-700">重要な制限事項</p>
+              <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+                <li>大分類版は公務（S）を含むが中分類版は含まない → PER の分母が異なるため僅差で違う</li>
+                <li>農林業センサス補完値は『主に自営農業に従事した世帯員』で、雇用形態がフルタイム雇用と異なる（農繁期/閑期で変動）</li>
+                <li>農林業センサスの市区町村按分は経済センサス農業構成比に基づく推計値。県全体集計は正確だが個別市町村は注意</li>
+                <li>シフトシェアは現在大分類でのみ実施（中分類版は時系列データの整合性確保が必要なため未実装）</li>
               </ul>
             </div>
           </Section>
