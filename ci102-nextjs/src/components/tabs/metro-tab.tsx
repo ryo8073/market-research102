@@ -33,6 +33,28 @@ export default function MetroTab() {
         </p>
       </div>
 
+      {/* キーメッセージ — 最も目立つ位置に */}
+      <div className="rounded-lg border-l-4 border-amber-500 bg-amber-50 p-4">
+        <h3 className="font-bold text-amber-900 mb-2">⚡ このタブを読む前に — 最も重要なメッセージ</h3>
+        <ul className="text-sm text-slate-800 space-y-1.5 leading-relaxed">
+          <li>
+            • <strong>EBM の高低は「経済の強弱」ではなく「経済構造の分散度合い」を示します。</strong>
+          </li>
+          <li>
+            • <strong>東京圏 EBM 11.41</strong> は『広く中程度に特化した9業種で経済が回る<strong>多角化大都市圏</strong>』。
+            日本の都市圏で最も多様性が高い。
+          </li>
+          <li>
+            • <strong>大阪圏 EBM 28.98</strong> は『<strong>東京一極集中の影響で特化業種が少なく</strong>、見かけ上の乗数が大きい』。
+            大阪が衰退しているのではなく、主要産業が全国シェアと同等になっているサイン。
+          </li>
+          <li>
+            • 両方とも『日本の経済中枢』である事実は変わりません。EBMの絶対値を比較するのではなく、
+            <strong>多角化指標（HHI・有効業種数等）と合わせて読む</strong>必要があります。
+          </li>
+        </ul>
+      </div>
+
       {/* このページから読み取れること（解説） */}
       <details className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm" open>
         <summary className="cursor-pointer font-semibold">
@@ -223,10 +245,10 @@ export default function MetroTab() {
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="border-b bg-white">
-                      <th className="text-left py-2 px-2">指標</th>
+                      <th className="text-left py-2 px-2">指標 / 計算式</th>
                       <th className="text-right py-2 px-2">この都市圏</th>
                       <th className="text-right py-2 px-2">日本他圏平均</th>
-                      <th className="text-left py-2 px-2 pl-4">意味</th>
+                      <th className="text-left py-2 px-2 pl-4">何を測るか</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -237,28 +259,40 @@ export default function MetroTab() {
                       <td className="text-xs pl-4">多くの分野で全国シェア超</td>
                     </tr>
                     <tr className="border-b">
-                      <td className="py-1.5 px-2">HHI（産業集中度）</td>
+                      <td className="py-1.5 px-2">
+                        HHI（産業集中度）<br/>
+                        <span className="text-[10px] font-mono text-slate-500">Σ(シェア×100)²</span>
+                      </td>
                       <td className="text-right">{metro.hhi?.toFixed(0)}</td>
                       <td className="text-right text-slate-500">~1100</td>
-                      <td className="text-xs pl-4">低いほど多角化（リスク分散）</td>
+                      <td className="text-xs pl-4">独占禁止法の市場集中度指標。<strong>低=多角化</strong><br/>米国DOJ: &lt;1500=競争的</td>
                     </tr>
                     <tr className="border-b">
-                      <td className="py-1.5 px-2">有効業種数（1/HHI₀₋₁）</td>
+                      <td className="py-1.5 px-2">
+                        有効業種数<br/>
+                        <span className="text-[10px] font-mono text-slate-500">1 / Σ シェア²</span>
+                      </td>
                       <td className="text-right">{metro.effective_n_industries?.toFixed(1)}</td>
                       <td className="text-right text-slate-500">~9</td>
-                      <td className="text-xs pl-4">実質いくつの業種で経済が回るか</td>
+                      <td className="text-xs pl-4">実質いくつの均等業種で構成されるか<br/>(Laakso &amp; Taagepera 1979)</td>
                     </tr>
                     <tr className="border-b">
-                      <td className="py-1.5 px-2">シャノンエントロピー</td>
+                      <td className="py-1.5 px-2">
+                        シャノンエントロピー H<br/>
+                        <span className="text-[10px] font-mono text-slate-500">-Σ シェア×ln(シェア)</span>
+                      </td>
                       <td className="text-right">{metro.shannon_entropy?.toFixed(3)}</td>
                       <td className="text-right text-slate-500">~2.43</td>
-                      <td className="text-xs pl-4">業種の多様性（最大2.83）</td>
+                      <td className="text-xs pl-4">情報理論の多様性指標<br/>最大値 ln(17)=2.83</td>
                     </tr>
                     <tr className="border-b">
-                      <td className="py-1.5 px-2">TOP5業種シェア</td>
+                      <td className="py-1.5 px-2">
+                        TOP5業種シェア CR<sub>5</sub><br/>
+                        <span className="text-[10px] font-mono text-slate-500">上位5業種の合計</span>
+                      </td>
                       <td className="text-right">{metro.top5_share?.toFixed(1)}%</td>
                       <td className="text-right text-slate-500">~64%</td>
-                      <td className="text-xs pl-4">上位5業種への依存度（低いほど分散）</td>
+                      <td className="text-xs pl-4">上位5業種への依存度<br/>低いほど分散</td>
                     </tr>
                     <tr>
                       <td className="py-1.5 px-2">最大LQ業種</td>
@@ -268,6 +302,33 @@ export default function MetroTab() {
                     </tr>
                   </tbody>
                 </table>
+
+                <div className="bg-white border border-slate-200 rounded p-3 mt-3 text-xs">
+                  <p className="font-semibold mb-1">📐 各指標は何を証明しているか</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>
+                      <strong>HHI</strong>: シェアの二乗和。1業種に偏ると急増する性質。
+                      4業種均等→HHI=2500 / 10業種均等→1000 / 17業種均等→588。
+                      『どれだけ特定業種に依存しているか』を1つの数値で測る。
+                    </li>
+                    <li>
+                      <strong>有効業種数</strong>: 1/HHI（0-1基準）。
+                      『17業種あっても1業種が90%なら実質1業種』のように、
+                      <strong>業種規模の偏りを反映した「真の」業種数</strong>を返す。
+                    </li>
+                    <li>
+                      <strong>シャノンエントロピー</strong>: HHIと違い対数を使うため、
+                      <strong>小さな業種の存在も評価する</strong>。HHIと併用で『集中度と多様性の両面』が見える。
+                    </li>
+                    <li>
+                      <strong>4指標で同じ結論</strong>: 東京圏が「最も多角化」と4指標すべてで証明される
+                      → これは偶然ではなく『経済構造の分散性』という性質の<strong>多面的な実証</strong>。
+                    </li>
+                  </ul>
+                  <p className="mt-2 text-slate-500">
+                    詳細は <a href="/learn#ch9-granularity" className="underline text-blue-700">Learn 第9章「業種分類粒度とCI102分析」</a> 参照。
+                  </p>
+                </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded p-3">
                   <p className="font-semibold">💡 東京圏が他都市圏とどう違うか（実データ）</p>

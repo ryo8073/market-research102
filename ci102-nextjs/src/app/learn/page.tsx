@@ -1200,30 +1200,123 @@ export default function LearnPage() {
             </p>
 
             <h4 className="font-semibold mt-4">検証2: HHI（Herfindahl-Hirschman Index）</h4>
+            <div className="rounded-lg bg-slate-50 border p-3 my-2">
+              <p className="font-mono text-sm">
+                HHI = Σᵢ (sᵢ × 100)² ， sᵢ = 業種iの雇用シェア（0〜1）
+              </p>
+              <p className="text-xs text-slate-600 mt-1">
+                例: 4業種が均等（各25%）→ HHI = 4 × 25² = <strong>2,500</strong> /
+                10業種が均等 → HHI = 10 × 10² = <strong>1,000</strong> /
+                17業種が均等 → HHI = 17 × (100/17)² ≈ <strong>588</strong>
+              </p>
+            </div>
             <p>
-              HHI は産業別雇用シェアの二乗和。<strong>低いほど多角化</strong>。
+              <strong>米国司法省の独占禁止ガイドライン</strong>では、市場の HHI が:
             </p>
             <ul className="list-disc list-inside space-y-1">
-              <li>東京圏 HHI = <strong>960</strong>（日本の都市圏で最低）</li>
+              <li>HHI &lt; 1,500: 競争的（非集中）市場</li>
+              <li>HHI 1,500-2,500: 中程度に集中</li>
+              <li>HHI &gt; 2,500: 高度に集中</li>
+            </ul>
+            <p className="mt-2">
+              <strong>何を証明しているか</strong>: HHI は『どれだけ特定業種に依存しているか』を測ります。
+              シェアが大きい業種ほど二乗で寄与するため、1業種に偏ると急激に大きくなります。
+              <strong>低いほどショックに強い</strong>（特定業種が衰退しても他がカバー）。
+            </p>
+            <ul className="list-disc list-inside space-y-1 mt-2">
+              <li>東京圏 HHI = <strong>960</strong>（日本の都市圏で最低・経済構造が最も分散）</li>
               <li>他都市圏平均 HHI = 1,104</li>
-              <li>名古屋圏 HHI = 1,242（自動車産業中心の集中型）</li>
+              <li>名古屋圏 HHI = 1,242（自動車・関連製造業中心の集中型）</li>
             </ul>
 
-            <h4 className="font-semibold mt-4">検証3: 有効業種数（Effective Number of Industries = 1/HHI₀₋₁）</h4>
+            <h4 className="font-semibold mt-4">検証3: 有効業種数（Effective Number of Industries）</h4>
+            <div className="rounded-lg bg-slate-50 border p-3 my-2">
+              <p className="font-mono text-sm">
+                N<sub>eff</sub> = 1 / Σᵢ sᵢ² ， sᵢ = 業種iの雇用シェア（0〜1基準）
+              </p>
+              <p className="text-xs text-slate-600 mt-1">
+                例: 4業種が均等（各25%）→ N<sub>eff</sub> = 1/(4×0.0625) = <strong>4.0</strong> /
+                1業種が70%・残り3業種が10%ずつ → N<sub>eff</sub> = 1/(0.49+3×0.01) = <strong>1.92</strong>
+              </p>
+            </div>
             <p>
-              『実質的にいくつの業種で経済が回っているか』の指標。東京圏は <strong>10.4業種</strong>、
-              他平均 9.1業種。東京圏では実質10業種以上が雇用を支える分散構造。
+              <strong>政治学・生態学で広く使われる『有効数指標』</strong>（Laakso &amp; Taagepera 1979）。
+              『実質的にいくつの均等な単位で構成されているか』を返します。
             </p>
+            <p className="mt-2">
+              <strong>何を証明しているか</strong>: 17業種があっても、1業種が90%なら実質1業種の経済。
+              N<sub>eff</sub> は『実効業種数』を表すため、業種ごとの規模差を加味した『真の多様性』が見えます。
+            </p>
+            <ul className="list-disc list-inside space-y-1 mt-2">
+              <li>東京圏 N<sub>eff</sub> = <strong>10.4</strong>（17業種中、実質10業種以上で経済が回る）</li>
+              <li>他都市圏平均 N<sub>eff</sub> = 9.1</li>
+              <li>名古屋圏 N<sub>eff</sub> = 8.0（製造業の比重が大きく実効業種が少ない）</li>
+            </ul>
 
             <h4 className="font-semibold mt-4">検証4: シャノンエントロピー H</h4>
+            <div className="rounded-lg bg-slate-50 border p-3 my-2">
+              <p className="font-mono text-sm">
+                H = − Σᵢ sᵢ × ln(sᵢ) ， sᵢ = 業種iの雇用シェア（0〜1）
+              </p>
+              <p className="text-xs text-slate-600 mt-1">
+                例: 17業種が均等 → H = ln(17) = <strong>2.833</strong>（理論最大値） /
+                1業種に100%集中 → H = <strong>0</strong>（多様性ゼロ）
+              </p>
+            </div>
             <p>
-              情報理論の多様性指標。最大値は ln(17)=2.83（17業種が均等分布の場合）。
+              <strong>Claude Shannon (1948)</strong> の情報理論で導入された多様性指標。
+              生態学では『種の多様性指数』として、地域経済学では『産業多様性指数』として使われます
+              （Attaran 1986; Wagner &amp; Deller 1998 で都市経済の安定性との関連を実証）。
             </p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>東京圏 H = <strong>2.516</strong>（最大値の88%）</li>
-              <li>他都市圏平均 H = 2.432</li>
-              <li>名古屋圏 H = 2.359（製造業偏重）</li>
+            <p className="mt-2">
+              <strong>何を証明しているか</strong>: HHI と異なり、対数を使うため『小さな業種の存在』も評価。
+              17業種すべてが何らかのシェアを持っていれば H は上がる。HHIと併用することで、
+              『集中度（HHI）』と『多様性（H）』の両面から評価できます。
+            </p>
+            <ul className="list-disc list-inside space-y-1 mt-2">
+              <li>東京圏 H = <strong>2.516</strong>（理論最大2.833の <strong>88.8%</strong>）</li>
+              <li>他都市圏平均 H = 2.432（86%）</li>
+              <li>名古屋圏 H = 2.359（製造業偏重で多様性低下）</li>
             </ul>
+
+            <h4 className="font-semibold mt-4">検証5: TOP5業種シェア（集中度の別観点）</h4>
+            <div className="rounded-lg bg-slate-50 border p-3 my-2">
+              <p className="font-mono text-sm">
+                CR<sub>5</sub> = Σᵢ₌₁⁵ sᵢ ， sᵢ = 上位5業種の雇用シェア
+              </p>
+            </div>
+            <p>
+              『上位5業種で何割を占めるか』というシンプルな集中度指標。
+              小売業の市場集中分析（FTC・公取委）でも使われる伝統的指標。
+            </p>
+            <ul className="list-disc list-inside space-y-1 mt-2">
+              <li>東京圏 CR<sub>5</sub> = <strong>58.0%</strong>（上位5業種で6割弱、残り12業種が4割超を支える）</li>
+              <li>他都市圏平均 CR<sub>5</sub> = 64.4%</li>
+              <li>名古屋圏 CR<sub>5</sub> = 68.4%（製造業集中の影響）</li>
+            </ul>
+
+            <div className="rounded-lg bg-emerald-50 border-l-4 border-emerald-400 p-3 mt-4">
+              <p className="font-semibold text-emerald-900">この4指標が証明していること</p>
+              <ul className="list-disc list-inside text-sm mt-1 space-y-1">
+                <li><strong>東京圏は4指標すべてで「最も多角化」</strong>: HHI最低・N<sub>eff</sub>最大・H最大・CR<sub>5</sub>最低</li>
+                <li>これは単独指標の偶然ではなく、<strong>『経済構造の分散性』という性質の多面的な証明</strong></li>
+                <li>同様に大阪圏は4指標で「中程度の集中」、名古屋圏は「製造業集中型」と一貫した姿が見える</li>
+                <li>EBMだけで判断すると見落とす『経済の質的構造』を、これらの指標で補完する必要がある</li>
+              </ul>
+            </div>
+
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-700">📚 参考文献</summary>
+              <ul className="list-disc list-inside text-xs text-slate-600 mt-2 space-y-1">
+                <li>Hirschman, A. O. (1945). <em>National Power and the Structure of Foreign Trade</em>. UCB Press.</li>
+                <li>Herfindahl, O. C. (1950). <em>Concentration in the U.S. Steel Industry</em>. Columbia.</li>
+                <li>Shannon, C. E. (1948). <em>A Mathematical Theory of Communication</em>. Bell System Technical Journal.</li>
+                <li>Laakso, M., &amp; Taagepera, R. (1979). <em>Effective Number of Parties</em>. Comparative Political Studies.</li>
+                <li>Attaran, M. (1986). <em>Industrial Diversity and Economic Performance in U.S. Areas</em>. Annals of Regional Science.</li>
+                <li>Wagner, J. E., &amp; Deller, S. C. (1998). <em>Measuring the Effects of Economic Diversity on Growth and Stability</em>. Land Economics.</li>
+                <li>Mulligan, G. F., &amp; Murphy, B. C. (1995). <em>Aggregation Effects on Local Multipliers</em>. Annals of Regional Science.</li>
+              </ul>
+            </details>
 
             <h4 className="font-semibold mt-4">東京圏の基盤産業 TOP（中身を見る）</h4>
             <InterpTable
