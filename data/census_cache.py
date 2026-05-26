@@ -417,12 +417,32 @@ def list_areas_by_prefecture(
 def get_area_employment_mid(
     df: pd.DataFrame,
     area_code: str,
+    extend_agriculture: bool = False,
+    agri_df: pd.DataFrame | None = None,
 ) -> dict[str, float]:
-    """産業中分類別従業者数を取得。詳細 LQ 計算用。"""
+    """産業中分類別従業者数を取得。詳細 LQ 計算用。
+
+    Parameters
+    ----------
+    df : 中分類雇用 DataFrame
+    area_code : 5桁地域コード
+    extend_agriculture : True なら経済センサスの『農業』を農林業センサス2020
+        の按分推計値で上書きする（個人経営の家族農家を含む拡張版）
+    agri_df : 農林業センサス DataFrame (load_agri_census() の戻り値)
+    """
     area_df = df[df["area_code"] == area_code]
     if area_df.empty:
         return {}
-    return dict(zip(area_df["category_name"], area_df["employees"]))
+    result = dict(zip(area_df["category_name"], area_df["employees"]))
+
+    if extend_agriculture and agri_df is not None:
+        agri_row = agri_df[agri_df["area_code"] == area_code]
+        if not agri_row.empty:
+            extended = float(agri_row.iloc[0]["agri_census_allocated"])
+            if extended > 0:
+                # 『農業』を農林業センサス値に置き換え
+                result["農業"] = extended
+    return result
 
 
 def get_area_population(

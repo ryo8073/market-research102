@@ -80,6 +80,14 @@ class ScorecardData:
     n_basic_industries_mid: Optional[int] = None
     top_lq_industries_mid: list[dict] = field(default_factory=list)
 
+    # Agri census extended (農林業センサス2020個人経営含む補完版)
+    # 経済センサスは民営事業所のみのため家族農家を捉えない（全国36万 vs 136万）。
+    # 拡張版は地方都市の真の農業基盤雇用を反映する。
+    ebm_mid_extended: Optional[float] = None
+    basic_ratio_mid_extended: Optional[float] = None
+    agri_eco_workers: Optional[int] = None
+    agri_extended_workers: Optional[int] = None
+
 
 def build_scorecard(
     accessor,
@@ -188,11 +196,16 @@ def build_scorecard(
     basic_emp_mid = None
     n_basic_mid = None
     top_lq_mid = []
+    # 農林業センサス補完版（家族農家含む）
+    ebm_mid_extended = None
+    basic_ratio_mid_extended = None
+    agri_eco_workers = None
+    agri_extended_workers = None
     try:
         from config import get_settings
         from data.census_cache import (
             DS_EMPLOYMENT_MID, load_cached_dataset,
-            get_area_employment_mid,
+            get_area_employment_mid, load_agri_census, get_area_agri_workers,
         )
         settings = get_settings()
         df_mid = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MID.csv_name)
@@ -215,6 +228,30 @@ def build_scorecard(
                         [["industry", "lq", "basic_emp_estimate"]]
                         .to_dict("records")
                     )
+
+            # 農林業センサス拡張版（個人経営の家族農家を含む推計）
+            agri_df = load_agri_census(settings.cache_dir)
+            if agri_df is not None:
+                agri_info = get_area_agri_workers(agri_df, area_code)
+                if agri_info:
+                    agri_eco_workers = int(agri_info["eco_only"])
+                    agri_extended_workers = int(agri_info["extended"])
+                    # 全国を拡張版で再計算
+                    local_ext = get_area_employment_mid(
+                        df_mid, area_code,
+                        extend_agriculture=True, agri_df=agri_df,
+                    )
+                    national_ext = get_area_employment_mid(
+                        df_mid, "00000",
+                        extend_agriculture=True, agri_df=agri_df,
+                    )
+                    if local_ext and national_ext:
+                        df_lq_ext = lq_table(local_ext, national_ext)
+                        b_ext = total_basic_employment(df_lq_ext)
+                        t_ext = float(df_lq_ext["local_emp"].sum())
+                        if t_ext > 0 and b_ext > 0:
+                            ebm_mid_extended = t_ext / b_ext
+                            basic_ratio_mid_extended = b_ext / t_ext * 100
     except Exception:
         pass
 
@@ -265,6 +302,10 @@ def build_scorecard(
         basic_emp_mid=basic_emp_mid,
         n_basic_industries_mid=n_basic_mid,
         top_lq_industries_mid=top_lq_mid,
+        ebm_mid_extended=round(ebm_mid_extended, 2) if ebm_mid_extended else None,
+        basic_ratio_mid_extended=round(basic_ratio_mid_extended, 1) if basic_ratio_mid_extended else None,
+        agri_eco_workers=agri_eco_workers,
+        agri_extended_workers=agri_extended_workers,
     )
 
 

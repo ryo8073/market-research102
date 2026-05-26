@@ -610,7 +610,13 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
             <KpiCard
               title="EBM"
               value={pref.ebm.toFixed(2)}
-              subtitle={pref.ebm_mid != null ? `中分類: ${pref.ebm_mid.toFixed(2)}` : "経済基盤乗数"}
+              subtitle={
+                pref.ebm_mid_extended != null
+                  ? `中分類+農林業: ${pref.ebm_mid_extended.toFixed(2)}`
+                  : pref.ebm_mid != null
+                    ? `中分類: ${pref.ebm_mid.toFixed(2)}`
+                    : "経済基盤乗数"
+              }
               tooltip="EBM = 1 / 基盤雇用比率。教科書Orlando 4.94 / 全国市区町村中央値4.99(大分類)・2.86(中分類)。健全レンジ3-6。値が大きいほど『基盤雇用が薄い』状態で、必ずしも経済が強い意味ではない。"
             />
             <KpiCard
@@ -626,8 +632,14 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
             <KpiCard
               title="基盤雇用比率"
               value={`${pref.basic_ratio.toFixed(1)}%`}
-              subtitle={pref.basic_ratio_mid != null ? `中分類: ${pref.basic_ratio_mid.toFixed(1)}%` : undefined}
-              tooltip="LQ>1.0の産業の超過雇用が総雇用に占める割合。教科書Orlando: 20.2% / 全国市区町村中央値20.0%(大分類)。中分類で見ると埋もれていた特化産業が見える。"
+              subtitle={
+                pref.basic_ratio_mid_extended != null
+                  ? `中分類+農林業: ${pref.basic_ratio_mid_extended.toFixed(1)}%`
+                  : pref.basic_ratio_mid != null
+                    ? `中分類: ${pref.basic_ratio_mid.toFixed(1)}%`
+                    : undefined
+              }
+              tooltip="LQ>1.0の産業の超過雇用が総雇用に占める割合。教科書Orlando: 20.2% / 全国市区町村中央値20.0%(大分類)。中分類で見ると埋もれていた特化産業が見える。農林業センサス補完版は経済センサス民営事業所(法人のみ)に家族農家を加えた拡張版。"
             />
             <KpiCard title="昼間人口" value={pref.daytime_population.toLocaleString()} tooltip="通勤・通学で流入する人口を含む日中の人口" />
             <KpiCard title="実績雇用変化" value={pref.actual_emp_change.toLocaleString()} subtitle="2016→2021" trend={pref.actual_emp_change > 0 ? "up" : "down"} tooltip="2016年→2021年の実際の雇用増減（経済センサス）" />

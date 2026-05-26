@@ -215,7 +215,9 @@ with tab_score:
     if sc.commute_distortion == "outflow":
         _ebm_help += f"\n\n⚠️ 通勤流出で過大値（{sc.ebm:.1f}）になっています。"
     _ebm_delta = None
-    if sc.ebm_mid is not None:
+    if sc.ebm_mid_extended is not None:
+        _ebm_delta = f"中分類+農林業: {sc.ebm_mid_extended:.2f}"
+    elif sc.ebm_mid is not None:
         _ebm_delta = f"中分類: {sc.ebm_mid:.2f}"
     k1.metric("EBM", f"{sc.ebm:.2f}", delta=_ebm_delta, delta_color="off", help=_ebm_help)
     _per_help = "就業者1人あたりの総人口。CI102 Orlando例は 1.91。"
@@ -223,11 +225,24 @@ with tab_score:
         _per_help += f"\n\n⚠️ 通勤流入で過小値（{sc.per:.2f}）になっています。"
     k2.metric("PER", f"{sc.per:.2f}", help=_per_help)
     _basic_delta = None
-    if sc.basic_ratio_mid is not None:
+    if sc.basic_ratio_mid_extended is not None:
+        _basic_delta = f"中分類+農林業: {sc.basic_ratio_mid_extended:.1f}%"
+    elif sc.basic_ratio_mid is not None:
         _basic_delta = f"中分類: {sc.basic_ratio_mid:.1f}%"
     k3.metric("基盤雇用比率", f"{sc.basic_ratio:.1f}%",
               delta=_basic_delta, delta_color="off",
-              help="LQ>1.0 の産業の超過雇用合計を総雇用で割った比率。教科書 Orlando: 20.2%。")
+              help="LQ>1.0 の産業の超過雇用合計を総雇用で割った比率。教科書 Orlando: 20.2%。"
+                   "農林業センサス補完版は経済センサス民営事業所(法人のみ)に家族農家を加えた拡張版。")
+
+    # 農林業センサス補完値表示（地方都市で大きく改善）
+    if sc.agri_eco_workers is not None and sc.agri_extended_workers is not None:
+        diff = sc.agri_extended_workers - sc.agri_eco_workers
+        if diff > 500:  # 差が大きい地域だけ表示
+            st.caption(
+                f"📊 農業従業者: 経済センサス {sc.agri_eco_workers:,}人 → "
+                f"農林業センサス補完 {sc.agri_extended_workers:,}人 "
+                f"(+{diff:,}人、個人経営の家族農家を含む推計)"
+            )
     k4.metric("RS合計", f"{sc.rs_total:+,.0f}")
     k5.metric("小売漏損/余剰", f"{sc.aggregate_gap_factor:+.1f}")
     if sc.median_unit_price is not None:

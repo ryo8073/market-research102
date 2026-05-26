@@ -86,6 +86,11 @@ export interface PrefectureData {
     lq: number;
     basic_emp_estimate: number;
   }>;
+  // 農林業センサス2020 補完版（家族農家含む推計）
+  ebm_mid_extended?: number | null;
+  basic_ratio_mid_extended?: number | null;
+  agri_eco_workers?: number | null;
+  agri_extended_workers?: number | null;
   // 通勤歪み判定（事業所所在地 vs 居住地の地理的不整合）
   commute_distortion?: "balanced" | "inflow" | "outflow";
   emp_to_pop_ratio?: number;

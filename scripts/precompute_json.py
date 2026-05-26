@@ -175,10 +175,15 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
         basic_emp_mid = None
         n_basic_mid = None
         top_lq_mid = []
+        # 農林業センサス補完版（家族農家含む）
+        ebm_mid_extended = None
+        basic_ratio_mid_extended = None
+        agri_eco_workers = None
+        agri_extended_workers = None
         try:
             from data.census_cache import (
                 DS_EMPLOYMENT_MID, load_cached_dataset,
-                get_area_employment_mid,
+                get_area_employment_mid, load_agri_census, get_area_agri_workers,
             )
             cache_dir = Path(__file__).resolve().parent.parent / "data" / "cache"
             df_mid = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MID.csv_name)
@@ -201,6 +206,29 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
                             [["industry", "lq", "basic_emp_estimate"]]
                             .to_dict("records")
                         )
+
+                # 農林業センサス2020拡張版（個人経営の家族農家を含む）
+                agri_df = load_agri_census(cache_dir)
+                if agri_df is not None:
+                    agri_info = get_area_agri_workers(agri_df, area_code)
+                    if agri_info:
+                        agri_eco_workers = int(agri_info["eco_only"])
+                        agri_extended_workers = int(agri_info["extended"])
+                        local_ext = get_area_employment_mid(
+                            df_mid, area_code,
+                            extend_agriculture=True, agri_df=agri_df,
+                        )
+                        national_ext = get_area_employment_mid(
+                            df_mid, "00000",
+                            extend_agriculture=True, agri_df=agri_df,
+                        )
+                        if local_ext and national_ext:
+                            df_lq_ext = lq_table(local_ext, national_ext)
+                            b_ext = total_basic_employment(df_lq_ext)
+                            t_ext = float(df_lq_ext["local_emp"].sum())
+                            if t_ext > 0 and b_ext > 0:
+                                ebm_mid_extended = round(t_ext / b_ext, 2)
+                                basic_ratio_mid_extended = round(b_ext / t_ext * 100, 1)
         except Exception:
             pass
 
@@ -245,6 +273,11 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             "basic_emp_mid": basic_emp_mid,
             "n_basic_industries_mid": n_basic_mid,
             "top_lq_industries_mid": top_lq_mid,
+            # 農林業センサス2020 補完版（家族農家含む）
+            "ebm_mid_extended": ebm_mid_extended,
+            "basic_ratio_mid_extended": basic_ratio_mid_extended,
+            "agri_eco_workers": agri_eco_workers,
+            "agri_extended_workers": agri_extended_workers,
             # 通勤歪み判定
             "commute_distortion": commute_distortion,
             "emp_to_pop_ratio": round(emp_to_pop, 3),
