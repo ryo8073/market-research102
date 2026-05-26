@@ -68,6 +68,9 @@ const MetroTab = dynamic(() => import("@/components/tabs/metro-tab"), {
 const CustomMetroTab = dynamic(() => import("@/components/tabs/custom-metro-tab"), {
   loading: () => <TabSkeleton />,
 });
+const TradeAreaTab = dynamic(() => import("@/components/tabs/trade-area-tab"), {
+  loading: () => <TabSkeleton />,
+});
 
 const COLORS = {
   primary: "#1B2A4A",
@@ -1407,6 +1410,10 @@ function DashboardContent() {
                 <span className="md:hidden">⑫</span>
                 <span className="hidden md:inline">⑫ カスタム経済圏</span>
               </TabsTrigger>
+              <TabsTrigger value="trade_area" className="text-xs md:text-sm">
+                <span className="md:hidden">⑬</span>
+                <span className="hidden md:inline">⑬ 商圏分析（住所）</span>
+              </TabsTrigger>
             </TabsList>
 
             <div className="mt-6">
@@ -1533,6 +1540,13 @@ function DashboardContent() {
               <TabsContent value="custom_metro">
                 <ErrorBoundary>
                 <CustomMetroTab />
+                </ErrorBoundary>
+              </TabsContent>
+
+              {/* Tab 13: Trade Area (住所→商圏分析) */}
+              <TabsContent value="trade_area">
+                <ErrorBoundary>
+                <TradeAreaTab />
                 </ErrorBoundary>
               </TabsContent>
             </div>
