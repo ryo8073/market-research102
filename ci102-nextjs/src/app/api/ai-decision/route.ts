@@ -1,105 +1,232 @@
 /**
  * Claude AI による Decision Hub 分析の自然言語化 API。
+ *
+ * 4層ガードレール実装 (docs/AI_GUARDRAILS_POLICY.md 参照):
+ *   L1: 入力サニタイズ + データ最新性明示
+ *   L2: 堅牢な System Prompt + temperature 制御
+ *   L3: 出力の危険語句検出
+ *   L4: AI生成明示 + 免責事項
+ *
  * POST /api/ai-decision
- * Body: {
- *   target: string,                  // 例: "神奈川県 横浜市"
- *   bestType: string,                // 最有力候補（例: "🏘️ 住居系"）
- *   bestScore: number,
- *   bestVerdict: string,
- *   rationale: string[],             // 自動抽出されたプラス要因
- *   risks: string[],                 // 自動抽出されたマイナス要因
- *   allScores: Array<{               // 全5物件タイプのスコア
- *     label: string;
- *     score: number;
- *     verdict: string;
- *     factors: Array<{ label: string; score: number; weight: number; interpretation: string }>;
- *   }>,
- *   commuteDistortion?: string,
- *   segment?: string,
- * }
+ * Body: DecisionHubInput
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getEnv } from "@/lib/env";
 
-const SYSTEM_PROMPT = `あなたはCCIM CI102（不動産投資のための市場分析）に精通した不動産市場アナリストです。
-与えられた「投資判断ハブ」のスコア結果から、不動産投資家・お客様への説明文を自然な日本語で作成してください。
+// ============================================================================
+// SYSTEM PROMPT — Layer 2 ガードレール
+// ============================================================================
 
-## 最重要ルール
+const SYSTEM_PROMPT = `あなたは CCIM CI102（不動産投資のための市場分析）に精通した
+不動産市場アナリストです。地域経済データから不動産投資の参考情報を提供します。
 
-1. **EBMの正しい解釈**: EBMは「経済の強さ」ではなく「多角化度の逆数」。
-   EBM 3-6 が教科書MSA健全レンジ。EBM>8 は基盤雇用が薄い兆候であり「経済が強い」を意味しない。
+## 🚫 絶対禁止事項（違反は宅地建物取引業法・消費者契約法に抵触する可能性）
 
-2. **What-Ifと実績の区別**: 「需要成長が見込まれる」「人口増加が予測される」と断定しない。
-   人口推計や経済予測は前提条件付きの推定値。実績データと推定値を明確に区別。
+1. **断定的判断の提供禁止**
+   - ❌ 「買うべきです」「売却すべきです」「絶対に投資すべき」
+   - ❌ 「確実に値上がりします」「100%儲かります」「保証します」
+   - ✅ 「データから見て○○の特性があります」「○○の観点で参考になります」
 
-3. **分類粒度の限界**: スコアは大分類17業種ベース。中分類で見ると異なる可能性を必要に応じ言及。
+2. **将来予測の断定禁止**
+   - ❌ 「需要が増えます」「人口が回復します」
+   - ✅ 「需要拡大の可能性が示唆されます」「現データでは人口減少傾向が継続」
 
-4. **通勤歪み**: inflow（流入）= 通勤者で雇用過大、outflow（流出）= ベッドタウンで基盤過小。
-   いずれも単独自治体では教科書 MSA との整合性が崩れることを留意。
+3. **元データにない数値の生成禁止**
+   - 与えられたスコア・指標以外の具体的数値を捏造してはならない
+   - 不明な場合は「データなし」と明示
 
-## 出力フォーマット (Markdown 日本語、500-800字)
+4. **過度な楽観・悲観禁止**
+   - ❌ 「最高の投資先」「破綻リスク」「危険」（根拠なし）
+   - ✅ データに基づく中立的な評価
 
+## ✅ 必須要素
+
+1. **データ出典の明示**
+   - 「経済センサス2021」「国勢調査2020」「国土数値情報」など
+   - 各数値の元データソースを引用
+
+2. **不確実性の明示**
+   - 「データ上は」「現時点の指標では」「推定値ベースでは」
+   - 「ただし○○の制約があり実態と乖離する可能性」
+
+3. **CI102 教科書の正しい解釈**
+   - EBM = 1 / 基盤雇用比率 (多角化度の逆数、高いほど良い意味ではない)
+   - 教科書 Orlando MSA: EBM 4.94 / 基盤率 20.2% が健全大都市圏ベンチマーク
+   - 通勤歪み (inflow/outflow) は単独自治体の数値を歪める
+
+4. **データ時点の明示**
+   - 経済センサス: 2021年6月時点
+   - 国勢調査人口: 2015年組替値 (2020年境界)
+   - シフトシェア: 2016→2021年の実績
+
+5. **What-If と実績の区別**
+   - シミュレーション結果は「仮に〜なら」の形で
+   - 実績データ (2016→2021 雇用変化) は確定値
+
+## 📋 出力フォーマット (Markdown、600-900字)
+
+\`\`\`markdown
 ### 🎯 結論
-最有力候補と推奨度を1-2文で。
+[最有力候補と参考度を1-2文、断定を避けて]
 
 ### 📊 投資判断の根拠
-- 最も評価の高い要因2-3個を具体的に
-- 数値とそのCI102/不動産投資的意味を併記
-- 「なぜこの物件タイプが向くか」を論理的に
+- [根拠1: 数値+データソース+CI102的意味]
+- [根拠2: ...]
+- [根拠3: ...]
 
 ### ⚠️ 留意すべきリスク
-- マイナス要因2-3個
-- 各リスクへの対策案を簡潔に
+- [リスク1+対策案]
+- [リスク2+対策案]
 
-### 💡 物件タイプ別の比較
-- 上位3つの物件タイプを「向き不向き」で短評
-- なぜ順位がこの順になるか
+### 💡 物件タイプ別の特性比較
+[上位3つの物件タイプを「相対的に向く/向かない」で]
 
-### 🚀 推奨アクション
-- 次のステップを2-3個（物件選定基準、追加調査項目、補足分析）
+### 🚀 推奨される追加調査
+- [次のステップ1]
+- [次のステップ2]
 
-## 文体
-- お客様への説明として丁寧で、専門用語は補足説明
-- 過度な確信は避け、「データから見て」「CI102の枠組みでは」のように根拠を明示
-- 投資判断はあくまでも参考、最終決定はお客様の判断であることを示唆`;
+### 📌 重要な前提
+[データ時点・分類粒度・通勤歪み等の重要な制約事項]
+\`\`\`
+
+## 文体ルール
+
+- お客様への参考情報として丁寧かつ中立
+- 「データから見て」「CI102 の枠組みでは」「現データでは」で根拠を明示
+- 専門用語(EBM, LQ等)は補足説明
+- 数値は出典付きで
+- 最後に「※本分析は AI による自動生成であり、投資判断はお客様の責任において」と明記`;
+
+// ============================================================================
+// Layer 3: 出力検証 — 危険語句検出
+// ============================================================================
+
+interface GuardrailWarning {
+  level: "high" | "medium" | "low";
+  pattern: string;
+  category: string;
+  context: string;
+}
+
+function detectGuardrailViolations(text: string): GuardrailWarning[] {
+  const warnings: GuardrailWarning[] = [];
+
+  const patterns: Array<{ regex: RegExp; level: "high" | "medium" | "low"; category: string }> = [
+    // High: 断定的助言
+    { regex: /買うべき|売るべき|投資すべき|やめるべき|避けるべき/, level: "high", category: "断定的助言" },
+    { regex: /絶対に|必ず|確実に|100[%％]/, level: "high", category: "断定的表現" },
+    { regex: /保証[しま][すれ]|断言[しま][すれ]/, level: "high", category: "保証的表現" },
+    // Medium: 過度な楽観・悲観
+    { regex: /最高の|ベストな|ナンバーワン/, level: "medium", category: "過度な楽観" },
+    { regex: /最悪の|危険な|破綻/, level: "medium", category: "過度な悲観" },
+    { regex: /値上がりし[まで]|値下がりし[まで]/, level: "medium", category: "価格予測の断定" },
+    // Low: 注意すべき表現
+    { regex: /\b儲か[るり]|\bもうか[るり]/, level: "low", category: "金融助言的表現" },
+  ];
+
+  for (const p of patterns) {
+    const matches = text.match(p.regex);
+    if (matches) {
+      // 該当部分の前後20文字を context として
+      const idx = text.indexOf(matches[0]);
+      const start = Math.max(0, idx - 20);
+      const end = Math.min(text.length, idx + matches[0].length + 20);
+      warnings.push({
+        level: p.level,
+        pattern: matches[0],
+        category: p.category,
+        context: text.substring(start, end),
+      });
+    }
+  }
+
+  return warnings;
+}
+
+// ============================================================================
+// Layer 1: 入力サニタイズ
+// ============================================================================
+
+interface Factor {
+  label: string;
+  score: number;
+  weight: number;
+  interpretation: string;
+}
+interface AllScore {
+  label: string;
+  score: number;
+  verdict: string;
+  factors: Factor[];
+}
+interface DecisionHubInput {
+  target: string;
+  bestType: string;
+  bestScore: number;
+  bestVerdict: string;
+  rationale?: string[];
+  risks?: string[];
+  allScores?: AllScore[];
+  commuteDistortion?: string;
+  segment?: string;
+}
+
+function sanitizeInput(body: unknown): DecisionHubInput | null {
+  if (typeof body !== "object" || body === null) return null;
+  const b = body as Record<string, unknown>;
+
+  // 必須フィールドの型チェック
+  if (typeof b.target !== "string" || b.target.length === 0 || b.target.length > 200) return null;
+  if (typeof b.bestType !== "string") return null;
+  if (typeof b.bestScore !== "number" || !isFinite(b.bestScore) || b.bestScore < 0 || b.bestScore > 100) return null;
+  if (typeof b.bestVerdict !== "string") return null;
+
+  // 配列の検証
+  const rationale = Array.isArray(b.rationale) ? b.rationale.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
+  const risks = Array.isArray(b.risks) ? b.risks.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
+  const allScores = Array.isArray(b.allScores) ? b.allScores.slice(0, 10) : [];
+
+  return {
+    target: b.target.substring(0, 200),
+    bestType: (b.bestType as string).substring(0, 100),
+    bestScore: b.bestScore,
+    bestVerdict: (b.bestVerdict as string).substring(0, 50),
+    rationale,
+    risks,
+    allScores: allScores as AllScore[],
+    commuteDistortion: typeof b.commuteDistortion === "string" ? b.commuteDistortion : undefined,
+    segment: typeof b.segment === "string" ? b.segment : undefined,
+  };
+}
+
+// ============================================================================
+// POST handler
+// ============================================================================
 
 export async function POST(request: NextRequest) {
   const apiKey = getEnv("ANTHROPIC_API_KEY");
   if (!apiKey) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY未設定" }, { status: 503 });
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY 未設定" }, { status: 503 });
   }
 
+  let rawBody: unknown;
   try {
-    const body = await request.json();
-    const {
-      target, bestType, bestScore, bestVerdict,
-      rationale, risks, allScores, commuteDistortion, segment,
-    } = body;
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: "リクエストボディの解析失敗" }, { status: 400 });
+  }
 
-    const userMessage = `## 対象エリア
-${target}
+  // Layer 1: 入力サニタイズ
+  const input = sanitizeInput(rawBody);
+  if (!input) {
+    return NextResponse.json({ error: "入力データが不正です（型・範囲を確認してください）" }, { status: 400 });
+  }
 
-## 最有力候補
-${bestType} (スコア ${bestScore.toFixed(0)}/100, 判定: ${bestVerdict})
+  // ユーザーメッセージ構築（System prompt と完全分離）
+  const userMessage = buildUserMessage(input);
 
-## 自動抽出されたプラス要因
-${(rationale ?? []).map((r: string) => `- ${r}`).join("\n") || "(なし)"}
-
-## 自動抽出されたマイナス要因
-${(risks ?? []).map((r: string) => `- ${r}`).join("\n") || "(なし)"}
-
-## 全5物件タイプのスコア
-${(allScores ?? []).map((s: any) =>
-  `### ${s.label} — ${s.score.toFixed(0)}点 (${s.verdict})\n` +
-  s.factors.map((f: any) => `  - ${f.label}: ${f.score.toFixed(0)}点 × ${(f.weight * 100).toFixed(0)}% [${f.interpretation}]`).join("\n")
-).join("\n\n")}
-
-## 補足
-${commuteDistortion ? `- 通勤歪み: ${commuteDistortion}` : ""}
-${segment ? `- 市区町村セグメント: ${segment}` : ""}
-
-上記の自動評価結果を、不動産投資家・お客様向けの自然な投資判断レポートに整理してください。`;
-
+  try {
+    const startTime = Date.now();
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -110,20 +237,82 @@ ${segment ? `- 市区町村セグメント: ${segment}` : ""}
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 2000,
+        // Layer 2: temperature 制御 — 創造性を抑制
+        temperature: 0.3,
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userMessage }],
       }),
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: `Claude API error: ${res.status}` }, { status: 502 });
+      const errText = await res.text().catch(() => "");
+      return NextResponse.json({
+        error: `Claude API error: ${res.status}`,
+        detail: errText.substring(0, 500),
+      }, { status: 502 });
     }
 
     const data = await res.json();
-    const analysis = data?.content?.[0]?.text ?? "分析結果なし";
+    const analysis: string = data?.content?.[0]?.text ?? "";
 
-    return NextResponse.json({ analysis });
+    if (!analysis) {
+      return NextResponse.json({ error: "分析結果が空です" }, { status: 502 });
+    }
+
+    // Layer 3: 出力検証
+    const warnings = detectGuardrailViolations(analysis);
+
+    // メタ情報
+    const meta = {
+      model: "claude-sonnet-4-20250514",
+      generated_at: new Date().toISOString(),
+      latency_ms: Date.now() - startTime,
+      temperature: 0.3,
+      warnings_count: warnings.length,
+      high_warnings: warnings.filter((w) => w.level === "high").length,
+    };
+
+    return NextResponse.json({
+      analysis,
+      warnings,
+      meta,
+      disclaimer: "本レポートは AI (Claude) による自動分析です。投資判断はお客様の責任において行ってください。本ツールは投資助言ではなく分析情報の提供のみを目的としています。",
+    });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: String(error).substring(0, 500) }, { status: 500 });
   }
+}
+
+function buildUserMessage(input: DecisionHubInput): string {
+  return `# 対象エリア
+${input.target}
+
+# 最有力候補
+${input.bestType} (スコア ${input.bestScore.toFixed(0)}/100, 判定: ${input.bestVerdict})
+
+# 自動抽出されたプラス要因
+${(input.rationale ?? []).map((r) => `- ${r}`).join("\n") || "(なし)"}
+
+# 自動抽出されたマイナス要因
+${(input.risks ?? []).map((r) => `- ${r}`).join("\n") || "(なし)"}
+
+# 全5物件タイプのスコア
+${(input.allScores ?? []).map((s) =>
+  `## ${s.label} — ${s.score.toFixed(0)}点 (${s.verdict})\n` +
+  s.factors.map((f) => `  - ${f.label}: ${f.score.toFixed(0)}点 × 重み${(f.weight * 100).toFixed(0)}% [${f.interpretation}]`).join("\n")
+).join("\n\n")}
+
+# 補足情報
+${input.commuteDistortion ? `- 通勤歪み: ${input.commuteDistortion}` : ""}
+${input.segment ? `- 市区町村セグメント: ${input.segment}` : ""}
+
+# データ時点
+- 経済センサス活動調査: 2021年6月
+- 国勢調査人口: 2015年組替値（2020年境界）
+- シフトシェア: 2016→2021年実測
+- NLNI 国土数値情報: 各データセットの調査年（地価公示2024年・洪水想定2020-2023年等）
+- OSRM 走行距離: 2026年5月計算
+
+上記の自動評価結果を、CCIM CI102 の枠組みに沿った不動産市場分析の参考情報として整理してください。
+システムプロンプトの『絶対禁止事項』と『必須要素』を厳格に守ってください。`;
 }

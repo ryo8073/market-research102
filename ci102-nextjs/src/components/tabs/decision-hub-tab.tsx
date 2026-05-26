@@ -231,14 +231,35 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
   const target = selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name;
   const best = scores[0];
 
-  // AI 自然言語化
+  // AI 自然言語化（4層ガードレール対応）
+  interface AiWarning {
+    level: "high" | "medium" | "low";
+    pattern: string;
+    category: string;
+    context: string;
+  }
+  interface AiMeta {
+    model: string;
+    generated_at: string;
+    latency_ms: number;
+    temperature: number;
+    warnings_count: number;
+    high_warnings: number;
+  }
   const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiWarnings, setAiWarnings] = useState<AiWarning[]>([]);
+  const [aiMeta, setAiMeta] = useState<AiMeta | null>(null);
+  const [aiDisclaimer, setAiDisclaimer] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiEdited, setAiEdited] = useState<string | null>(null);  // 編集後テキスト
   const runAi = async () => {
     setAiLoading(true);
     setAiError(null);
     setAiResult(null);
+    setAiWarnings([]);
+    setAiMeta(null);
+    setAiEdited(null);
     try {
       const r = await fetch("/api/ai-decision", {
         method: "POST",
@@ -267,11 +288,24 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
         setAiError(data.error);
       } else {
         setAiResult(data.analysis);
+        setAiWarnings(data.warnings ?? []);
+        setAiMeta(data.meta ?? null);
+        setAiDisclaimer(data.disclaimer ?? "");
       }
     } catch (e) {
       setAiError(String(e));
     } finally {
       setAiLoading(false);
+    }
+  };
+  const copyToClipboard = async () => {
+    const text = aiEdited ?? aiResult ?? "";
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text + "\n\n---\n" + aiDisclaimer);
+      alert("レポートと免責事項をクリップボードにコピーしました");
+    } catch {
+      alert("コピーに失敗しました");
     }
   };
 
@@ -305,29 +339,129 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
         ))}
       </div>
 
-      {/* AI 投資判断レポート */}
-      <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4">
-        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-          <p className="text-sm font-semibold">🤖 AI 投資判断レポート（Claude API による自然言語化）</p>
-          <button
-            onClick={runAi}
-            disabled={aiLoading}
-            className="px-3 py-1.5 text-xs rounded-md bg-blue-600 text-white disabled:bg-slate-300 hover:bg-blue-700"
-          >
-            {aiLoading ? "生成中..." : aiResult ? "再生成" : "AI レポート生成"}
-          </button>
+      {/* AI 投資判断レポート (4層ガードレール対応) */}
+      <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold">🤖 AI 投資判断レポート</p>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600 text-white">AI 生成</span>
+          </div>
+          <div className="flex gap-2">
+            {aiResult && (
+              <button
+                onClick={copyToClipboard}
+                className="px-3 py-1.5 text-xs rounded-md bg-slate-600 text-white hover:bg-slate-700"
+              >
+                📋 コピー
+              </button>
+            )}
+            <button
+              onClick={runAi}
+              disabled={aiLoading}
+              className="px-3 py-1.5 text-xs rounded-md bg-blue-600 text-white disabled:bg-slate-300 hover:bg-blue-700"
+            >
+              {aiLoading ? "生成中..." : aiResult ? "再生成" : "AI レポート生成"}
+            </button>
+          </div>
         </div>
+
+        {/* 重要な免責事項 - 常時表示 */}
+        <div className="rounded border-l-4 border-amber-500 bg-amber-50 p-2 text-[11px] text-slate-800">
+          <strong>⚠ 重要な免責事項</strong>:
+          本レポートは <strong>Claude AI による自動分析</strong>であり、不動産投資の判断材料の1つに過ぎません。
+          <strong>投資判断は必ずお客様の責任において</strong>、専門家の助言と複数情報源を参照の上で行ってください。
+          本ツールは <strong>投資助言ではなく分析情報の提供のみ</strong>を目的としています（宅地建物取引業法・消費者契約法に配慮）。
+          AI 出力には不正確・誤解を招く表現が含まれる可能性があり、営業現場での提示前に営業担当者による精査を強く推奨します。
+        </div>
+
         {aiError && (
           <p className="text-xs text-rose-700 bg-rose-50 p-2 rounded">エラー: {aiError}</p>
         )}
+
+        {/* Layer 3: 危険語句警告 */}
+        {aiWarnings.length > 0 && (
+          <details className="rounded border-2 border-rose-300 bg-rose-50 p-2 text-xs">
+            <summary className="font-semibold text-rose-900 cursor-pointer">
+              🚨 {aiWarnings.length}件の注意すべき表現を検出
+              {aiWarnings.filter((w) => w.level === "high").length > 0 && (
+                <span className="ml-2 text-rose-700">
+                  (High: {aiWarnings.filter((w) => w.level === "high").length}件)
+                </span>
+              )}
+            </summary>
+            <div className="mt-2 space-y-1.5">
+              {aiWarnings.map((w, i) => (
+                <div key={i} className="rounded bg-white p-2 border border-rose-200">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={
+                        w.level === "high" ? "px-1.5 py-0.5 rounded text-[10px] bg-rose-600 text-white" :
+                        w.level === "medium" ? "px-1.5 py-0.5 rounded text-[10px] bg-amber-500 text-white" :
+                        "px-1.5 py-0.5 rounded text-[10px] bg-slate-400 text-white"
+                      }
+                    >
+                      {w.level.toUpperCase()}
+                    </span>
+                    <span className="font-semibold">{w.category}</span>
+                    <span className="text-rose-700">「{w.pattern}」</span>
+                  </div>
+                  <p className="text-[10px] text-slate-600 mt-1 ml-1">
+                    文脈: ...{w.context}...
+                  </p>
+                </div>
+              ))}
+              <p className="text-[10px] text-slate-600 mt-2">
+                ※ 断定的助言・過度な楽観/悲観・保証的表現等が検出されました。
+                お客様への提示前にこれらの表現を見直して修正することを推奨します。
+              </p>
+            </div>
+          </details>
+        )}
+
         {aiResult ? (
-          <div className="bg-white rounded p-3 mt-2 prose prose-sm max-w-none whitespace-pre-wrap text-xs leading-relaxed">
-            {aiResult}
-          </div>
+          <>
+            {/* AI 生成テキスト (編集可能) */}
+            <div className="bg-white rounded border p-3">
+              <div className="flex items-center justify-between mb-2 text-[10px] text-slate-500">
+                <span>📝 編集可能 — 営業現場提示前にレビュー・修正してください</span>
+                {aiEdited != null && (
+                  <button
+                    onClick={() => setAiEdited(null)}
+                    className="text-blue-600 hover:underline"
+                  >
+                    元に戻す
+                  </button>
+                )}
+              </div>
+              <textarea
+                value={aiEdited ?? aiResult}
+                onChange={(e) => setAiEdited(e.target.value)}
+                className="w-full text-xs leading-relaxed font-mono p-2 border rounded resize-y"
+                style={{ minHeight: "300px" }}
+                aria-label="AI 生成レポート（編集可能）"
+              />
+            </div>
+
+            {/* メタ情報 */}
+            {aiMeta && (
+              <div className="text-[10px] text-slate-500 flex flex-wrap gap-3">
+                <span>モデル: {aiMeta.model}</span>
+                <span>生成: {new Date(aiMeta.generated_at).toLocaleString()}</span>
+                <span>応答: {(aiMeta.latency_ms / 1000).toFixed(1)}秒</span>
+                <span>Temperature: {aiMeta.temperature}</span>
+                {aiMeta.warnings_count > 0 && (
+                  <span className="text-rose-700">⚠ 警告: {aiMeta.warnings_count}件</span>
+                )}
+              </div>
+            )}
+          </>
         ) : (
           <p className="text-xs text-slate-600">
-            ボタンを押すと、{target} のスコア結果から CCIM CI102 アナリスト視点の投資判断レポートを生成します。
-            EBM・基盤雇用比率の正しい解釈、What-If と実績の区別、通勤歪みの注釈などを含む詳細レポート。
+            ボタンを押すと、{target} のスコア結果から CCIM CI102 アナリスト視点の参考分析レポートを生成します。
+            EBM・基盤雇用比率の正しい解釈、What-If と実績の区別、通勤歪みの注釈、データ出典の明示を含む。
+            <br />
+            <strong>適用ガードレール</strong>: 断定的助言禁止 / 過度な楽観・悲観禁止 / 元データ捏造禁止 /
+            CI102 教科書整合性 / temperature=0.3 制御 / 出力危険語句自動検出。
           </p>
         )}
       </div>
