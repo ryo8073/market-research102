@@ -25,6 +25,13 @@ export interface MetroData {
   top_rs_industry: string;
   top_rs_value: number;
   aggregate_gap_factor: number;
+  // 多角化指標
+  n_basic_industries?: number;
+  hhi?: number;
+  effective_n_industries?: number;
+  shannon_entropy?: number;
+  top5_share?: number;
+  max_lq?: number;
 }
 
 let _cache: Record<string, MetroData> | null = null;

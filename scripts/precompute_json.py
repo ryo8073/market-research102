@@ -306,6 +306,7 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
 
 def compute_metro_areas(accessor: MarketDataAccessor) -> dict:
     """都市圏（MSA相当）の集計指標を計算。"""
+    import math
     results = {}
     for key, info in METROPOLITAN_AREAS.items():
         try:
@@ -320,6 +321,15 @@ def compute_metro_areas(accessor: MarketDataAccessor) -> dict:
             ebm = total_emp / basic if basic > 0 else 0
             per = population_employment_ratio(basics["population"], basics["total_employment"])
             basic_ratio = basic / total_emp * 100
+
+            # 多角化指標
+            shares = [float(v) / total_emp for v in df_lq["local_emp"] if v > 0]
+            hhi = sum(s * s for s in shares) * 10000
+            effective_n = 1 / sum(s * s for s in shares) if shares else 0
+            shannon = -sum(s * math.log(s) for s in shares if s > 0)
+            n_basic_industries = int((df_lq["lq"] > 1.0).sum())
+            top5_share = float(df_lq.nlargest(5, "local_emp")["local_emp"].sum()) / total_emp * 100
+            max_lq = float(df_lq["lq"].max())
 
             # Top LQ
             top_lq = (
@@ -377,6 +387,13 @@ def compute_metro_areas(accessor: MarketDataAccessor) -> dict:
                 "top_rs_industry": top_rs_industry,
                 "top_rs_value": round(top_rs_value, 0),
                 "aggregate_gap_factor": round(agg_gap, 1),
+                # 多角化指標
+                "n_basic_industries": n_basic_industries,
+                "hhi": round(hhi, 0),
+                "effective_n_industries": round(effective_n, 2),
+                "shannon_entropy": round(shannon, 3),
+                "top5_share": round(top5_share, 1),
+                "max_lq": round(max_lq, 2),
             }
         except Exception as e:
             print(f"  Metro {key} error: {e}")
