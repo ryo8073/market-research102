@@ -158,10 +158,10 @@ def _trend_arrow() -> str:
     return "→"
 
 
-tab_score, tab_lq, tab_ebm, tab_ss, tab_gap, tab_re, tab_map, tab_cross = st.tabs(
+tab_score, tab_lq, tab_ebm, tab_ss, tab_gap, tab_re, tab_map, tab_cross, tab_metro = st.tabs(
     ["⓪ 投資スコアカード", "① LQ・経済基盤", "② EBM・PER・予測",
      "③ シフトシェア分析", "④ 小売ギャップ分析", "⑤ 不動産取引価格",
-     "⑥ 地図分析", "⑦ クロス分析"]
+     "⑥ 地図分析", "⑦ クロス分析", "⑧ 都市圏分析（MSA相当）"]
 )
 
 
@@ -189,11 +189,45 @@ with tab_score:
             unsafe_allow_html=True,
         )
 
+    # 地理不整合の警告（KPIカード直上に目立つ形で表示）
+    if sc.commute_distortion == "inflow":
+        st.warning(
+            f"⚠️ **通勤流入による数値膨張**: 雇用/人口 = {sc.emp_to_pop_ratio*100:.0f}% "
+            f"（PER {sc.per:.2f}）。e-Stat経済センサスは事業所所在地ベースのため、"
+            "通勤者が雇用に算入されEBM・基盤雇用が住民あたり過大に見えます。"
+            "CI102の本来の分析単位はMSA（経済圏）です。"
+        )
+    elif sc.commute_distortion == "outflow":
+        st.warning(
+            f"⚠️ **ベッドタウン特性**: 雇用/人口 = {sc.emp_to_pop_ratio*100:.0f}% "
+            f"（PER {sc.per:.2f}）。市内事業所での雇用が薄く、EBM が {sc.ebm:.1f} と"
+            "異常に高い値を示しています。都市圏全体での再評価を推奨します。"
+        )
+
     # Row 1: 7 KPI cards
     k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
-    k1.metric("EBM", f"{sc.ebm:.2f}")
-    k2.metric("PER", f"{sc.per:.2f}")
-    k3.metric("基盤雇用比率", f"{sc.basic_ratio:.1f}%")
+    _ebm_help = (
+        "基盤雇用1単位が支える総雇用数。EBM = 1 / 基盤雇用比率（恒等式）。"
+        "教科書 Orlando MSA: 4.94 / 全国市区町村中央値: 4.99 (大分類)。"
+        "EBM 3-6 = 健全な多角化大都市圏。"
+        "EBM > 8 = 基盤雇用が薄く分母小さく見かけ上膨張（必ずしも経済が強い意味ではない）。"
+    )
+    if sc.commute_distortion == "outflow":
+        _ebm_help += f"\n\n⚠️ 通勤流出で過大値（{sc.ebm:.1f}）になっています。"
+    _ebm_delta = None
+    if sc.ebm_mid is not None:
+        _ebm_delta = f"中分類: {sc.ebm_mid:.2f}"
+    k1.metric("EBM", f"{sc.ebm:.2f}", delta=_ebm_delta, delta_color="off", help=_ebm_help)
+    _per_help = "就業者1人あたりの総人口。CI102 Orlando例は 1.91。"
+    if sc.commute_distortion == "inflow":
+        _per_help += f"\n\n⚠️ 通勤流入で過小値（{sc.per:.2f}）になっています。"
+    k2.metric("PER", f"{sc.per:.2f}", help=_per_help)
+    _basic_delta = None
+    if sc.basic_ratio_mid is not None:
+        _basic_delta = f"中分類: {sc.basic_ratio_mid:.1f}%"
+    k3.metric("基盤雇用比率", f"{sc.basic_ratio:.1f}%",
+              delta=_basic_delta, delta_color="off",
+              help="LQ>1.0 の産業の超過雇用合計を総雇用で割った比率。教科書 Orlando: 20.2%。")
     k4.metric("RS合計", f"{sc.rs_total:+,.0f}")
     k5.metric("小売漏損/余剰", f"{sc.aggregate_gap_factor:+.1f}")
     if sc.median_unit_price is not None:
@@ -211,16 +245,42 @@ with tab_score:
     col_lq, col_rs = st.columns(2)
 
     with col_lq:
-        st.subheader("基盤産業 TOP 5（LQ > 1.0）")
-        if sc.top_lq_industries:
-            df_top = pd.DataFrame(sc.top_lq_industries)
-            df_top.columns = ["産業", "LQ", "基盤雇用推計"]
+        # 大分類と中分類のトグル
+        if sc.top_lq_industries_mid:
+            granularity = st.radio(
+                "業種粒度",
+                options=["大分類17業種", f"中分類95業種（推奨）"],
+                horizontal=True, key="lq_granularity",
+                help="細かい分類ほど特化産業が見え、基盤雇用が正確に把握できます。",
+            )
+            use_mid = granularity.startswith("中分類")
+        else:
+            use_mid = False
+
+        if use_mid:
+            st.subheader(f"基盤産業 TOP 10 — 中分類95業種版")
+            st.caption(
+                f"中分類で再計算：基盤産業 {sc.n_basic_industries_mid} 業種 / "
+                f"基盤雇用 {sc.basic_emp_mid:,.0f}人 / "
+                f"基盤雇用比率 {sc.basic_ratio_mid:.1f}% / EBM {sc.ebm_mid:.2f}"
+            )
+            df_top_mid = pd.DataFrame(sc.top_lq_industries_mid)
+            df_top_mid.columns = ["産業", "LQ", "基盤雇用推計"]
             st.dataframe(
-                df_top.style.format({"LQ": "{:.2f}", "基盤雇用推計": "{:,.0f}"}),
+                df_top_mid.style.format({"LQ": "{:.2f}", "基盤雇用推計": "{:,.0f}"}),
                 use_container_width=True, hide_index=True,
             )
         else:
-            st.info("LQ > 1.0 の産業がありません。")
+            st.subheader("基盤産業 TOP 5 — 大分類17業種版")
+            if sc.top_lq_industries:
+                df_top = pd.DataFrame(sc.top_lq_industries)
+                df_top.columns = ["産業", "LQ", "基盤雇用推計"]
+                st.dataframe(
+                    df_top.style.format({"LQ": "{:.2f}", "基盤雇用推計": "{:,.0f}"}),
+                    use_container_width=True, hide_index=True,
+                )
+            else:
+                st.info("LQ > 1.0 の産業がありません。")
 
     with col_rs:
         # Actual trend
@@ -1455,6 +1515,130 @@ with tab_cross:
     except Exception as e:
         st.error(f"クロス分析の処理中にエラーが発生しました: {e}")
         st.exception(e)
+
+
+# ---------------------------------------------------------------------------
+# Tab 8: 都市圏（MSA相当）分析
+# ---------------------------------------------------------------------------
+
+with tab_metro:
+    st.header("都市圏分析（MSA相当）")
+    st.markdown("""
+**目的**: CI102 の経済基盤理論は MSA（Metropolitan Statistical Area = 通勤経済圏）を前提とします。
+日本の市町村単位だと、通勤流入（千代田区など）や流出（横浜・神戸など）で EBM・基盤雇用・PER が著しく歪みます。
+本タブは複数の都道府県を合算して**経済圏として再評価**します。
+    """)
+
+    from data.codes import METROPOLITAN_AREAS, get_metro_area_options
+
+    metro_options = get_metro_area_options()
+    metro_key = st.selectbox(
+        "都市圏を選択",
+        options=[k for k, _ in metro_options],
+        format_func=lambda k: next(n for kk, n in metro_options if kk == k),
+        index=0,
+    )
+
+    metro_info = METROPOLITAN_AREAS[metro_key]
+    pref_names = [ALL_PREFECTURES[pc] for pc in metro_info["prefectures"]]
+    st.caption(f"構成: {' + '.join(pref_names)} ｜ {metro_info['note']}")
+
+    try:
+        metro_basics_data = accessor.metro_basics(metro_info["prefectures"])
+        local_emp_m, national_emp_m, src_label = accessor.metro_industry_employment(
+            metro_info["prefectures"]
+        )
+
+        df_lq_m = lq_table(local_emp_m, national_emp_m)
+        basic_m = total_basic_employment(df_lq_m)
+        total_emp_m = float(df_lq_m["local_emp"].sum())
+        ebm_m = economic_base_multiplier(total_emp_m, basic_m)
+        per_m = population_employment_ratio(
+            metro_basics_data["population"], metro_basics_data["total_employment"]
+        )
+        basic_ratio_m = basic_m / total_emp_m * 100 if total_emp_m > 0 else 0
+
+        st.caption(f"データソース: {src_label}")
+
+        # KPI cards
+        st.subheader("経済圏 KPI")
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("人口", f"{metro_basics_data['population']:,}")
+        c2.metric("総雇用", f"{int(total_emp_m):,}")
+        c3.metric("PER", f"{per_m:.2f}",
+                  help="教科書Orlando MSA: 1.91")
+        c4.metric("EBM", f"{ebm_m:.2f}",
+                  help="教科書Orlando MSA: 4.94")
+        c5.metric("基盤雇用比率", f"{basic_ratio_m:.1f}%",
+                  help="教科書Orlando MSA: 20.2%")
+
+        # 教科書値との比較
+        st.markdown("**教科書（Orlando MSA）との比較**")
+        comparison_df = pd.DataFrame({
+            "指標": ["PER", "EBM", "基盤雇用比率"],
+            "Orlando MSA": [1.91, 4.94, 20.2],
+            f"この都市圏 ({metro_info['name']})": [per_m, ebm_m, basic_ratio_m],
+            "判定": [
+                "✅ 健全" if 1.5 <= per_m <= 2.5 else "⚠️ 範囲外",
+                "✅ 健全" if 3.0 <= ebm_m <= 6.0 else "⚠️ 範囲外",
+                "✅ 健全" if 15.0 <= basic_ratio_m <= 30.0 else "⚠️ 範囲外",
+            ],
+        })
+        st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+
+        # 基盤産業
+        st.subheader(f"{metro_info['name']} の基盤産業（LQ > 1.0）")
+        basic_df = df_lq_m[df_lq_m["lq"] > 1.0].copy()
+        if not basic_df.empty:
+            basic_df = basic_df.rename(columns={
+                "industry": "産業",
+                "local_emp": "都市圏雇用",
+                "lq": "LQ",
+                "basic_emp_estimate": "基盤雇用推計",
+            })[["産業", "都市圏雇用", "LQ", "基盤雇用推計"]]
+            st.dataframe(
+                basic_df.style.format({
+                    "都市圏雇用": "{:,.0f}",
+                    "LQ": "{:.2f}",
+                    "基盤雇用推計": "{:,.0f}",
+                }),
+                use_container_width=True, hide_index=True,
+            )
+        else:
+            st.info("LQ > 1.0 の産業がありません。")
+
+        # 全都市圏比較表
+        with st.expander("ℹ️ 全都市圏一覧で比較する"):
+            rows = []
+            for k, info in METROPOLITAN_AREAS.items():
+                b = accessor.metro_basics(info["prefectures"])
+                lo, na, _ = accessor.metro_industry_employment(info["prefectures"])
+                dl = lq_table(lo, na)
+                bs = total_basic_employment(dl)
+                te = float(dl["local_emp"].sum())
+                rows.append({
+                    "都市圏": info["name"],
+                    "人口": b["population"],
+                    "総雇用": int(te),
+                    "PER": round(population_employment_ratio(b["population"], b["total_employment"]), 2),
+                    "EBM": round(economic_base_multiplier(te, bs), 2),
+                    "基盤雇用比率(%)": round(bs / te * 100 if te > 0 else 0, 1),
+                    "基盤雇用": int(bs),
+                })
+            comparison_all = pd.DataFrame(rows)
+            st.dataframe(
+                comparison_all.style.format({
+                    "人口": "{:,}",
+                    "総雇用": "{:,}",
+                    "基盤雇用": "{:,}",
+                }),
+                use_container_width=True, hide_index=True,
+            )
+
+    except Exception as e:
+        st.error(f"都市圏分析の処理中にエラーが発生しました: {e}")
+        st.exception(e)
+
 
 # ---------------------------------------------------------------------------
 # Footer

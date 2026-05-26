@@ -51,3 +51,71 @@ def build_area_code(pref_code: int, city_code: int | None = None) -> str:
     if city_code is None:
         return f"{pref_code:02d}000"
     return f"{pref_code:02d}{city_code:03d}"
+
+
+# ---------------------------------------------------------------------------
+# 都市圏（MSA相当の経済圏）定義
+#
+# CI102の経済基盤理論はMSA（Metropolitan Statistical Area）= 通勤圏
+# 経済単位を前提とする。日本の市町村単位だと通勤流入・流出で
+# EBM・PER・基盤雇用が著しく歪むため、近隣を合算した経済圏で評価する。
+#
+# 構成は、国土交通省「都市圏」と総務省「大都市圏」を参考に簡略化。
+# 各経済圏は都道府県コード集合で定義する（県単位の合算 = 経済圏近似）。
+# 厳密な通勤圏ではないが、CI102分析の歪みは大幅に減る。
+# ---------------------------------------------------------------------------
+METROPOLITAN_AREAS: dict[str, dict] = {
+    "tokyo": {
+        "name": "東京圏（首都圏）",
+        "prefectures": [13, 14, 11, 12],  # 東京・神奈川・埼玉・千葉
+        "core_pref": 13,
+        "note": "総務省『大都市圏』の東京都中心都市圏（1都3県）",
+    },
+    "osaka": {
+        "name": "大阪圏（京阪神）",
+        "prefectures": [27, 28, 26, 29],  # 大阪・兵庫・京都・奈良
+        "core_pref": 27,
+        "note": "京阪神大都市圏（大阪・京都・神戸を中心とする経済圏）",
+    },
+    "nagoya": {
+        "name": "名古屋圏（中京）",
+        "prefectures": [23, 24, 21],  # 愛知・三重・岐阜
+        "core_pref": 23,
+        "note": "中京大都市圏（愛知・三重・岐阜の通勤圏）",
+    },
+    "fukuoka": {
+        "name": "福岡都市圏",
+        "prefectures": [40, 41],  # 福岡・佐賀
+        "core_pref": 40,
+        "note": "福岡市を中心とする九州北部経済圏",
+    },
+    "sapporo": {
+        "name": "札幌都市圏",
+        "prefectures": [1],
+        "core_pref": 1,
+        "note": "北海道は道全体で1経済圏として扱う",
+    },
+    "sendai": {
+        "name": "仙台都市圏",
+        "prefectures": [4],
+        "core_pref": 4,
+        "note": "宮城県を中心とする東北の中核都市圏",
+    },
+    "hiroshima": {
+        "name": "広島都市圏",
+        "prefectures": [34],
+        "core_pref": 34,
+        "note": "広島県を中心とする中四国の中核都市圏",
+    },
+}
+
+
+def get_metro_area_options() -> list[tuple[str, str]]:
+    """UI セレクタ用の (key, display_name) リスト。"""
+    return [(k, v["name"]) for k, v in METROPOLITAN_AREAS.items()]
+
+
+def get_metro_prefectures(metro_key: str) -> list[int]:
+    """都市圏キーから構成都道府県コードのリスト。"""
+    area = METROPOLITAN_AREAS.get(metro_key)
+    return area["prefectures"] if area else []

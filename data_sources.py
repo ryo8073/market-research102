@@ -603,3 +603,184 @@ class MarketDataAccessor:
             "e-Stat API": self.estat.available,
             "不動産情報ライブラリ API": self.mlit.available,
         }
+
+    # ---------------------------------------------------------------------------
+    # 都市圏（MSA相当）集計
+    # ---------------------------------------------------------------------------
+
+    def metro_industry_employment(
+        self, pref_codes: list[int]
+    ) -> tuple[Mapping[str, float], Mapping[str, float], str]:
+        """複数都道府県を合算した産業別従業者数を返す。
+
+        CI102のMSA前提に近づけるための都市圏集計版。
+        各県の県全体（pref_code+'000'）データを合算する。
+
+        Returns (local, national, data_source_label) のタプル。
+        """
+        census_df = self._ensure_census_cache()
+        if census_df is not None:
+            try:
+                from data.census_cache import get_area_employment, get_national_employment
+                combined: dict[str, float] = {}
+                for pc in pref_codes:
+                    pref_emp = get_area_employment(census_df, f"{pc:02d}000")
+                    for ind, val in pref_emp.items():
+                        combined[ind] = combined.get(ind, 0.0) + val
+                national_emp = get_national_employment(census_df)
+                if combined and national_emp:
+                    return (
+                        combined, national_emp,
+                        f"e-Stat 経済センサス 2021（{len(pref_codes)}県合算: 都市圏）",
+                    )
+            except Exception:
+                pass
+        return (
+            sample_data.TAKAMATSU_EMP_BY_INDUSTRY,
+            sample_data.NATIONAL_EMP_BY_INDUSTRY,
+            "sample_data (フォールバック)",
+        )
+
+    def metro_basics(self, pref_codes: list[int]) -> dict:
+        """都市圏全体の人口・世帯・総雇用などを集計。"""
+        try:
+            from config import get_settings
+            from data.census_cache import (
+                load_cached_dataset, DS_POPULATION, DS_EMPLOYMENT_MAJOR,
+                get_area_population, get_area_employment,
+            )
+            settings = get_settings()
+            df_pop = load_cached_dataset(settings.cache_dir, DS_POPULATION.csv_name)
+            df_emp = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
+
+            if df_pop is None or df_emp is None:
+                return sample_data.TAKAMATSU
+
+            total_pop = 0.0
+            total_hh = 0.0
+            total_emp = 0.0
+            for pc in pref_codes:
+                area_code = f"{pc:02d}000"
+                pop_data = get_area_population(df_pop, area_code)
+                emp_data = get_area_employment(df_emp, area_code)
+                total_pop += pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                total_hh += pop_data.get("世帯数", 0)
+                total_emp += sum(emp_data.values()) if emp_data else 0
+
+            pph = total_pop / total_hh if total_hh > 0 else 2.21
+            if total_pop > 0 and total_emp > 0:
+                return {
+                    "population": int(total_pop),
+                    "households": int(total_hh),
+                    "total_employment": int(total_emp),
+                    "persons_per_household": round(pph, 2),
+                }
+        except Exception:
+            pass
+        return sample_data.TAKAMATSU
+
+    def metro_retail_sectors(self, pref_codes: list[int]):
+        """都市圏全体の小売ギャップ分析セクター。"""
+        try:
+            from config import get_settings
+            from data.census_cache import (
+                load_cached_dataset, DS_RETAIL_SALES, DS_POPULATION,
+                get_area_retail_sales, get_area_population,
+            )
+            settings = get_settings()
+            df_retail = load_cached_dataset(settings.cache_dir, DS_RETAIL_SALES.csv_name)
+            df_pop = load_cached_dataset(settings.cache_dir, DS_POPULATION.csv_name)
+            if df_retail is None or df_pop is None:
+                return sample_data.TAKAMATSU_RETAIL_SECTORS, "sample_data"
+
+            # 都市圏の小売販売額を集計
+            combined_supply: dict[str, float] = {}
+            combined_pop = 0.0
+            for pc in pref_codes:
+                area_code = f"{pc:02d}000"
+                sup = get_area_retail_sales(df_retail, area_code)  # 既にフィルタ済み（小売中分類のみ）
+                pop_data = get_area_population(df_pop, area_code)
+                combined_pop += pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                for k, v in sup.items():
+                    combined_supply[k] = combined_supply.get(k, 0.0) + v
+
+            if not combined_supply or combined_pop <= 0:
+                return sample_data.TAKAMATSU_RETAIL_SECTORS, "sample_data"
+
+            national_supply = get_area_retail_sales(df_retail, "00000")
+            national_pop = get_area_population(df_pop, "00000")
+            nat_population = national_pop.get("2015年（平成27年）の人口（組替）", 0)
+            if nat_population <= 0:
+                return sample_data.TAKAMATSU_RETAIL_SECTORS, "sample_data"
+
+            sectors = []
+            for sector_name, sales in combined_supply.items():
+                nat_sales = national_supply.get(sector_name, 0)
+                if nat_sales > 0:
+                    per_capita = nat_sales / nat_population
+                    demand = combined_pop * per_capita
+                    sectors.append({"sector": sector_name, "demand": demand, "supply": sales})
+
+            return sectors, f"e-Stat 経済センサス 2021（{len(pref_codes)}県合算: 都市圏ギャップ）"
+        except Exception:
+            return sample_data.TAKAMATSU_RETAIL_SECTORS, "sample_data"
+
+    def metro_shift_share_inputs(self, pref_codes: list[int]):
+        """都市圏全体のシフトシェア入力。
+
+        Returns (local_t0, local_t1, national_t0, national_t1, source_label)
+        """
+        try:
+            from config import get_settings
+            from data.census_cache import (
+                load_cached_dataset, DS_EMPLOYMENT_MAJOR, DS_EMPLOYMENT_MAJOR_2016,
+                get_area_employment,
+            )
+            settings = get_settings()
+            df_2016 = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MAJOR_2016.csv_name)
+            df_2021 = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
+
+            if df_2016 is not None and df_2021 is not None:
+                def _get_normalized_2016(df, area):
+                    raw = get_area_employment(df, area)
+                    normalized: dict[str, float] = {}
+                    for name, val in raw.items():
+                        clean = self._normalize_2016_industry_name(name)
+                        if clean:
+                            normalized[clean] = normalized.get(clean, 0.0) + val
+                    return normalized
+
+                # 都市圏の合算
+                local_t0: dict[str, float] = {}
+                local_t1: dict[str, float] = {}
+                for pc in pref_codes:
+                    area_code = f"{pc:02d}000"
+                    for ind, val in _get_normalized_2016(df_2016, area_code).items():
+                        local_t0[ind] = local_t0.get(ind, 0.0) + val
+                    for ind, val in get_area_employment(df_2021, area_code).items():
+                        local_t1[ind] = local_t1.get(ind, 0.0) + val
+
+                # 全国
+                national_t0: dict[str, float] = {}
+                for pc in range(1, 48):
+                    for ind, val in _get_normalized_2016(df_2016, f"{pc:02d}000").items():
+                        national_t0[ind] = national_t0.get(ind, 0.0) + val
+                national_t1 = get_area_employment(df_2021, "00000")
+
+                common = set(local_t0) & set(local_t1) & set(national_t0) & set(national_t1)
+                if len(common) >= 5:
+                    return (
+                        {k: local_t0[k] for k in common},
+                        {k: local_t1[k] for k in common},
+                        {k: national_t0[k] for k in common},
+                        {k: national_t1[k] for k in common},
+                        f"e-Stat 経済センサス 2016→2021（{len(pref_codes)}県合算: 都市圏）",
+                    )
+        except Exception:
+            pass
+
+        return (
+            sample_data.TAKAMATSU_EMP_T0, sample_data.TAKAMATSU_EMP_T1,
+            sample_data.NATIONAL_EMP_T0, sample_data.NATIONAL_EMP_T1,
+            "sample_data (フォールバック)",
+        )

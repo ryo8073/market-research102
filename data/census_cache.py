@@ -69,15 +69,28 @@ DS_EMPLOYMENT_MAJOR_2016 = DatasetConfig(
 )
 
 # --- 2. 産業中分類別従業者数 ---
+# 旧 table_id="0004005686" は『国及び地方公共団体』限定のテーブルだったため、
+# 民営事業所が含まれず製造業・卸売・小売等の値がほぼゼロになる重大バグがあった。
+# 正しいテーブル: 0004005684（民営事業所、市区町村粒度、2021年）。
 DS_EMPLOYMENT_MID = DatasetConfig(
-    table_id="0004005686",
+    table_id="0004005684",
     csv_name="census_employment_mid_2021.csv",
-    description="産業中分類別従業者数（詳細LQ計算用）",
-    tab_filter="113-2021",
-    cat_filters={"cdCat02": "0"},  # 経営組織: 総数
-    skip_categories={"AS", "AR", "AB", "CR"},
+    description="産業中分類別民営事業所従業者数（詳細LQ計算用）",
+    tab_filter="113-2021",      # 従業者数_男女計
+    cat_filters={},              # 経営組織フィルタなし（民営テーブル）
+    # 集約カテゴリ（中分類のみ残すため）:
+    #   AR, AB, CR = 大分類の上位集約
+    #   A-T = 大分類（17）
+    #   G1/G2/I1/I2/K1/K2/M1/M2/O1/O2/Q1/Q2/R1/R2 = 大分類内の小集約
+    skip_categories={
+        "AR", "AB", "CR",
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K",
+        "L", "M", "N", "O", "P", "Q", "R",
+        "G1", "G2", "I1", "I2", "K1", "K2",
+        "M1", "M2", "O1", "O2", "Q1", "Q2", "R1", "R2",
+    },
     name_map_id="cat01",
-    name_resolver="raw",  # 中分類名はメタ情報から取得
+    name_resolver="raw",          # 中分類名はメタ情報から取得
     value_column="employees",
 )
 
@@ -325,11 +338,17 @@ def download_all_employment(
 # ---------------------------------------------------------------------------
 
 def load_cached_dataset(cache_dir: Path, csv_name: str) -> pd.DataFrame | None:
-    """キャッシュ済み CSV があればロード。なければ None。"""
+    """キャッシュ済み CSV があればロード。なければ None。
+
+    area_code と category_code を str 指定する理由:
+      - area_code: '01000' などの先頭ゼロが '1000' になるのを防ぐ
+      - category_code: '01'(農業), '02'(林業) などの2桁ゼロパディング保護
+        指定しないと数値化され '01'→'1' になりキー検索で失敗する
+    """
     cache_path = cache_dir / csv_name
     if not cache_path.exists():
         return None
-    return pd.read_csv(cache_path, dtype={"area_code": str})
+    return pd.read_csv(cache_path, dtype={"area_code": str, "category_code": str})
 
 
 def load_cached_employment(cache_dir: Path) -> pd.DataFrame | None:
@@ -422,20 +441,57 @@ def get_area_population(
     return dict(zip(area_df["category_name"], area_df["value"]))
 
 
+# 小売業の中分類コード（56〜61）。CI102ギャップ分析の対象セクター。
+# 50〜55 は卸売業（B2B）で、住民の購買行動分析には不適切。
+RETAIL_MID_CATEGORY_PREFIXES = ("56", "57", "58", "59", "60", "61")
+
+
 def get_area_retail_sales(
     df: pd.DataFrame,
     area_code: str,
+    include_wholesale: bool = False,
+    include_subcategories: bool = False,
 ) -> dict[str, float]:
     """小売業種別の年間商品販売額を取得。ギャップ分析の Supply 側。
 
+    デフォルトでは『小売業（カテゴリ56-61）の中分類のみ』を返す。
+
+    背景:
+        e-Stat 経済センサスの小売販売額キャッシュには以下が混在している:
+          - 卸売業（50-55）: B2B取引、住民購買力分析の対象外
+          - 小売業（56-61）: CI102 Gap分析の本来の対象
+          - 中分類2桁コード（例: 58 飲食料品小売業）
+          - 小分類3桁コード（例: 581 各種食料品小売業）
+        全カテゴリを足すと「中分類+小分類の二重計上」と「卸売混入」で
+        合計が約6倍に膨らみ、ギャップ係数の絶対値が大きく歪む。
+
+    Parameters
+    ----------
+    df : 小売販売額キャッシュ DataFrame
+    area_code : 5桁地域コード
+    include_wholesale : True なら卸売業（50-55）も含める。B2B需給分析向け。
+    include_subcategories : True なら小分類（3桁コード）も含める。
+                            False の場合は中分類（2桁コード）のみ返す。
+
     Returns
     -------
-    dict: {小売業種名: 年間販売額（万円）}
+    dict: {業種名: 年間販売額（万円）}
     """
     area_df = df[df["area_code"] == area_code]
     if area_df.empty:
         return {}
-    return dict(zip(area_df["category_name"], area_df["sales"]))
+
+    code_str = area_df["category_code"].astype(str)
+    mask = pd.Series(True, index=area_df.index)
+
+    if not include_subcategories:
+        mask &= code_str.str.len() == 2
+
+    if not include_wholesale:
+        # 小売（56-61）のみ。中分類なら code[:2] in prefixes、小分類なら同様。
+        mask &= code_str.str[:2].isin(RETAIL_MID_CATEGORY_PREFIXES)
+
+    return dict(zip(area_df.loc[mask, "category_name"], area_df.loc[mask, "sales"]))
 
 
 def get_area_establishments(

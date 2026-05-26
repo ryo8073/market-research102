@@ -63,6 +63,23 @@ class ScorecardData:
     population_forecast: float = 0.0
     housing_demand: float = 0.0
 
+    # Commute distortion flag — geographic mismatch detection
+    # 経済センサスは事業所所在地、国勢調査は居住地。単独自治体だと
+    # 通勤流入（千代田区など）や流出（横浜・神戸など）で歪む。
+    # "balanced" | "inflow" | "outflow"
+    commute_distortion: str = "balanced"
+    emp_to_pop_ratio: float = 0.0  # 総雇用/人口
+
+    # Mid-classification (95業種) — 業種粒度を細かくした補正版
+    # 大分類17業種では LQ>1.0 の産業が少なく基盤雇用が過小評価されるため、
+    # 中分類で再計算した参考値を並置する（Mulligan & Murphy 1995 の凸性質）。
+    # データなし時は None。
+    ebm_mid: Optional[float] = None
+    basic_ratio_mid: Optional[float] = None
+    basic_emp_mid: Optional[float] = None
+    n_basic_industries_mid: Optional[int] = None
+    top_lq_industries_mid: list[dict] = field(default_factory=list)
+
 
 def build_scorecard(
     accessor,
@@ -164,6 +181,58 @@ def build_scorecard(
     delta_pop = forecast_population_change(delta_total, per)
     delta_housing = forecast_housing_units(delta_pop, persons_per_household)
 
+    # --- Mid-classification (中分類95業種) recompute ---
+    # 業種粒度を細かくすることで隠れた特化産業を捉え、基盤雇用過小評価を補正
+    ebm_mid = None
+    basic_ratio_mid = None
+    basic_emp_mid = None
+    n_basic_mid = None
+    top_lq_mid = []
+    try:
+        from config import get_settings
+        from data.census_cache import (
+            DS_EMPLOYMENT_MID, load_cached_dataset,
+            get_area_employment_mid,
+        )
+        settings = get_settings()
+        df_mid = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MID.csv_name)
+        if df_mid is not None:
+            area_code = accessor._build_area_code(pref_code, city_code)
+            local_mid = get_area_employment_mid(df_mid, area_code)
+            national_mid = get_area_employment_mid(df_mid, "00000")
+            if local_mid and national_mid:
+                df_lq_mid = lq_table(local_mid, national_mid)
+                basic_mid = total_basic_employment(df_lq_mid)
+                total_mid = float(df_lq_mid["local_emp"].sum())
+                if total_mid > 0 and basic_mid > 0:
+                    ebm_mid = total_mid / basic_mid
+                    basic_ratio_mid = basic_mid / total_mid * 100
+                    basic_emp_mid = basic_mid
+                    n_basic_mid = int((df_lq_mid["lq"] > 1.0).sum())
+                    top_lq_mid = (
+                        df_lq_mid[df_lq_mid["lq"] > 1.0]
+                        .nlargest(10, "basic_emp_estimate")
+                        [["industry", "lq", "basic_emp_estimate"]]
+                        .to_dict("records")
+                    )
+    except Exception:
+        pass
+
+    # --- Commute distortion detection ---
+    # CI102のMSA前提では PER ≈ 1.7-2.0 / EBM ≈ 3-6 が健全レンジ。
+    # 日本の単独市町村ではこれを外れることが多く、解釈に注意が必要。
+    pop_basic = float(basics.get("population", 0))
+    emp_to_pop = (total_emp / pop_basic) if pop_basic > 0 else 0.0
+    if per > 0 and per < 1.2:
+        # 人口より雇用が多い（PER<1.2 = 雇用/人口 > 83%） = 通勤流入で事業所が膨張
+        commute_distortion = "inflow"
+    elif ebm > 8.0 and basic_ratio < 12.0:
+        # EBM が教科書範囲を大きく超え、基盤雇用比率が極端に低い
+        # = 市内に基盤産業が乏しい（住居機能優位 = ベッドタウン）
+        commute_distortion = "outflow"
+    else:
+        commute_distortion = "balanced"
+
     return ScorecardData(
         area_name=area_name,
         population=basics["population"],
@@ -189,6 +258,13 @@ def build_scorecard(
         total_emp_forecast=delta_total,
         population_forecast=delta_pop,
         housing_demand=delta_housing,
+        commute_distortion=commute_distortion,
+        emp_to_pop_ratio=emp_to_pop,
+        ebm_mid=ebm_mid,
+        basic_ratio_mid=basic_ratio_mid,
+        basic_emp_mid=basic_emp_mid,
+        n_basic_industries_mid=n_basic_mid,
+        top_lq_industries_mid=top_lq_mid,
     )
 
 
@@ -199,39 +275,104 @@ def generate_insights(sc: ScorecardData) -> list[dict]:
     """
     insights: list[dict] = []
 
-    # EBM thresholds
-    if sc.ebm >= 5.0:
-        insights.append({
-            "level": "success",
-            "text": (
-                f"経済基盤乗数 EBM = {sc.ebm:.2f} は非常に高い。"
-                "基盤雇用1人の増減が地域経済に大きく波及します。"
-            ),
-        })
-    elif sc.ebm < 2.0:
+    # Commute distortion warning — geographic mismatch in single-municipality analysis
+    # CI102のMSA前提と日本の市町村単位の不整合を明示する
+    if sc.commute_distortion == "inflow":
         insights.append({
             "level": "warning",
             "text": (
-                f"経済基盤乗数 EBM = {sc.ebm:.2f} は低め。"
-                "非基盤部門が小さく、雇用増の波及効果が限定的です。"
+                f"⚠️ 通勤流入による数値膨張: 雇用/人口 = {sc.emp_to_pop_ratio*100:.0f}%（PER {sc.per:.2f}）。"
+                "e-Stat経済センサスは事業所所在地ベースのため、通勤者が雇用に算入され、"
+                "EBM・基盤雇用・基盤雇用比率が住民あたりで見ると過大になります。"
+                "CI102の本来の分析単位はMSA（経済圏）です。判断には都道府県全体や"
+                "近隣市町村を合算した経済圏での再評価を推奨します。"
+            ),
+        })
+    elif sc.commute_distortion == "outflow":
+        insights.append({
+            "level": "warning",
+            "text": (
+                f"⚠️ ベッドタウン特性: 雇用/人口 = {sc.emp_to_pop_ratio*100:.0f}%（PER {sc.per:.2f}）。"
+                "住民の多くが都心へ通勤しており、市内事業所での雇用が薄いため、"
+                "EBM が異常に大きく（{:.1f}倍）、基盤雇用比率が極めて低く出ています。"
+                "都市圏全体（例: 東京圏・京阪神圏）での再評価を推奨します。"
+            ).format(sc.ebm),
+        })
+
+    # 中分類版との比較で「業種粒度による基盤雇用過小評価」を可視化
+    if sc.ebm_mid is not None and sc.basic_ratio_mid is not None:
+        delta_ratio = sc.basic_ratio_mid - sc.basic_ratio
+        if delta_ratio >= 5.0:
+            insights.append({
+                "level": "info",
+                "text": (
+                    f"💡 業種粒度補正: 大分類17業種 → 中分類95業種で再計算すると、"
+                    f"基盤雇用比率は {sc.basic_ratio:.1f}% → {sc.basic_ratio_mid:.1f}%（+{delta_ratio:.1f}pt）、"
+                    f"EBM は {sc.ebm:.2f} → {sc.ebm_mid:.2f} に変化。"
+                    f"基盤産業数は {len(sc.top_lq_industries)}超 → {sc.n_basic_industries_mid} 業種へ。"
+                    "細かい特化産業（例: 情報サービス業、機械器具卸売業）が大分類では"
+                    "『卸売・小売』『情報通信』に埋もれて見えなくなっていることが原因です。"
+                ),
+            })
+
+    # EBM thresholds — 正しい解釈
+    # 数学的恒等式: EBM = 1 / 基盤雇用比率
+    # 教科書 Orlando MSA: EBM 4.94 = 基盤雇用比率 20.2%
+    # 全国市区町村中央値: EBM 4.99 = 基盤雇用比率 20.0%（大分類17業種計算）
+    #
+    # 健全レンジ: EBM 3-6 = 基盤雇用比率 17-33%（産業多角化＋輸出基盤バランス）
+    # EBM > 8: 基盤雇用比率 < 12%。基盤が薄いため見かけ上の乗数が膨張
+    # EBM < 2.5: 基盤過大。極端な特化 or 集計範囲が広すぎる可能性
+    if 3.0 <= sc.ebm <= 6.0:
+        insights.append({
+            "level": "success",
+            "text": (
+                f"経済基盤乗数 EBM = {sc.ebm:.2f} — 教科書のMSA健全レンジ（3〜6）内。"
+                "産業構造が適度に多角化し、輸出基盤と域内サービスのバランスが取れています。"
+                "（参考: Orlando MSA = 4.94 / 全国市区町村中央値 = 4.99）"
+            ),
+        })
+    elif sc.ebm > 8.0:
+        insights.append({
+            "level": "warning",
+            "text": (
+                f"経済基盤乗数 EBM = {sc.ebm:.2f} は教科書範囲（3〜6）を超えています。"
+                f"これは基盤雇用比率 {sc.basic_ratio:.1f}% と低く、分母が小さいため乗数が"
+                "機械的に膨張している状態です。**「EBMが大きい＝経済が強い」ではなく** "
+                "「基盤産業が薄い」サインとして読みます。"
+                "原因: ①業種粒度が荒く特化産業を捉えきれていない、"
+                "②自治体境界が経済圏と不一致（通勤流出/流入）、"
+                "③日本の産業構造（東京一極集中）。"
+            ),
+        })
+    elif sc.ebm < 2.5 and sc.ebm > 0:
+        insights.append({
+            "level": "warning",
+            "text": (
+                f"経済基盤乗数 EBM = {sc.ebm:.2f} は教科書範囲（3〜6）を下回ります。"
+                f"基盤雇用比率 {sc.basic_ratio:.1f}% と高すぎ、過度な産業特化または"
+                "集計範囲が広すぎて多くの産業が『基盤』判定されている可能性。"
             ),
         })
 
-    # Basic ratio
-    if sc.basic_ratio < 5.0:
+    # Basic ratio — 教科書 Orlando 基盤雇用比率 20.2% を基準にする
+    if sc.basic_ratio < 8.0:
         insights.append({
             "level": "warning",
             "text": (
-                f"基盤雇用比率 {sc.basic_ratio:.1f}% — "
-                "域外から資金を呼び込む輸出基盤が弱い地域です。"
+                f"基盤雇用比率 {sc.basic_ratio:.1f}% — 教科書MSA健全レンジ（15〜25%）を"
+                "下回ります。輸出基盤が弱く、外部から資金を呼び込む産業が限定的です。"
+                "（注: 業種大分類17のみでの計算のため、中分類で再計算すれば"
+                "細かい特化産業が見えて基盤雇用が増える可能性があります）"
             ),
         })
-    elif sc.basic_ratio >= 20.0:
+    elif 15.0 <= sc.basic_ratio <= 30.0:
         insights.append({
             "level": "success",
             "text": (
-                f"基盤雇用比率 {sc.basic_ratio:.1f}% — "
-                "強い輸出基盤を持ち、外部資金が安定的に流入しています。"
+                f"基盤雇用比率 {sc.basic_ratio:.1f}% — 教科書MSA健全レンジ（15〜30%）内。"
+                "輸出基盤と域内サービスのバランスが取れた経済構造です。"
+                "（参考: Orlando MSA = 20.2% / 全国市区町村中央値 = 20.0%）"
             ),
         })
 
