@@ -68,6 +68,12 @@ DS_EMPLOYMENT_MAJOR_2016 = DatasetConfig(
     value_column="employees",
 )
 
+# --- 1c. 産業中分類別従業者数 2016年（中分類シフトシェア t0 用） ---
+# テーブル 0003218646: H28 中分類民営事業所
+# scripts/download_mid_2016.py 経由で取得（業種名の先頭2桁を JSIC 中分類コードに正規化）
+# 民営事業所のみ → 2021年版 DS_EMPLOYMENT_MID と直接比較可能
+CSV_EMPLOYMENT_MID_2016 = "census_employment_mid_2016.csv"
+
 # --- 2. 産業中分類別従業者数 ---
 # 旧 table_id="0004005686" は『国及び地方公共団体』限定のテーブルだったため、
 # 民営事業所が含まれず製造業・卸売・小売等の値がほぼゼロになる重大バグがあった。

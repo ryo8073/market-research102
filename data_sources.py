@@ -507,6 +507,106 @@ class MarketDataAccessor:
             "sample_data (2014→2021 近似)",
         )
 
+    def shift_share_inputs_mid(
+        self, pref_code: int, city_code: int
+    ) -> tuple[
+        Mapping[str, float],
+        Mapping[str, float],
+        Mapping[str, float],
+        Mapping[str, float],
+        str,
+    ]:
+        """中分類95業種のシフトシェア入力を返す (2016→2021)。
+
+        2016年データ: e-Stat 0003218646 (H28 中分類民営事業所、scripts/download_mid_2016.py で正規化済み)
+        2021年データ: e-Stat 0004005684 (R3 中分類民営事業所)
+
+        両方とも民営事業所のみで、業種コードは JSIC 13次改定 (Rev 13) で完全一致。
+        category_code (2桁) を共通キーとして使う。
+        """
+        try:
+            from config import get_settings
+            from data.census_cache import (
+                load_cached_dataset, DS_EMPLOYMENT_MID, CSV_EMPLOYMENT_MID_2016,
+            )
+            settings = get_settings()
+            area_code = self._build_area_code(pref_code, city_code)
+
+            df_2016 = load_cached_dataset(settings.cache_dir, CSV_EMPLOYMENT_MID_2016)
+            df_2021 = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MID.csv_name)
+
+            if df_2016 is not None and df_2021 is not None:
+                local_t0 = self._mid_employment(df_2016, area_code)
+                local_t1 = self._mid_employment(df_2021, area_code)
+                national_t0 = self._mid_employment(df_2016, "00000")
+                national_t1 = self._mid_employment(df_2021, "00000")
+
+                common = set(local_t0) & set(local_t1) & set(national_t0) & set(national_t1)
+                if len(common) >= 10:
+                    return (
+                        {k: local_t0[k] for k in common},
+                        {k: local_t1[k] for k in common},
+                        {k: national_t0[k] for k in common},
+                        {k: national_t1[k] for k in common},
+                        "e-Stat 経済センサス 2016→2021（中分類95業種）",
+                    )
+        except Exception:
+            pass
+
+        return ({}, {}, {}, {}, "中分類データなし")
+
+    def metro_shift_share_inputs_mid(self, pref_codes: list[int]):
+        """都市圏の中分類シフトシェア入力（複数県合算）。"""
+        try:
+            from config import get_settings
+            from data.census_cache import (
+                load_cached_dataset, DS_EMPLOYMENT_MID, CSV_EMPLOYMENT_MID_2016,
+            )
+            settings = get_settings()
+            df_2016 = load_cached_dataset(settings.cache_dir, CSV_EMPLOYMENT_MID_2016)
+            df_2021 = load_cached_dataset(settings.cache_dir, DS_EMPLOYMENT_MID.csv_name)
+
+            if df_2016 is not None and df_2021 is not None:
+                local_t0: dict[str, float] = {}
+                local_t1: dict[str, float] = {}
+                for pc in pref_codes:
+                    area_code = f"{pc:02d}000"
+                    for ind, val in self._mid_employment(df_2016, area_code).items():
+                        local_t0[ind] = local_t0.get(ind, 0.0) + val
+                    for ind, val in self._mid_employment(df_2021, area_code).items():
+                        local_t1[ind] = local_t1.get(ind, 0.0) + val
+
+                national_t0 = self._mid_employment(df_2016, "00000")
+                national_t1 = self._mid_employment(df_2021, "00000")
+
+                common = set(local_t0) & set(local_t1) & set(national_t0) & set(national_t1)
+                if len(common) >= 10:
+                    return (
+                        {k: local_t0[k] for k in common},
+                        {k: local_t1[k] for k in common},
+                        {k: national_t0[k] for k in common},
+                        {k: national_t1[k] for k in common},
+                        f"e-Stat 経済センサス 2016→2021（{len(pref_codes)}県合算: 中分類95業種）",
+                    )
+        except Exception:
+            pass
+
+        return ({}, {}, {}, {}, "中分類データなし")
+
+    @staticmethod
+    def _mid_employment(df, area_code: str) -> dict[str, float]:
+        """中分類雇用 DataFrame から特定地域の {category_name: employees} を返す。
+
+        category_code (2桁) ではなく category_name を共通キーとして使う理由:
+        2016/2021 で同じコードでも名称が微妙に異なる場合があり、業種名で
+        一致確認した方が安全。実際に download_mid_2016.py で名称を 2021 形式に
+        揃えているため一致するはず。
+        """
+        sub = df[df["area_code"] == area_code]
+        if sub.empty:
+            return {}
+        return dict(zip(sub["category_name"], sub["employees"]))
+
     def retail_sectors(self, pref_code: int, city_code: int):
         """小売ギャップ分析用のセクターデータを返す。
 

@@ -1664,7 +1664,17 @@ function DashboardContent() {
               <TabsContent value="shift">
                 <ErrorBoundary>
                 {pref.shift_share_table.length > 0 ? (
-                  <ShiftShareTab precomputed={pref.shift_share_table} selectedCity={selectedCity} />
+                  <ShiftShareTab
+                    precomputed={pref.shift_share_table}
+                    precomputedMid={pref.shift_share_table_mid}
+                    topRsIndustry={pref.top_rs_industry}
+                    topRsValue={pref.top_rs_value}
+                    topRsIndustryMid={pref.top_rs_industry_mid}
+                    topRsValueMid={pref.top_rs_value_mid}
+                    rsTotal={pref.rs_total}
+                    rsTotalMid={pref.rs_total_mid}
+                    selectedCity={selectedCity}
+                  />
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">シフトシェアデータがありません</div>
                 )}

@@ -117,7 +117,7 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             .to_dict("records")
         )
 
-        # Shift-share
+        # Shift-share (大分類17業種)
         rs_total = 0.0
         actual_emp_change = 0.0
         top_rs_industry = ""
@@ -134,6 +134,36 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
                 top_rs_industry = str(best["industry"])
                 top_rs_value = float(best["regional_shift"])
                 ss_records = df_ss.to_dict("records")
+        except Exception:
+            pass
+
+        # Shift-share 中分類95業種 (2016 H28 → 2021 R3 民営事業所)
+        rs_total_mid = 0.0
+        actual_emp_change_mid = 0.0
+        top_rs_industry_mid = ""
+        top_rs_value_mid = 0.0
+        ss_records_mid = []
+        try:
+            l0m, l1m, n0m, n1m, _ = accessor.shift_share_inputs_mid(pref_code, 0)
+            if l0m and l1m:
+                df_ss_mid = shift_share_table(l0m, l1m, n0m, n1m)
+                if not df_ss_mid.empty:
+                    rs_total_mid = float(df_ss_mid["regional_shift"].sum())
+                    actual_emp_change_mid = float(df_ss_mid["actual_change"].sum())
+                    best_mid = df_ss_mid.loc[df_ss_mid["regional_shift"].idxmax()]
+                    top_rs_industry_mid = str(best_mid["industry"])
+                    top_rs_value_mid = float(best_mid["regional_shift"])
+                    # 中分類は95業種と多いので、上位20+下位20のみ保存（容量節約）
+                    df_sorted = df_ss_mid.sort_values("regional_shift", ascending=False)
+                    top20 = df_sorted.head(20).to_dict("records")
+                    bottom20 = df_sorted.tail(20).to_dict("records")
+                    seen = set()
+                    ss_records_mid = []
+                    for r in top20 + bottom20:
+                        key = r["industry"]
+                        if key not in seen:
+                            ss_records_mid.append(r)
+                            seen.add(key)
         except Exception:
             pass
 
@@ -330,6 +360,12 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             "actual_emp_change": round(actual_emp_change, 0),
             "top_rs_industry": top_rs_industry,
             "top_rs_value": round(top_rs_value, 0),
+            # 中分類95業種シフトシェア
+            "rs_total_mid": round(rs_total_mid, 0),
+            "actual_emp_change_mid": round(actual_emp_change_mid, 0),
+            "top_rs_industry_mid": top_rs_industry_mid,
+            "top_rs_value_mid": round(top_rs_value_mid, 0),
+            "shift_share_table_mid": ss_records_mid,
             "aggregate_gap_factor": round(agg_gap, 1),
             "num_leakage_sectors": n_leak,
             "num_surplus_sectors": n_surplus,
@@ -402,7 +438,7 @@ def compute_metro_areas(accessor: MarketDataAccessor) -> dict:
                 .to_dict("records")
             )
 
-            # Shift-share for the metro
+            # Shift-share for the metro (大分類)
             rs_total = 0.0
             top_rs_industry = ""
             top_rs_value = 0.0
@@ -415,6 +451,22 @@ def compute_metro_areas(accessor: MarketDataAccessor) -> dict:
                         best = df_ss.loc[df_ss["regional_shift"].idxmax()]
                         top_rs_industry = str(best["industry"])
                         top_rs_value = float(best["regional_shift"])
+            except Exception:
+                pass
+
+            # Shift-share for the metro (中分類95業種)
+            rs_total_mid = 0.0
+            top_rs_industry_mid = ""
+            top_rs_value_mid = 0.0
+            try:
+                l0m, l1m, n0m, n1m, _ = accessor.metro_shift_share_inputs_mid(prefs)
+                if l0m and l1m:
+                    df_ss_mid = shift_share_table(l0m, l1m, n0m, n1m)
+                    if not df_ss_mid.empty:
+                        rs_total_mid = float(df_ss_mid["regional_shift"].sum())
+                        best_mid = df_ss_mid.loc[df_ss_mid["regional_shift"].idxmax()]
+                        top_rs_industry_mid = str(best_mid["industry"])
+                        top_rs_value_mid = float(best_mid["regional_shift"])
             except Exception:
                 pass
 
@@ -449,6 +501,9 @@ def compute_metro_areas(accessor: MarketDataAccessor) -> dict:
                 "rs_total": round(rs_total, 0),
                 "top_rs_industry": top_rs_industry,
                 "top_rs_value": round(top_rs_value, 0),
+                "rs_total_mid": round(rs_total_mid, 0),
+                "top_rs_industry_mid": top_rs_industry_mid,
+                "top_rs_value_mid": round(top_rs_value_mid, 0),
                 "aggregate_gap_factor": round(agg_gap, 1),
                 # 多角化指標
                 "n_basic_industries": n_basic_industries,

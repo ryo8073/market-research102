@@ -68,6 +68,20 @@ export interface PrefectureData {
     regional_shift: number;
     total_share: number;
   }>;
+  // 中分類95業種シフトシェア (民営事業所のみ、2016 H28 → 2021 R3)
+  // 上位20+下位20でデータサイズを抑制
+  rs_total_mid?: number;
+  actual_emp_change_mid?: number;
+  top_rs_industry_mid?: string;
+  top_rs_value_mid?: number;
+  shift_share_table_mid?: Array<{
+    industry: string;
+    actual_change: number;
+    national_growth: number;
+    industry_mix: number;
+    regional_shift: number;
+    total_share: number;
+  }>;
   gap_table: Array<{
     sector: string;
     demand: number;
