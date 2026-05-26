@@ -38,6 +38,57 @@ export default function GapTab({ sectors, selectedCity }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* 日本データで見るときの解釈ガイド */}
+      <details className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+        <summary className="cursor-pointer font-semibold text-amber-900">
+          ℹ️ 日本データで見るときの注意点（解釈の前に必読）
+        </summary>
+        <div className="mt-3 space-y-2 text-slate-700">
+          <p>
+            <strong>Leakage係数の計算ロジック自体は教科書通り</strong>ですが、日本の経済センサス・国勢調査を使う際は構造的な歪みがあります。
+          </p>
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-1">地域タイプ</th>
+                <th className="text-left py-1">出やすい結果</th>
+                <th className="text-left py-1">理由</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b">
+                <td className="py-1">観光地（京都・那覇・石垣など）</td>
+                <td className="py-1">余剰側</td>
+                <td className="py-1">観光客の購買が需要側に算入されない</td>
+              </tr>
+              <tr className="border-b">
+                <td className="py-1">県庁所在地・商業中心地</td>
+                <td className="py-1">余剰側</td>
+                <td className="py-1">周辺市町村住民の購買力を吸収するが、需要は住民人口だけで計算</td>
+              </tr>
+              <tr className="border-b">
+                <td className="py-1">ベッドタウン（藤沢・川口など）</td>
+                <td className="py-1">漏損側</td>
+                <td className="py-1">住民が都心で買い物。実態は域外消費</td>
+              </tr>
+              <tr>
+                <td className="py-1">高所得地域</td>
+                <td className="py-1">需要過小推計</td>
+                <td className="py-1">1人あたり消費を全国均一と仮定</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-2">
+            <strong>セクター粒度の制限</strong>: 教科書 CI102 は NAICS 4桁レベル（数十～百業種）で実施。
+            本ツールは経済センサス中分類6業種のため、特定業態の漏損が相殺されて見えにくくなります。
+            <br />
+            <strong>単位</strong>: 需要・供給は e-Stat 経済センサス公式単位の <strong>百万円</strong>。
+            Leakage 係数は比率なので単位は相殺。
+          </p>
+          <p className="text-xs">→ Leakage の絶対値だけで判断せず、地域特性と合わせて読むことが必要。</p>
+        </div>
+      </details>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>

@@ -94,6 +94,9 @@ export interface PrefectureData {
   // 通勤歪み判定（事業所所在地 vs 居住地の地理的不整合）
   commute_distortion?: "balanced" | "inflow" | "outflow";
   emp_to_pop_ratio?: number;
+  // EBM構造分解（教育的解説用）
+  lq_above1_share?: number;
+  avg_excess_coef?: number;
 }
 
 let _cache: Record<string, PrefectureData> | null = null;

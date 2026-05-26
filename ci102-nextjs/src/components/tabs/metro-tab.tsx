@@ -33,6 +33,61 @@ export default function MetroTab() {
         </p>
       </div>
 
+      {/* このページから読み取れること（解説） */}
+      <details className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm" open>
+        <summary className="cursor-pointer font-semibold">
+          📖 このページの読み方 — なぜ都市圏でも EBM が大きく基盤率が低く出るのか
+        </summary>
+        <div className="mt-3 space-y-3 text-slate-700">
+          <p>
+            単独自治体（千代田区PER 0.05、横浜市EBM 11.43など）の歪みは
+            都市圏集計で<strong>大幅に正規化</strong>されます。実際、東京圏（1都3県）の
+            PER 1.93 は教科書 Orlando MSA の 1.91 とほぼ一致。
+          </p>
+          <p>
+            <strong>しかし都市圏でも EBM が 11-29、基盤雇用比率が 3-9% と教科書範囲を外れます。</strong>
+            これは『経済圏の歪み』ではなく<strong>日本固有の産業構造</strong>を反映する数学的帰結です。
+          </p>
+
+          <p className="font-semibold mt-3">なぜか — 3つの構造的理由：</p>
+          <ol className="list-decimal pl-6 space-y-2">
+            <li>
+              <strong>東京一極集中による『LQ平均化』</strong>:
+              LQ は『地域シェア ÷ 全国シェア』。日本では金融・情報通信・本社機能の
+              30-40% が東京圏に集中するため、他都市圏でこれらの業種は
+              『全国シェアと同等』（LQ ≈ 1.0）に収まりやすい。
+              東京圏自身も『全国の30-40%』を占めるためLQが頭打ちになる。
+            </li>
+            <li>
+              <strong>大分類17業種の粒度の粗さ</strong>:
+              『卸売・小売業』『情報通信業』のように幅広いカテゴリでまとめると、
+              細分の特化産業（例: 金融商品取引業・情報サービス業・機械器具卸売業）が
+              『全産業』レベルで相殺される。中分類95業種で再計算すると基盤率が大幅に上がる。
+            </li>
+            <li>
+              <strong>EBM = 1 / 基盤雇用比率 という双曲関係</strong>:
+              基盤雇用比率が 5% → EBM 20、10% → EBM 10、20% → EBM 5。
+              基盤雇用が薄いと EBM は機械的に膨張する。
+              <strong>EBM の大きさ自体は経済の強さの指標ではない</strong>。
+            </li>
+          </ol>
+
+          <p className="font-semibold mt-3">読み取り方の指針：</p>
+          <ul className="list-disc pl-6 space-y-1.5">
+            <li><strong>PER が 1.5-2.5 の範囲に入るか</strong> — 経済圏として閉じているサイン（教科書1.91付近）</li>
+            <li><strong>基盤雇用比率 8% 以上</strong> — 何らかの輸出基盤を持つ経済圏（日本ではこれが現実的上限）</li>
+            <li><strong>EBM の絶対値ではなく『相対比較』で使う</strong> — 都市圏間で比べたとき、EBM が低い圏ほど多角化（経済基盤が広い）</li>
+            <li><strong>基盤産業の中身を見る</strong> — どの業種で特化しているかが、その都市圏の経済キャラクター</li>
+          </ul>
+
+          <p className="text-xs text-slate-500 mt-3">
+            注: ここで使用する『総雇用』は経済センサス活動調査の事業所所在地ベース民営事業所＋公務。
+            『人口』は国勢調査2020年（2015年組替）の常住地ベース。両者の地理的単位がほぼ揃うことで
+            都市圏レベルでは PER の歪みが解消される。
+          </p>
+        </div>
+      </details>
+
       {/* 都市圏セレクタ */}
       <div className="flex flex-wrap gap-2">
         {Object.entries(allMetros).map(([key, m]) => (

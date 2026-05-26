@@ -687,6 +687,108 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
         </div>
       </div>
 
+      {/* ---- EBM Structural Decomposition (educational) ---- */}
+      {pref.lq_above1_share != null && pref.avg_excess_coef != null && (
+        <Card className="p-4">
+          <details>
+            <summary className="cursor-pointer text-sm font-semibold">
+              📖 EBM/基盤雇用比率はなぜこの値か（数学的分解）
+            </summary>
+            <div className="mt-3 space-y-3 text-sm text-slate-700">
+              <p>
+                <strong>EBM = 1 / 基盤雇用比率</strong> という恒等式があります。基盤雇用比率は次のように分解できます:
+              </p>
+              <p className="font-mono bg-slate-50 p-2 rounded">
+                基盤雇用比率 = (LQ&gt;1.0 業種の雇用シェア合計) × (平均 (1-1/LQ) 係数)
+              </p>
+              <p>この地域の現在値:</p>
+              <ul className="list-disc pl-6 space-y-0.5">
+                <li>LQ&gt;1.0 業種の雇用シェア合計: <strong>{pref.lq_above1_share.toFixed(1)}%</strong></li>
+                <li>
+                  平均 (1-1/LQ) 係数（特化の深さ）: <strong>{pref.avg_excess_coef.toFixed(3)}</strong>
+                  {" "}（平均LQ ≈ {pref.avg_excess_coef < 1 ? (1 / (1 - pref.avg_excess_coef)).toFixed(2) : "∞"}）
+                </li>
+                <li>基盤雇用比率 = {pref.lq_above1_share.toFixed(1)}% × {pref.avg_excess_coef.toFixed(3)} = <strong>{pref.basic_ratio.toFixed(1)}%</strong></li>
+                <li>EBM = 1 / {(pref.basic_ratio / 100).toFixed(4)} = <strong>{pref.ebm.toFixed(2)}</strong></li>
+              </ul>
+
+              <table className="w-full text-xs mt-3 border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-1">指標</th>
+                    <th className="text-right py-1">Orlando MSA（教科書）</th>
+                    <th className="text-right py-1">この地域</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b">
+                    <td className="py-1">LQ&gt;1.0 業種シェア</td>
+                    <td className="text-right">65%</td>
+                    <td className="text-right">{pref.lq_above1_share.toFixed(1)}%</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-1">平均(1-1/LQ)係数</td>
+                    <td className="text-right">0.312（平均LQ 1.45）</td>
+                    <td className="text-right">
+                      {pref.avg_excess_coef.toFixed(3)}
+                      （平均LQ ≈ {pref.avg_excess_coef < 1 ? (1 / (1 - pref.avg_excess_coef)).toFixed(2) : "∞"}）
+                    </td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-1">基盤雇用比率</td>
+                    <td className="text-right">20.2%</td>
+                    <td className="text-right">{pref.basic_ratio.toFixed(1)}%</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 font-semibold">EBM</td>
+                    <td className="text-right font-semibold">4.94</td>
+                    <td className="text-right font-semibold">{pref.ebm.toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="bg-amber-50 border border-amber-200 rounded p-3 mt-3">
+                <p className="font-semibold">なぜ日本の都市はEBMが高くなりがちか</p>
+                <p className="mt-1">
+                  日本の都市は『弱い特化（LQ 1.1-1.5）が多数』あるが『深い特化（LQ&gt;2.0）が少ない』傾向。
+                  Orlandoは Leisure 1.75・Financial 1.74 と<strong>強い特化</strong>を持つが、
+                  日本の地方都市は LQ 1.2-1.4 程度に収まることが多い。
+                  (1-1/1.2)=0.167、(1-1/1.4)=0.286 と急速に減衰するため、
+                  雇用シェアが大きくても基盤雇用への寄与は限定的になる。
+                </p>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded p-3">
+                <p className="font-semibold">正しい解釈の指針</p>
+                <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                  <li><strong>EBM 3-6</strong> = 教科書MSA健全レンジ（多角化＋輸出基盤）</li>
+                  <li><strong>EBM &gt; 8</strong> = 必ずしも『経済が強い』ではなく、基盤雇用が薄く乗数が機械的に膨張</li>
+                  <li>中分類95業種で再計算すると、埋もれていた特化産業が見えてEBMが教科書範囲に正規化</li>
+                </ul>
+              </div>
+            </div>
+          </details>
+        </Card>
+      )}
+
+      {/* ---- 農林業センサス補完の注釈 ---- */}
+      {pref.agri_eco_workers != null && pref.agri_extended_workers != null &&
+        pref.agri_extended_workers - pref.agri_eco_workers > 500 && (
+        <Card className="p-4 bg-amber-50 border-amber-200">
+          <p className="text-sm">
+            📊 <strong>農業従業者の補完</strong>:
+            経済センサス {pref.agri_eco_workers.toLocaleString()}人 →
+            農林業センサス補完 {pref.agri_extended_workers.toLocaleString()}人
+            （+{(pref.agri_extended_workers - pref.agri_eco_workers).toLocaleString()}人、個人経営の家族農家を含む推計）
+          </p>
+          <p className="text-xs text-slate-600 mt-2">
+            ℹ️ <strong>注意</strong>: 『基幹的農業従事者』は『仕事が主で、主に自営農業に従事した世帯員』であり、
+            経済センサスの雇用者と労働時間・雇用形態が異なります（農繁期・農閑期で変動）。
+            按分は県内の経済センサス農業雇用構成比で行うため、農業法人が無い家族農家のみの市町村ではゼロ計上される場合があります（県全体集計は正確）。
+          </p>
+        </Card>
+      )}
+
       {/* ---- Spatial Risk/Access Adjustment (enhanced_score) ---- */}
       {pref.enhanced_score != null && pref.score_adjustments && (
         <>

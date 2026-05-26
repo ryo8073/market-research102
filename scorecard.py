@@ -80,6 +80,11 @@ class ScorecardData:
     n_basic_industries_mid: Optional[int] = None
     top_lq_industries_mid: list[dict] = field(default_factory=list)
 
+    # EBM構造分解（教育的解説用）
+    # 基盤雇用比率 = LQ>1.0業種の合計雇用シェア × 平均(1-1/LQ)係数 を可視化する
+    lq_above1_share: Optional[float] = None  # LQ>1.0 業種の合計雇用シェア(%)
+    avg_excess_coef: Optional[float] = None  # 平均 (1-1/LQ) 係数
+
     # Agri census extended (農林業センサス2020個人経営含む補完版)
     # 経済センサスは民営事業所のみのため家族農家を捉えない（全国36万 vs 136万）。
     # 拡張版は地方都市の真の農業基盤雇用を反映する。
@@ -114,6 +119,20 @@ def build_scorecard(
     per = population_employment_ratio(basics["population"], basics["total_employment"])
 
     basic_ratio = (basic_total / total_emp * 100) if total_emp > 0 else 0.0
+
+    # EBM の数学的構造分解（解説用）
+    # 基盤雇用比率 = LQ>1.0 業種の雇用シェア × 平均(1-1/LQ)係数
+    basic_df = df_lq[df_lq["lq"] > 1.0]
+    if not basic_df.empty and total_emp > 0:
+        lq_above1_share = float(basic_df["local_emp"].sum()) / total_emp * 100
+        local_emp_sum = float(basic_df["local_emp"].sum())
+        avg_excess_coef = (
+            float(basic_df["basic_emp_estimate"].sum()) / local_emp_sum
+            if local_emp_sum > 0 else 0.0
+        )
+    else:
+        lq_above1_share = 0.0
+        avg_excess_coef = 0.0
 
     top_lq = (
         df_lq[df_lq["lq"] > 1.0]
@@ -306,6 +325,8 @@ def build_scorecard(
         basic_ratio_mid_extended=round(basic_ratio_mid_extended, 1) if basic_ratio_mid_extended else None,
         agri_eco_workers=agri_eco_workers,
         agri_extended_workers=agri_extended_workers,
+        lq_above1_share=round(lq_above1_share, 1),
+        avg_excess_coef=round(avg_excess_coef, 3),
     )
 
 

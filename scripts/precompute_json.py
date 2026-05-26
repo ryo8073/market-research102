@@ -242,6 +242,20 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
         else:
             commute_distortion = "balanced"
 
+        # --- EBM structural decomposition (educational) ---
+        # 基盤雇用比率 = LQ>1.0 業種シェア × 平均(1-1/LQ)係数
+        basic_df = df_lq[df_lq["lq"] > 1.0]
+        if not basic_df.empty and total_emp > 0:
+            lq_above1_share = float(basic_df["local_emp"].sum()) / total_emp * 100
+            local_emp_sum = float(basic_df["local_emp"].sum())
+            avg_excess_coef = (
+                float(basic_df["basic_emp_estimate"].sum()) / local_emp_sum
+                if local_emp_sum > 0 else 0.0
+            )
+        else:
+            lq_above1_share = 0.0
+            avg_excess_coef = 0.0
+
         return {
             "pref_code": pref_code,
             "pref_name": PREFECTURES.get(pref_code, ""),
@@ -281,6 +295,9 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             # 通勤歪み判定
             "commute_distortion": commute_distortion,
             "emp_to_pop_ratio": round(emp_to_pop, 3),
+            # EBM構造分解（教育的解説用）
+            "lq_above1_share": round(lq_above1_share, 1),
+            "avg_excess_coef": round(avg_excess_coef, 3),
         }
     except Exception as e:
         print(f"  Error for pref {pref_code}: {e}")
