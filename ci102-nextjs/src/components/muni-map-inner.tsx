@@ -10,6 +10,7 @@ interface Props {
   fillColor: any;
   overlays: Record<string, any>;
   activeLayers: string[];
+  onMuniClick?: (areaCode: string, areaName: string) => void;
 }
 
 type HoverInfo =
@@ -55,8 +56,22 @@ function describeZoneCode(code: number): string {
   return ZONING_CODE_TO_NAME[code] ?? `用途地域コード ${code}`;
 }
 
-export default function MuniMapInner({ geojson, center, fillColor, overlays, activeLayers }: Props) {
+export default function MuniMapInner({ geojson, center, fillColor, overlays, activeLayers, onMuniClick }: Props) {
   const [hover, setHover] = useState<HoverInfo | null>(null);
+  const [cursor, setCursor] = useState<string>("");
+
+  const onClick = useCallback((e: MapLayerMouseEvent) => {
+    if (!onMuniClick || !e.features || e.features.length === 0) return;
+    // 市区町村フィルレイヤーのフィーチャを優先（NLNIレイヤーが上にあっても市区町村を取得）
+    const muniFeature = e.features.find((f) => f.layer?.id === "muni-fill");
+    if (!muniFeature) return;
+    const props = muniFeature.properties ?? {};
+    const code = props.N03_007 ?? props.area_code;
+    const name = props.area_name ?? props.N03_004 ?? "";
+    if (code) {
+      onMuniClick(String(code), String(name));
+    }
+  }, [onMuniClick]);
 
   const activeSet = new Set(activeLayers);
 
@@ -159,8 +174,18 @@ export default function MuniMapInner({ geojson, center, fillColor, overlays, act
       style={{ width: "100%", height: "100%" }}
       mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
       interactiveLayerIds={interactiveIds}
-      onMouseMove={onMouseMove}
-      onMouseLeave={() => setHover(null)}
+      cursor={cursor}
+      onMouseMove={(e) => {
+        onMouseMove(e);
+        // 市区町村フィーチャの上にマウスがある時はポインターに
+        if (onMuniClick && e.features?.some((f) => f.layer?.id === "muni-fill")) {
+          setCursor("pointer");
+        } else {
+          setCursor("");
+        }
+      }}
+      onMouseLeave={() => { setHover(null); setCursor(""); }}
+      onClick={onClick}
     >
       {/* Base municipality layer */}
       <Source id="muni" type="geojson" data={geojson}>

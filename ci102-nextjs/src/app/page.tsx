@@ -1484,7 +1484,13 @@ function DashboardContent() {
               {/* Tab 6: Map */}
               <TabsContent value="map">
                 <ErrorBoundary>
-                <MapTab prefCode={prefCode} prefName={pref.pref_name} allData={allData} />
+                <MapTab
+                  prefCode={prefCode}
+                  prefName={pref.pref_name}
+                  allData={allData}
+                  onPrefClick={(c) => { setPrefCode(c); setCityCode(""); }}
+                  onCityClick={(code) => setCityCode(code)}
+                />
                 </ErrorBoundary>
               </TabsContent>
 

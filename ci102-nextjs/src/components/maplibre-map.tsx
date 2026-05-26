@@ -28,6 +28,7 @@ interface Props {
   center?: { longitude: number; latitude: number };
   zoom?: number;
   height?: number;
+  onFeatureClick?: (code: string, name: string) => void;
 }
 
 export default function ChoroplethMap({
@@ -41,6 +42,7 @@ export default function ChoroplethMap({
   center = JAPAN_CENTER,
   zoom = JAPAN_ZOOM,
   height = 600,
+  onFeatureClick,
 }: Props) {
   const [hoverInfo, setHoverInfo] = useState<{
     longitude: number;
@@ -48,6 +50,18 @@ export default function ChoroplethMap({
     name: string;
     value: number | null;
   } | null>(null);
+  const [cursor, setCursor] = useState<string>("");
+
+  const onClick = useCallback((e: MapLayerMouseEvent) => {
+    if (!onFeatureClick) return;
+    const feature = e.features?.[0];
+    if (!feature) return;
+    const code = feature.properties?.[featureCodeProperty];
+    if (code) {
+      const name = feature.properties?.[featureNameProperty] ?? code;
+      onFeatureClick(String(code), String(name));
+    }
+  }, [onFeatureClick, featureCodeProperty, featureNameProperty]);
 
   // Build lookup map: code -> value
   const lookup = useMemo(() => {
@@ -108,8 +122,13 @@ export default function ChoroplethMap({
         style={{ width: "100%", height: "100%" }}
         mapStyle={MAP_STYLE}
         interactiveLayerIds={["choropleth-fill"]}
-        onMouseMove={onHover}
-        onMouseLeave={() => setHoverInfo(null)}
+        cursor={cursor}
+        onMouseMove={(e) => {
+          onHover(e);
+          setCursor(onFeatureClick && e.features?.length ? "pointer" : "");
+        }}
+        onMouseLeave={() => { setHoverInfo(null); setCursor(""); }}
+        onClick={onClick}
       >
         <Source id="choropleth" type="geojson" data={geojsonUrl}>
           <Layer

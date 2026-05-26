@@ -53,9 +53,11 @@ interface Props {
   prefCode: number;
   prefName: string;
   allData: Record<string, PrefectureData> | null;
+  onPrefClick?: (prefCode: number) => void;
+  onCityClick?: (areaCode: string, areaName: string) => void;
 }
 
-export default function MapTab({ prefCode, prefName, allData }: Props) {
+export default function MapTab({ prefCode, prefName, allData, onPrefClick, onCityClick }: Props) {
   const [metric, setMetric] = useState<MapMetric>("basic_ratio");
   const [muniGeojson, setMuniGeojson] = useState<any>(null);
   const [activeLayers, setActiveLayers] = useState<Set<NlniLayerId>>(new Set());
@@ -199,7 +201,10 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
       {/* National map */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">全国マップ（都道府県別 — {cfg.label}）</CardTitle>
+          <CardTitle className="text-sm">
+            全国マップ（都道府県別 — {cfg.label}）
+            {onPrefClick && <span className="ml-2 text-xs text-slate-500">— クリックで県を選択</span>}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <MapView
@@ -211,6 +216,10 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
             colorScale={cfg.colorScale}
             midpoint={cfg.midpoint}
             height={500}
+            onFeatureClick={onPrefClick ? (code) => {
+              const num = parseInt(code, 10);
+              if (!Number.isNaN(num)) onPrefClick(num);
+            } : undefined}
           />
           {/* National map legend */}
           <MapLegend metric={metric} />
@@ -357,7 +366,10 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
       {/* Prefecture municipality map */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">{prefName} 県内マップ（市区町村別）</CardTitle>
+          <CardTitle className="text-sm">
+            {prefName} 県内マップ（市区町村別）
+            {onCityClick && <span className="ml-2 text-xs text-slate-500">— クリックで市区町村を選択</span>}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {enrichedGeojson ? (
@@ -368,6 +380,7 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
                 fillColor={fillColor}
                 overlays={nlniOverlays}
                 activeLayers={Array.from(activeLayers)}
+                onMuniClick={onCityClick}
               />
             </div>
           ) : (
