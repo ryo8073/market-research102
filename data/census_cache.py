@@ -510,6 +510,54 @@ def get_area_establishments(
     return dict(zip(area_df["category_name"], area_df["establishments"]))
 
 
+# ---------------------------------------------------------------------------
+# 農林業センサス2020 アクセス関数
+# ---------------------------------------------------------------------------
+
+AGRI_CENSUS_CSV = "agri_workers_2020.csv"
+
+
+def load_agri_census(cache_dir: Path) -> pd.DataFrame | None:
+    """農林業センサス2020 市区町村別 基幹的農業従事者(按分推計)を読み込む。
+
+    経済センサス中分類の農業(01)では家族農家等の個人経営が含まれず
+    全国36万人だが、農林業センサスでは個人経営含めて136万人(3.79倍)。
+    地方都市の真の農業基盤雇用を把握するために使う。
+
+    Returns
+    -------
+    DataFrame with columns: area_code, area_name, pref_code,
+      eco_agri_workers (経済センサス民営のみ),
+      agri_census_total_pref (県全体の農林業センサス値),
+      agri_census_allocated (按分推計値).
+    """
+    path = cache_dir / AGRI_CENSUS_CSV
+    if not path.exists():
+        return None
+    return pd.read_csv(path, dtype={"area_code": str})
+
+
+def get_area_agri_workers(
+    df: pd.DataFrame,
+    area_code: str,
+) -> dict[str, float]:
+    """特定地域の農林業センサス按分推計値を取得。
+
+    Returns
+    -------
+    dict: {"eco_only": X, "extended": Y} 経済センサスのみ / 農林業センサス補完版
+    """
+    row = df[df["area_code"] == area_code]
+    if row.empty:
+        return {}
+    r = row.iloc[0]
+    return {
+        "eco_only": float(r["eco_agri_workers"]),
+        "extended": float(r["agri_census_allocated"]),
+        "diff": float(r["agri_census_allocated"]) - float(r["eco_agri_workers"]),
+    }
+
+
 def cache_status(cache_dir: Path) -> list[dict[str, str]]:
     """全データセットのキャッシュ状態を返す（UI表示用）。"""
     status = []
