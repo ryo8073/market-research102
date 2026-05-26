@@ -30,27 +30,38 @@ export interface InsightInput {
 export function generateInsights(sc: InsightInput): Insight[] {
   const insights: Insight[] = [];
 
-  if (sc.ebm >= 5.0) {
+  // EBM thresholds — 正しい解釈
+  // 数学的恒等式: EBM = 1 / 基盤雇用比率
+  // 教科書 Orlando MSA: EBM 4.94 = 基盤雇用比率 20.2%
+  // 健全レンジ: EBM 3-6 = 基盤雇用比率 17-33%
+  // EBM > 8: 基盤雇用が薄いため見かけ上の乗数が膨張
+  if (sc.ebm >= 3.0 && sc.ebm <= 6.0) {
     insights.push({
       level: "success",
-      text: `経済基盤乗数 EBM = ${sc.ebm.toFixed(2)} は非常に高い。基盤雇用1人の増減が地域経済に大きく波及します。`,
+      text: `経済基盤乗数 EBM = ${sc.ebm.toFixed(2)} — 教科書MSA健全レンジ（3〜6）内。産業構造が適度に多角化し、輸出基盤と域内サービスのバランスが取れています。（参考: Orlando MSA = 4.94）`,
     });
-  } else if (sc.ebm < 2.0) {
+  } else if (sc.ebm > 8.0) {
     insights.push({
       level: "warning",
-      text: `経済基盤乗数 EBM = ${sc.ebm.toFixed(2)} は低め。非基盤部門が小さく、雇用増の波及効果が限定的です。`,
+      text: `経済基盤乗数 EBM = ${sc.ebm.toFixed(2)} は教科書範囲（3〜6）を超えています。基盤雇用比率 ${sc.basic_ratio.toFixed(1)}% と低く、分母が小さいため乗数が機械的に膨張している状態です。「EBMが大きい＝経済が強い」ではなく「基盤産業が薄い」サインとして読みます。`,
+    });
+  } else if (sc.ebm < 2.5 && sc.ebm > 0) {
+    insights.push({
+      level: "warning",
+      text: `経済基盤乗数 EBM = ${sc.ebm.toFixed(2)} は教科書範囲（3〜6）を下回ります。基盤雇用比率 ${sc.basic_ratio.toFixed(1)}% と高すぎ、過度な産業特化または集計範囲が広すぎる可能性。`,
     });
   }
 
-  if (sc.basic_ratio < 5.0) {
+  // Basic ratio — 教科書 Orlando 20.2% を基準
+  if (sc.basic_ratio < 8.0) {
     insights.push({
       level: "warning",
-      text: `基盤雇用比率 ${sc.basic_ratio.toFixed(1)}% — 域外から資金を呼び込む輸出基盤が弱い地域です。`,
+      text: `基盤雇用比率 ${sc.basic_ratio.toFixed(1)}% — 教科書MSA健全レンジ（15〜25%）を下回ります。輸出基盤が弱く、外部から資金を呼び込む産業が限定的です。（注: 業種大分類17のみでの計算のため、中分類で再計算すれば細かい特化産業が見えて基盤雇用が増える可能性）`,
     });
-  } else if (sc.basic_ratio >= 20.0) {
+  } else if (sc.basic_ratio >= 15.0 && sc.basic_ratio <= 30.0) {
     insights.push({
       level: "success",
-      text: `基盤雇用比率 ${sc.basic_ratio.toFixed(1)}% — 強い輸出基盤を持ち、外部資金が安定的に流入しています。`,
+      text: `基盤雇用比率 ${sc.basic_ratio.toFixed(1)}% — 教科書MSA健全レンジ（15〜30%）内。輸出基盤と域内サービスのバランスが取れた経済構造です。（参考: Orlando MSA = 20.2%）`,
     });
   }
 
@@ -221,17 +232,42 @@ export function generateNarrative(
       `最大の基盤産業は「${topInd.industry}」（LQ=${topInd.lq.toFixed(2)}、基盤雇用 ${Math.round(topInd.basic_emp_estimate).toLocaleString()}人）。`
     );
   }
+  // EBM の正しい解釈で記述（旧版: 「EBM高い=波及効果大」のバグを修正）
+  const ebmInterpretation =
+    pref.ebm >= 3.0 && pref.ebm <= 6.0
+      ? "教科書MSA健全レンジ（3-6）内で多角化が進んだ経済構造"
+      : pref.ebm > 8.0
+        ? "教科書範囲を超え、基盤雇用が薄く乗数が機械的に膨張（必ずしも経済が強い意味ではない）"
+        : pref.ebm < 2.5
+          ? "教科書範囲を下回り、過度な産業特化または集計範囲の影響"
+          : "教科書範囲に近い";
   economyItems.push(
-    `EBM = ${pref.ebm.toFixed(2)} — 基盤雇用が100人増えると、非基盤を含め約${Math.round(pref.ebm * 100).toLocaleString()}人の雇用増が見込まれます。` +
-    `（全国中央値 ${ebmBench.median.toFixed(2)}、${ebmBench.rank}位/47）`
+    `EBM = ${pref.ebm.toFixed(2)} — ${ebmInterpretation}。基盤雇用 +100人なら総雇用 +${Math.round(pref.ebm * 100).toLocaleString()}人の波及シミュレーション。` +
+    `（全国中央値 ${ebmBench.median.toFixed(2)}、${ebmBench.rank}位/47、Orlando MSA 4.94）`
   );
+
+  // 中分類との比較も提示
+  const midNote = pref.ebm_mid != null && Math.abs(pref.ebm - pref.ebm_mid) > 2
+    ? `（中分類95業種で再計算: EBM ${pref.ebm_mid.toFixed(2)}, 基盤率 ${(pref.basic_ratio_mid ?? 0).toFixed(1)}% — 隠れた特化産業が見える）`
+    : "";
   economyItems.push(
     `基盤雇用比率 ${pref.basic_ratio.toFixed(1)}% — ` +
-    (pref.basic_ratio >= 20 ? "域外需要に支えられた強い経済基盤。"
-     : pref.basic_ratio >= 10 ? "中程度の外部基盤。テナント需要は安定的。"
+    (pref.basic_ratio >= 15 && pref.basic_ratio <= 30 ? "教科書MSA健全レンジ（15-30%）内、輸出基盤と域内サービスのバランスが取れた構造。"
+     : pref.basic_ratio >= 8 ? "中程度の外部基盤。テナント需要は安定的。"
      : "外部基盤が弱め。地場消費に依存した構造です。") +
-    `（全国${ratioBench.rank}位）`
+    `（全国${ratioBench.rank}位、Orlando MSA 20.2%）` + midNote
   );
+
+  // 通勤歪み警告
+  if (pref.commute_distortion === "inflow") {
+    economyItems.push(
+      `⚠️ 通勤流入による数値膨張: 雇用/人口 = ${((pref.emp_to_pop_ratio ?? 0) * 100).toFixed(0)}%。事業所所在地ベースのため、通勤者を含む雇用が住民あたりで過大に見えます。`
+    );
+  } else if (pref.commute_distortion === "outflow") {
+    economyItems.push(
+      `⚠️ ベッドタウン特性: 雇用/人口 = ${((pref.emp_to_pop_ratio ?? 0) * 100).toFixed(0)}%。市内事業所での雇用が薄く、EBMが教科書範囲を超えています。経済圏（東京圏・京阪神圏）全体での再評価を推奨。`
+    );
+  }
 
   // --- Section: 投資判断のポイント ---
   const investItems: string[] = [];

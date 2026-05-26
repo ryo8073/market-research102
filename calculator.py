@@ -346,19 +346,46 @@ def investment_suitability_score(
     Weights: EBM(20%), basic_ratio(20%), RS(25%), gap(20%), scale(15%).
     Returns dict with total_score and component scores.
 
+    EBMスコアは『教科書MSA健全レンジ 3-6 を最高点』とする山形関数。
+    EBM>8 (基盤雇用が薄く分母小=機械的膨張) は減点。
+    旧版 (EBM 10で満点) は『高EBM=経済強い』の誤解釈バグだったため修正。
+
     >>> result = investment_suitability_score(4.0, 15.0, 5000, 10.0, 200000)
     >>> 0 <= result['total_score'] <= 100
+    True
+    >>> # ベッドタウン例: EBM 11 (通勤流出) は満点にならない
+    >>> bad = investment_suitability_score(11.0, 9.0, 0, 0, 500000)
+    >>> good = investment_suitability_score(4.5, 22.0, 0, 0, 500000)
+    >>> bad['ebm_score'] < good['ebm_score']
     True
     """
 
     def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
         return max(lo, min(hi, v))
 
-    # EBM score: 2.0→30, 5.0→80, 10.0→100
-    ebm_score = _clamp((ebm - 1.0) / 9.0 * 100)
+    # EBM score: 山形関数 (教科書MSA レンジ 3-6 を最高点)
+    #   EBM 3-6: 100点 (教科書 Orlando MSA 4.94 並み = 多角化健全)
+    #   EBM 2 / 7: 80点
+    #   EBM 1 / 9: 50点
+    #   EBM <=0 or >=14: 0点
+    # 数式: 中心 4.5、許容幅 ±1.5 で 100点、それ以遠は距離に応じて減点
+    if 3.0 <= ebm <= 6.0:
+        ebm_score = 100.0
+    else:
+        # 中心 4.5 からの距離。距離 1.5 までは100、それ以降は線形減衰
+        dist = abs(ebm - 4.5)
+        ebm_score = _clamp(100 - (dist - 1.5) * 20)
 
-    # Basic ratio score: 5%→30, 15%→60, 30%→100
-    ratio_score = _clamp(basic_ratio / 30.0 * 100)
+    # Basic ratio score: 教科書 Orlando MSA 20.2% を最高点とする山形
+    #   15-25%: 100点 (教科書MSA 健全レンジ)
+    #   10% / 30%: 80点
+    #   5% / 35%: 50点
+    #   <=2% or >=40%: 0点
+    if 15.0 <= basic_ratio <= 25.0:
+        ratio_score = 100.0
+    else:
+        dist = abs(basic_ratio - 20.0)
+        ratio_score = _clamp(100 - (dist - 5.0) * 6)
 
     # RS score: -10000→0, 0→50, +10000→100
     rs_score = _clamp(50 + rs_total / 200)

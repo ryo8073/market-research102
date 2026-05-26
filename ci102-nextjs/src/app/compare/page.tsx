@@ -884,6 +884,41 @@ function CompareContent() {
             {/* 7. RS Bar Chart */}
             <RsBarChart prefs={selectedPrefs} />
 
+            {/* 通勤歪み警告（選択都道府県に該当があれば） */}
+            {selectedPrefs.some((p) => p.commute_distortion === "outflow" || p.commute_distortion === "inflow") && (
+              <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4 text-sm">
+                <p className="font-semibold text-amber-900 mb-2">⚠️ 通勤歪みのある県が選択されています</p>
+                <ul className="list-disc list-inside space-y-1 text-slate-800">
+                  {selectedPrefs.filter((p) => p.commute_distortion === "inflow").map((p) => (
+                    <li key={p.pref_code}>
+                      <strong>{p.pref_name}</strong>: 通勤流入型 (雇用/人口 {((p.emp_to_pop_ratio ?? 0) * 100).toFixed(0)}%)。
+                      事業所所在地ベースのEBM・基盤雇用が住民あたりで過大に見えます。
+                    </li>
+                  ))}
+                  {selectedPrefs.filter((p) => p.commute_distortion === "outflow").map((p) => (
+                    <li key={p.pref_code}>
+                      <strong>{p.pref_name}</strong>: ベッドタウン型 (EBM {p.ebm.toFixed(1)})。
+                      市内事業所での雇用が薄く、EBMが教科書範囲（3-6）を超える値を示しています。
+                      <a href="/" className="underline ml-1">スコアカードで都市圏(MSA相当)分析</a>を推奨。
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-slate-600 mt-2">
+                  これらの県では『単独自治体ベースの数値』ではなく『都市圏（東京圏・京阪神圏など）合算ベース』での評価が CI102 教科書の枠組みに整合的です。
+                </p>
+              </div>
+            )}
+
+            {/* 分類粒度の注意書き */}
+            <div className="rounded-lg border-l-4 border-l-blue-400 bg-blue-50 p-3 text-sm">
+              <p className="font-semibold text-blue-900 mb-1">📐 比較で使われている指標について</p>
+              <ul className="list-disc list-inside space-y-1 text-slate-800">
+                <li>本ページのEBM・基盤雇用比率は<strong>大分類17業種版</strong>（CCIM教科書粒度と整合）</li>
+                <li>中分類95業種・農林業センサス補完版で評価したい場合は、スコアカードページの『分類粒度の影響』セクションを参照</li>
+                <li>プリセットスコアのEBM部分は<strong>教科書MSA健全レンジ 3-6 を最高点</strong>とする山形関数（旧版『EBM 10で満点』のバグを修正済み）</li>
+              </ul>
+            </div>
+
             {/* Data note */}
             <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
               <summary className="font-medium cursor-pointer">データの時点と制限</summary>
@@ -893,6 +928,7 @@ function CompareContent() {
                 <li>国土数値情報: 各データセットの調査年度に依存（詳細はDATA_UPDATE_PLAN.md参照）</li>
                 <li>プリセットスコアの重み付けはCI102教科書の分析フレームワークに基づく教育目的の参考値</li>
                 <li>正規化はすべて全47都道府県のmin-maxスケーリング</li>
+                <li>EBM・基盤雇用比率は大分類17業種（CCIM教科書16業種粒度と整合）</li>
               </ul>
             </details>
           </>

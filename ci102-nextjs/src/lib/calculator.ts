@@ -358,6 +358,10 @@ function _clamp(v: number, lo: number = 0.0, hi: number = 100.0): number {
  * Compute 0-100 investment suitability score from CI102 metrics.
  *
  * Weights: EBM(20%), basic_ratio(20%), RS(25%), gap(20%), scale(15%).
+ *
+ * EBMスコアは『教科書MSA健全レンジ 3-6 を最高点』とする山形関数。
+ * EBM>8 (基盤雇用が薄く分母小=機械的膨張) は減点。
+ * 旧版 (EBM 10で満点) は『高EBM=経済強い』の誤解釈バグだったため修正。
  */
 export function investment_suitability_score(
   ebm: number,
@@ -366,8 +370,24 @@ export function investment_suitability_score(
   gap_factor: number,
   total_emp: number,
 ): InvestmentSuitabilityResult {
-  const ebm_score = _clamp((ebm - 1.0) / 9.0 * 100);
-  const ratio_score = _clamp(basic_ratio / 30.0 * 100);
+  // EBM 山形関数: 3-6で100点、離れるほど減点
+  let ebm_score: number;
+  if (ebm >= 3.0 && ebm <= 6.0) {
+    ebm_score = 100.0;
+  } else {
+    const dist = Math.abs(ebm - 4.5);
+    ebm_score = _clamp(100 - (dist - 1.5) * 20);
+  }
+
+  // 基盤雇用比率 山形関数: 15-25%で100点
+  let ratio_score: number;
+  if (basic_ratio >= 15.0 && basic_ratio <= 25.0) {
+    ratio_score = 100.0;
+  } else {
+    const dist = Math.abs(basic_ratio - 20.0);
+    ratio_score = _clamp(100 - (dist - 5.0) * 6);
+  }
+
   const rs_score = _clamp(50 + rs_total / 200);
   const gap_score = _clamp(50 + gap_factor);
   const scale_score = _clamp(total_emp / 10_000);
