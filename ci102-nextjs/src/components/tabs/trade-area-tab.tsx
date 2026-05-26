@@ -276,6 +276,9 @@ export default function TradeAreaTab() {
                     <KpiBox label="HHI" value={aggregate.hhi.toFixed(0)} sub="低=多角化" />
                   </div>
 
+                  {/* 商圏のアクセス性集計（OSRM ベース、利用可能な市区町村のみ） */}
+                  <AccessibilitySummary munisInRadius={munisInRadius} matrix={matrix} />
+
                   <div className="rounded-lg border bg-white p-3">
                     <p className="text-sm font-semibold mb-2">基盤産業 TOP {Math.min(aggregate.top_lq_industries.length, 10)}</p>
                     {aggregate.top_lq_industries.length === 0 ? (
@@ -342,6 +345,78 @@ function KpiBox({ label, value, sub }: { label: string; value: string; sub?: str
       <div className="text-xs text-slate-500">{label}</div>
       <div className="text-xl font-semibold mt-1">{value}</div>
       {sub && <div className="text-[10px] text-slate-400 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+import type { MuniCentroid } from "@/lib/use-muni-centroids";
+import type { MuniIndustryEntry } from "@/lib/use-muni-industry";
+
+/** 商圏内市区町村のアクセス性集計（OSRM ベース） */
+function AccessibilitySummary({
+  munisInRadius,
+  matrix,
+}: {
+  munisInRadius: Array<{ code: string; centroid: MuniCentroid; distance_km: number }>;
+  matrix: Record<string, MuniIndustryEntry>;
+}) {
+  // OSRM データがある市区町村のみ集計
+  const withOsrm = munisInRadius.filter((m) => m.centroid.car_dependency_score != null);
+  if (withOsrm.length === 0) return null;
+
+  const avg = (key: keyof MuniCentroid): number => {
+    const vals = withOsrm
+      .map((m) => m.centroid[key])
+      .filter((v): v is number => typeof v === "number" && !isNaN(v));
+    if (vals.length === 0) return 0;
+    return vals.reduce((s, v) => s + v, 0) / vals.length;
+  };
+
+  const avgCarDep = avg("car_dependency_score");
+  const avgStationKm = avg("nearest_station_km");
+  const avgStationMin = avg("nearest_station_min");
+  const avgMedicalMin = avg("nearest_medical_min");
+  const avgCommercialMin = avg("nearest_commercial_min");
+
+  // 車依存度ランク
+  const carDepRank =
+    avgCarDep >= 70 ? { label: "高（地方山間・離島型）", color: "text-rose-700" } :
+    avgCarDep >= 50 ? { label: "中（地方都市・郊外型）", color: "text-amber-700" } :
+    avgCarDep >= 30 ? { label: "低（都市型）", color: "text-emerald-700" } :
+    { label: "極低（鉄道網密集地）", color: "text-emerald-700" };
+
+  return (
+    <div className="rounded-lg border bg-white p-3">
+      <p className="text-sm font-semibold mb-2">
+        🚗 商圏のアクセス性（OSRM 走行距離ベース）
+      </p>
+      <p className="text-xs text-slate-500 mb-2">
+        圏内 {withOsrm.length}/{munisInRadius.length} 市区町村のセントロイドから最寄り施設までの走行時間・距離の平均
+      </p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+        <div className="rounded border p-2">
+          <div className="text-slate-500">平均車依存度</div>
+          <div className="text-lg font-semibold">{avgCarDep.toFixed(0)}</div>
+          <div className={`text-[10px] ${carDepRank.color}`}>{carDepRank.label}</div>
+        </div>
+        <div className="rounded border p-2">
+          <div className="text-slate-500">最寄り駅まで(車)</div>
+          <div className="text-lg font-semibold">{avgStationMin.toFixed(0)}分</div>
+          <div className="text-[10px] text-slate-400">{avgStationKm.toFixed(1)}km</div>
+        </div>
+        <div className="rounded border p-2">
+          <div className="text-slate-500">最寄り医療施設まで</div>
+          <div className="text-lg font-semibold">{avgMedicalMin.toFixed(0)}分</div>
+        </div>
+        <div className="rounded border p-2 col-span-2 md:col-span-3">
+          <div className="text-slate-500">最寄り商業施設まで</div>
+          <div className="text-lg font-semibold">{avgCommercialMin.toFixed(0)}分</div>
+        </div>
+      </div>
+      <p className="text-[10px] text-slate-500 mt-2">
+        ※ 各市区町村セントロイドから最寄り施設への走行時間(OSRM)。
+        商圏中心点からではないため、商圏内の典型的なアクセス性として参照。
+      </p>
     </div>
   );
 }

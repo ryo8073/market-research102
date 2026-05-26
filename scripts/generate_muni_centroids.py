@@ -2,7 +2,11 @@
 商圏分析（住所→指定半径内の市区町村特定）のためのデータ層。
 
 出力: ci102-nextjs/public/data/muni_centroids.json
-形式: { area_code: { name, lon, lat, pref_code } }
+形式: { area_code: { name, lon, lat, pref_code,
+                    nearest_station_km?, nearest_station_min?,
+                    nearest_medical_km?, nearest_medical_min?,
+                    nearest_commercial_km?, nearest_commercial_min?,
+                    car_dependency_score? } }
 """
 from __future__ import annotations
 
@@ -16,9 +20,11 @@ if sys.platform == "win32":
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import pandas as pd
 from data.nlni.spatial import load_municipality_boundaries
 
 OUTPUT = Path(__file__).resolve().parents[1] / "ci102-nextjs" / "public" / "data" / "muni_centroids.json"
+OSRM_CSV = Path(__file__).resolve().parents[1] / "data" / "nlni" / "cache" / "driving_distances.csv"
 
 
 def main():
@@ -53,6 +59,26 @@ def main():
     # _area を除去
     for v in centroids.values():
         v.pop("_area", None)
+
+    # OSRM 走行距離データをマージ
+    if OSRM_CSV.exists():
+        df_osrm = pd.read_csv(OSRM_CSV, dtype={"muni_code": str})
+        osrm_count = 0
+        for _, row in df_osrm.iterrows():
+            code = row["muni_code"]
+            if code not in centroids:
+                continue
+            for key in ["nearest_station_km", "nearest_station_min",
+                        "nearest_medical_km", "nearest_medical_min",
+                        "nearest_commercial_km", "nearest_commercial_min",
+                        "car_dependency_score"]:
+                v = row.get(key)
+                if pd.notna(v):
+                    centroids[code][key] = round(float(v), 1) if isinstance(v, (int, float)) else v
+            osrm_count += 1
+        print(f"\n  OSRM データを {osrm_count} 市区町村にマージ")
+    else:
+        print(f"\n  ⚠ OSRM CSV ({OSRM_CSV}) なし。走行時間データはマージされません")
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT, "w", encoding="utf-8") as f:

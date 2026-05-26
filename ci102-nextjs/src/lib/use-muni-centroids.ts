@@ -7,6 +7,14 @@ export interface MuniCentroid {
   lon: number;
   lat: number;
   pref_code: number;
+  // OSRM 走行距離・時間（市区町村セントロイドから最寄り施設まで）
+  nearest_station_km?: number;
+  nearest_station_min?: number;
+  nearest_medical_km?: number;
+  nearest_medical_min?: number;
+  nearest_commercial_km?: number;
+  nearest_commercial_min?: number;
+  car_dependency_score?: number;  // 0-100, 高いほど車依存
 }
 
 let _cache: Record<string, MuniCentroid> | null = null;

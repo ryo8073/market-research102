@@ -6,6 +6,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine,
+  Tooltip as RechartsTooltip,
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -449,6 +451,111 @@ function MunicipalityRankBar({ label, value, allValues, unit, higherIsBetter = t
   );
 }
 
+/** 人口長期予測グラフ（2020-2070、社人研データ） */
+function PopulationProjectionPanel({ pref }: { pref: PrefectureData }) {
+  if (!pref.pop_projection) return null;
+  const data = Object.entries(pref.pop_projection)
+    .map(([year, pop]) => ({ year: parseInt(year, 10), 人口: pop }))
+    .sort((a, b) => a.year - b.year);
+  const base = pref.pop_projection["2020"] ?? data[0]?.人口 ?? 0;
+  const dataNormalized = data.map((d) => ({ ...d, 指数: base > 0 ? (d.人口 / base) * 100 : 100 }));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h3 className="text-sm font-semibold">📉 人口長期予測 (2020→2070、社人研)</h3>
+        <div className="text-xs space-x-3">
+          {pref.pop_change_10y_pct != null && (
+            <span>
+              10年(2020→2030):{" "}
+              <strong className={pref.pop_change_10y_pct >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                {pref.pop_change_10y_pct >= 0 ? "+" : ""}{pref.pop_change_10y_pct.toFixed(1)}%
+              </strong>
+            </span>
+          )}
+          {pref.pop_change_pct != null && (
+            <span>
+              20年(2020→2040):{" "}
+              <strong className={pref.pop_change_pct >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                {pref.pop_change_pct >= 0 ? "+" : ""}{pref.pop_change_pct.toFixed(1)}%
+              </strong>
+            </span>
+          )}
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={dataNormalized} margin={{ top: 5, right: 20, left: 5, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis dataKey="year" fontSize={11} />
+          <YAxis fontSize={11} tickFormatter={(v) => `${v}`} domain={["dataMin - 5", 110]} />
+          <RechartsTooltip formatter={(value, name) => [name === "指数" ? `${Number(value).toFixed(1)} (2020=100)` : Number(value).toLocaleString(), String(name)]} />
+          <ReferenceLine y={100} stroke="#9ca3af" strokeDasharray="3 3" label={{ value: "2020水準", position: "right", fontSize: 10, fill: "#6b7280" }} />
+          <Line type="monotone" dataKey="指数" stroke="#1B2A4A" strokeWidth={2} dot />
+        </LineChart>
+      </ResponsiveContainer>
+      <p className="text-[10px] text-slate-500">
+        ※ 2020年=100 として指数化。グラフはコホート要因法による国立社会保障・人口問題研究所の地域別将来推計（H30推計）。
+        物件耐用年数（RC造50年）の範囲で需要動態を把握する基礎データ。
+      </p>
+    </div>
+  );
+}
+
+/** セグメント分類から物件投資レコメンドを生成 */
+function PropertyRecommendation({ segment, city }: { segment: string; city: MunicipalityData }) {
+  const recommendations: Record<string, { primary: string; secondary: string; caveat?: string }> = {
+    "都市サービス集積型": {
+      primary: "オフィスビル・賃貸マンション・高層住宅",
+      secondary: "サービス業テナント向け商業ビル",
+      caveat: city.basic_ratio < 8 ? "通勤流出ベッドタウンの可能性。職住の地理的整合を確認" : undefined,
+    },
+    "工業基盤型": {
+      primary: "物流倉庫・工業用地・社員寮",
+      secondary: "工場周辺の飲食店・社宅向け賃貸住宅",
+      caveat: "製造業の業績変動リスクを物件タイプの選定で分散検討",
+    },
+    "商業・観光型": {
+      primary: "店舗ビル・ホテル・観光客向け商業施設",
+      secondary: "繁華街周辺の賃貸住宅",
+      caveat: city.flood_risk_pct != null && city.flood_risk_pct > 10
+        ? `浸水リスク${city.flood_risk_pct.toFixed(0)}%。営業中断リスクを保険でカバー`
+        : undefined,
+    },
+    "公務・教育型": {
+      primary: "賃貸住宅（公務員官舎・学生向け）",
+      secondary: "学校・病院周辺の商業施設",
+      caveat: "公的セクター依存で景気下振れリスクは小だが、上昇余地も限定的",
+    },
+    "高齢縮小型": {
+      primary: "医療・介護施設・サービス付き高齢者住宅",
+      secondary: "コンパクト商業（最低限の生活インフラ）",
+      caveat: city.pop_2050 != null && city.pop_2030 != null && city.pop_2050 < city.pop_2030 * 0.7
+        ? "2030→2050で30%以上人口減少見込み。出口戦略を入口で明確化"
+        : "出口戦略を入口で計画。長期保有よりも事業価値変動を見込んだ運営",
+    },
+    "均衡型": {
+      primary: "汎用的な住居・小規模商業の組合せ",
+      secondary: "リスク分散型ポートフォリオの一部に",
+      caveat: "突出した強みが少ないため、立地・物件単体の競争力で勝負",
+    },
+  };
+  const rec = recommendations[segment];
+  if (!rec) return null;
+  return (
+    <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-xs">
+      <p className="font-semibold mb-1">💡 セグメント「{segment}」への投資物件タイプ提案</p>
+      <p><strong>推奨</strong>: {rec.primary}</p>
+      <p><strong>サブ</strong>: {rec.secondary}</p>
+      {rec.caveat && <p className="mt-1 text-amber-700">⚠ <strong>留意点</strong>: {rec.caveat}</p>}
+      {city.has_location_plan && (
+        <p className="mt-1 text-purple-700">
+          🎯 立地適正化計画策定済 — 居住誘導/都市機能誘導区域内なら追い風
+        </p>
+      )}
+    </div>
+  );
+}
+
 function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
   city: MunicipalityData;
   municipalities: MunicipalityData[];
@@ -536,6 +643,80 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
           value={String(activeNBasic)}
           subtitle={granularity && granularity !== "major" ? `大分類: ${city.num_basic}` : undefined}
         />
+      </div>
+
+      {/* 市区町村のリスク・アクセス・将来予測サマリ（NLNI 未活用フィールド表示） */}
+      <div className="rounded-lg border bg-white dark:bg-slate-900 p-3 space-y-2">
+        <p className="text-xs font-semibold">📊 市区町村の補助指標（リスク・アクセス・人口動態）</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+          {city.flood_risk_pct != null && (
+            <div className="rounded border p-2">
+              <div className="text-slate-500">浸水リスク面積率</div>
+              <div className="font-semibold">{city.flood_risk_pct.toFixed(1)}%</div>
+              {city.max_flood_depth != null && (
+                <div className="text-[10px] text-rose-700">
+                  最大浸水深: {city.max_flood_depth === 11 ? "0.5m未満" :
+                              city.max_flood_depth === 12 ? "0.5-3m" :
+                              city.max_flood_depth === 13 ? "3-5m" :
+                              city.max_flood_depth === 14 ? "5-10m" :
+                              city.max_flood_depth === 15 ? "10-20m" :
+                              city.max_flood_depth === 16 ? "20m以上" : `ランク${city.max_flood_depth}`}
+                </div>
+              )}
+            </div>
+          )}
+          {city.nearest_station_min != null && (
+            <div className="rounded border p-2">
+              <div className="text-slate-500">最寄り駅まで</div>
+              <div className="font-semibold">車{city.nearest_station_min.toFixed(0)}分</div>
+              {city.nearest_station_name && (
+                <div className="text-[10px] text-slate-500 truncate" title={city.nearest_station_name}>
+                  {city.nearest_station_name}駅
+                </div>
+              )}
+            </div>
+          )}
+          {city.car_dependency_score != null && (
+            <div className="rounded border p-2">
+              <div className="text-slate-500">車依存度スコア</div>
+              <div className="font-semibold">{city.car_dependency_score.toFixed(0)}</div>
+              <div className="text-[10px] text-slate-500">
+                {city.car_dependency_score >= 70 ? "高（山間・離島型）" :
+                 city.car_dependency_score >= 50 ? "中（地方郊外）" :
+                 city.car_dependency_score >= 30 ? "低（都市型）" : "極低"}
+              </div>
+            </div>
+          )}
+          {(city.pop_2030 != null || city.pop_2050 != null) && (
+            <div className="rounded border p-2">
+              <div className="text-slate-500">人口予測 (国立社人研)</div>
+              {city.pop_2030 != null && (
+                <div className="text-xs">2030: <span className="font-semibold">{city.pop_2030.toLocaleString()}</span></div>
+              )}
+              {city.pop_2050 != null && (
+                <div className="text-xs">2050: <span className="font-semibold">{city.pop_2050.toLocaleString()}</span></div>
+              )}
+            </div>
+          )}
+          {city.did_area_ha != null && city.did_area_ha > 0 && (
+            <div className="rounded border p-2">
+              <div className="text-slate-500">DID面積 / 人口</div>
+              <div className="font-semibold">{city.did_area_ha.toFixed(0)} ha</div>
+              <div className="text-[10px] text-slate-500">
+                {city.did_population != null ? `${city.did_population.toLocaleString()}人` : ""}
+              </div>
+            </div>
+          )}
+          {city.has_location_plan && (
+            <div className="rounded border p-2 bg-purple-50">
+              <div className="text-slate-500">立地適正化計画</div>
+              <div className="font-semibold text-purple-700">策定済み</div>
+              <div className="text-[10px] text-slate-500">コンパクトシティ施策対象</div>
+            </div>
+          )}
+        </div>
+        {/* 投資物件タイプとセグメントの紐付け */}
+        {city.segment && <PropertyRecommendation segment={city.segment} city={city} />}
       </div>
 
       {/* 中分類/+農林業の基盤産業TOP (粒度トグル時のみ) */}
@@ -1072,6 +1253,15 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
             granularity={granularity}
           />
         </>
+      )}
+
+      <Separator />
+
+      {/* ---- 人口長期予測 (2020-2070) ---- */}
+      {pref.pop_projection && Object.keys(pref.pop_projection).length >= 3 && (
+        <Card className="p-4">
+          <PopulationProjectionPanel pref={pref} />
+        </Card>
       )}
 
       <Separator />
