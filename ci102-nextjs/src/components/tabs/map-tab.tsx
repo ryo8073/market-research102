@@ -225,8 +225,92 @@ export default function MapTab({ prefCode, prefName, allData }: Props) {
         <CardContent>
           <MapLayerControls activeLayers={activeLayers} onToggle={toggleLayer} />
           <p className="text-[10px] text-muted-foreground mt-2">
-            レイヤーを選択すると県内マップ上に重ねて表示されます。地価公示・鉄道はホバーで詳細表示。
+            レイヤーを選択すると県内マップ上に重ねて表示されます。<strong>すべてのレイヤーでホバー時に詳細情報を表示</strong>（金額・浸水深・用途名・施設名等）。
+            複数レイヤー重ね合わせ時は『ポイント &gt; 用途地域 &gt; 洪水 &gt; DID &gt; 立地適正 &gt; 市区町村』の優先順位で表示。
           </p>
+
+          {/* アクティブレイヤーの凡例 */}
+          {activeLayers.size > 0 && (
+            <div className="mt-3 space-y-2">
+              {activeLayers.has("land_prices") && (
+                <details open className="rounded border bg-white dark:bg-slate-900 p-2 text-xs">
+                  <summary className="font-semibold cursor-pointer">💰 地価公示の凡例</summary>
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center gap-1 text-[10px]">
+                      <span className="inline-block w-2 h-2 rounded-full bg-[#fef3c7] border" />
+                      <span className="inline-block w-3 h-3 rounded-full bg-[#fb923c]" />
+                      <span className="inline-block w-4 h-4 rounded-full bg-[#dc2626]" />
+                      <span className="inline-block w-5 h-5 rounded-full bg-[#7f1d1d]" />
+                      <span className="ml-2">3万円/m² → 10万 → 30万 → 100万円/m²</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500">サイズ・色ともに価格に比例。ホバーで詳細表示。ズームインで大きく表示。</p>
+                  </div>
+                </details>
+              )}
+              {activeLayers.has("flood") && (
+                <details open className="rounded border bg-white dark:bg-slate-900 p-2 text-xs">
+                  <summary className="font-semibold cursor-pointer">💧 洪水浸水想定区域の凡例</summary>
+                  <div className="mt-2 flex items-center flex-wrap gap-1 text-[10px]">
+                    {[
+                      { c: "#bfdbfe", l: "0.5m未満" },
+                      { c: "#60a5fa", l: "0.5-3m" },
+                      { c: "#2563eb", l: "3-5m" },
+                      { c: "#1e40af", l: "5-10m" },
+                      { c: "#581c87", l: "10-20m" },
+                      { c: "#3b0764", l: "20m+" },
+                    ].map((x) => (
+                      <span key={x.l} className="inline-flex items-center gap-1">
+                        <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: x.c }} />
+                        {x.l}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              )}
+              {activeLayers.has("zoning") && (
+                <details open className="rounded border bg-white dark:bg-slate-900 p-2 text-xs">
+                  <summary className="font-semibold cursor-pointer">📍 用途地域の凡例</summary>
+                  <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-0.5 text-[10px]">
+                    {[
+                      { c: "#86efac", l: "低層住居専用" },
+                      { c: "#bbf7d0", l: "中高層住居" },
+                      { c: "#dcfce7", l: "住居系" },
+                      { c: "#fef9c3", l: "準住居" },
+                      { c: "#fca5a5", l: "近隣商業" },
+                      { c: "#ef4444", l: "商業" },
+                      { c: "#a78bfa", l: "準工業" },
+                      { c: "#8b5cf6", l: "工業" },
+                      { c: "#6d28d9", l: "工業専用" },
+                      { c: "#fde68a", l: "田園住居" },
+                    ].map((x) => (
+                      <span key={x.l} className="inline-flex items-center gap-1">
+                        <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: x.c }} />
+                        {x.l}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              )}
+              {activeLayers.has("did") && (
+                <p className="text-xs">
+                  <span className="inline-block w-3 h-3 rounded-sm align-middle mr-1" style={{ backgroundColor: "#2A9D8F", opacity: 0.35 }} />
+                  🏙 <strong>人口集中地区(DID)</strong>: 人口密度 4,000人/km²以上の連続区域。市街化された場所の目安。
+                </p>
+              )}
+              {activeLayers.has("location_opt") && (
+                <p className="text-xs">
+                  <span className="inline-block w-3 h-3 rounded-sm align-middle mr-1" style={{ backgroundColor: "#8B5CF6", opacity: 0.35 }} />
+                  🎯 <strong>立地適正化計画区域</strong>: 居住・都市機能誘導区域。コンパクトシティ施策の対象エリア。
+                </p>
+              )}
+              {activeLayers.has("railways") && (
+                <p className="text-xs">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ backgroundColor: "#1B2A4A" }} />
+                  🚉 <strong>鉄道駅</strong>: ホバーで駅名・路線・乗降客数を表示。
+                </p>
+              )}
+            </div>
+          )}
           {/* Active overlay status messages */}
           {activeLayers.size > 0 && (
             <div className="mt-3 space-y-1.5">
