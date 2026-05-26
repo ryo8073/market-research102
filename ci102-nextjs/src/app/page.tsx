@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ClientTip, RiskAlert } from "@/components/ui/callouts";
+import { DataVintageBadge } from "@/components/ui/data-vintage-badge";
 import { PREFECTURES } from "@/lib/codes";
 import { usePrefectureData, type PrefectureData } from "@/lib/use-prefecture-data";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
@@ -1770,10 +1771,15 @@ function DashboardContent() {
 
       <footer className="border-t mt-auto px-4 py-3 md:px-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground text-center sm:text-left">
-            分析手法: 経済基盤分析（LQ/EBM/PER）、シフトシェア分析、ギャップ分析 |
-            データ: e-Stat 経済センサス活動調査 2021 / 国勢調査 2020 / 国土交通省不動産情報ライブラリ
-          </p>
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground text-center sm:text-left">
+            <p>
+              分析手法: 経済基盤分析（LQ/EBM/PER）、シフトシェア分析、ギャップ分析 |
+              データ: e-Stat 経済センサス / 国勢調査 / MLIT 不動産情報ライブラリ / NLNI 国土数値情報
+            </p>
+            <div>
+              <DataVintageBadge variant="compact" />
+            </div>
+          </div>
           <div className="flex gap-4">
             <a href="/compare" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
               地域比較 &rarr;

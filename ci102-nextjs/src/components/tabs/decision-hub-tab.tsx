@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
+import { ECONOMIC_CENSUS_CURRENT, POPULATION_CENSUS_CURRENT } from "@/lib/data-versions";
 
 interface Props {
   pref: PrefectureData;
@@ -342,7 +343,7 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
         <p className="text-xs mt-1">生成日: {new Date().toLocaleString("ja-JP")}</p>
         <p className="text-xs mt-1">分析基準: CCIM CI102 不動産投資のための市場分析（経済基盤分析・シフトシェア・小売ギャップ・空間データ統合）</p>
         <p className="text-[10px] mt-1 text-gray-700">
-          データ出典: e-Stat 経済センサス2021 / 国勢調査2020 / MLIT不動産情報ライブラリ / 国土数値情報NLNI / 社人研人口予測
+          データ出典: e-Stat {ECONOMIC_CENSUS_CURRENT.labelFull} / {POPULATION_CENSUS_CURRENT.labelFull} / MLIT不動産情報ライブラリ / 国土数値情報NLNI / 社人研人口予測
         </p>
       </div>
 

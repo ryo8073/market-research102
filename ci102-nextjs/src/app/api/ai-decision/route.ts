@@ -12,6 +12,12 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getEnv } from "@/lib/env";
+import {
+  ECONOMIC_CENSUS_CURRENT,
+  ECONOMIC_CENSUS_PREVIOUS,
+  POPULATION_CENSUS_CURRENT,
+  shiftSharePeriodLabel,
+} from "@/lib/data-versions";
 
 // ============================================================================
 // SYSTEM PROMPT — Layer 2 ガードレール
@@ -326,7 +332,7 @@ ${(input.allScores ?? []).map((s) =>
   s.factors.map((f) => `  - ${f.label}: ${f.score.toFixed(0)}点 × 重み${(f.weight * 100).toFixed(0)}% [${f.interpretation}]`).join("\n")
 ).join("\n\n")}
 
-# シフトシェア分析の競争力 (2016→2021 実績)
+# シフトシェア分析の競争力 (${shiftSharePeriodLabel()} 実績)
 ${input.shiftShareMajor ? `- 大分類17業種: RS合計 ${input.shiftShareMajor.rsTotal.toLocaleString()} 人 / 最強RS産業「${input.shiftShareMajor.topIndustry}」(RS ${input.shiftShareMajor.topValue.toLocaleString()} 人)` : ""}
 ${input.shiftShareMid ? `- 中分類95業種: RS合計 ${input.shiftShareMid.rsTotal.toLocaleString()} 人 / 最強RS産業「${input.shiftShareMid.topIndustry}」(RS ${input.shiftShareMid.topValue.toLocaleString()} 人) ※民営事業所のみ` : ""}
 ${input.shiftShareMajor && input.shiftShareMid && input.shiftShareMajor.topIndustry !== input.shiftShareMid.topIndustry
@@ -338,9 +344,9 @@ ${input.commuteDistortion ? `- 通勤歪み: ${input.commuteDistortion}` : ""}
 ${input.segment ? `- 市区町村セグメント: ${input.segment}` : ""}
 
 # データ時点
-- 経済センサス活動調査: 2021年6月
-- 国勢調査人口: 2015年組替値（2020年境界）
-- シフトシェア: 2016→2021年実測
+- 経済センサス活動調査: ${ECONOMIC_CENSUS_CURRENT.labelFull}
+- 国勢調査人口: ${POPULATION_CENSUS_CURRENT.labelFull}
+- シフトシェア: ${ECONOMIC_CENSUS_PREVIOUS.surveyYear}→${ECONOMIC_CENSUS_CURRENT.surveyYear}年実測
 - NLNI 国土数値情報: 各データセットの調査年（地価公示2024年・洪水想定2020-2023年等）
 - OSRM 走行距離: 2026年5月計算
 
