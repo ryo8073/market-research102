@@ -31,7 +31,7 @@ from calculator import (
     total_basic_employment,
     estimate_daytime_population,
 )
-from data.codes import PREFECTURES
+from data.codes import PREFECTURES, METROPOLITAN_AREAS
 from data_sources import MarketDataAccessor
 
 # NLNI processors (optional — if data not downloaded, gracefully skip)
@@ -168,6 +168,52 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
         # LQ full table for charts
         lq_records = df_lq.to_dict("records")
 
+        # --- Mid-classification (95業種) recompute ---
+        # 業種粒度を細かくして基盤雇用過小評価を補正
+        ebm_mid = None
+        basic_ratio_mid = None
+        basic_emp_mid = None
+        n_basic_mid = None
+        top_lq_mid = []
+        try:
+            from data.census_cache import (
+                DS_EMPLOYMENT_MID, load_cached_dataset,
+                get_area_employment_mid,
+            )
+            cache_dir = Path(__file__).resolve().parent.parent / "data" / "cache"
+            df_mid = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MID.csv_name)
+            if df_mid is not None:
+                area_code = f"{pref_code:02d}000"
+                local_mid = get_area_employment_mid(df_mid, area_code)
+                national_mid = get_area_employment_mid(df_mid, "00000")
+                if local_mid and national_mid:
+                    df_lq_mid = lq_table(local_mid, national_mid)
+                    bm = total_basic_employment(df_lq_mid)
+                    tm = float(df_lq_mid["local_emp"].sum())
+                    if tm > 0 and bm > 0:
+                        ebm_mid = round(tm / bm, 2)
+                        basic_ratio_mid = round(bm / tm * 100, 1)
+                        basic_emp_mid = round(bm, 0)
+                        n_basic_mid = int((df_lq_mid["lq"] > 1.0).sum())
+                        top_lq_mid = (
+                            df_lq_mid[df_lq_mid["lq"] > 1.0]
+                            .nlargest(10, "basic_emp_estimate")
+                            [["industry", "lq", "basic_emp_estimate"]]
+                            .to_dict("records")
+                        )
+        except Exception:
+            pass
+
+        # --- Commute distortion detection ---
+        pop_basic = float(basics.get("population", 0))
+        emp_to_pop = (total_emp / pop_basic) if pop_basic > 0 else 0.0
+        if per > 0 and per < 1.2:
+            commute_distortion = "inflow"
+        elif ebm > 8.0 and basic_ratio < 12.0:
+            commute_distortion = "outflow"
+        else:
+            commute_distortion = "balanced"
+
         return {
             "pref_code": pref_code,
             "pref_name": PREFECTURES.get(pref_code, ""),
@@ -193,10 +239,98 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             "lq_table": lq_records,
             "shift_share_table": ss_records,
             "gap_table": gap_records,
+            # 中分類95業種版（業種粒度補正）
+            "ebm_mid": ebm_mid,
+            "basic_ratio_mid": basic_ratio_mid,
+            "basic_emp_mid": basic_emp_mid,
+            "n_basic_industries_mid": n_basic_mid,
+            "top_lq_industries_mid": top_lq_mid,
+            # 通勤歪み判定
+            "commute_distortion": commute_distortion,
+            "emp_to_pop_ratio": round(emp_to_pop, 3),
         }
     except Exception as e:
         print(f"  Error for pref {pref_code}: {e}")
         return None
+
+
+def compute_metro_areas(accessor: MarketDataAccessor) -> dict:
+    """都市圏（MSA相当）の集計指標を計算。"""
+    results = {}
+    for key, info in METROPOLITAN_AREAS.items():
+        try:
+            prefs = info["prefectures"]
+            basics = accessor.metro_basics(prefs)
+            local_emp, national_emp, _ = accessor.metro_industry_employment(prefs)
+            df_lq = lq_table(local_emp, national_emp)
+            basic = total_basic_employment(df_lq)
+            total_emp = float(df_lq["local_emp"].sum())
+            if total_emp <= 0:
+                continue
+            ebm = total_emp / basic if basic > 0 else 0
+            per = population_employment_ratio(basics["population"], basics["total_employment"])
+            basic_ratio = basic / total_emp * 100
+
+            # Top LQ
+            top_lq = (
+                df_lq[df_lq["lq"] > 1.0]
+                .nlargest(10, "basic_emp_estimate")
+                [["industry", "lq", "basic_emp_estimate"]]
+                .to_dict("records")
+            )
+
+            # Shift-share for the metro
+            rs_total = 0.0
+            top_rs_industry = ""
+            top_rs_value = 0.0
+            try:
+                l0, l1, n0, n1, _ = accessor.metro_shift_share_inputs(prefs)
+                if l0 and l1:
+                    df_ss = shift_share_table(l0, l1, n0, n1)
+                    if not df_ss.empty:
+                        rs_total = float(df_ss["regional_shift"].sum())
+                        best = df_ss.loc[df_ss["regional_shift"].idxmax()]
+                        top_rs_industry = str(best["industry"])
+                        top_rs_value = float(best["regional_shift"])
+            except Exception:
+                pass
+
+            # Retail gap
+            agg_gap = 0.0
+            try:
+                sectors, _ = accessor.metro_retail_sectors(prefs)
+                df_gap = gap_analysis_table(sectors)
+                if not df_gap.empty:
+                    td = df_gap["demand"].sum()
+                    ts = df_gap["supply"].sum()
+                    if (td + ts) > 0:
+                        agg_gap = (td - ts) / (td + ts) * 100
+            except Exception:
+                pass
+
+            results[key] = {
+                "key": key,
+                "name": info["name"],
+                "prefectures": prefs,
+                "pref_names": [PREFECTURES.get(pc, "") for pc in prefs],
+                "core_pref": info["core_pref"],
+                "note": info["note"],
+                "population": basics["population"],
+                "households": basics["households"],
+                "total_employment": int(total_emp),
+                "ebm": round(ebm, 2),
+                "per": round(per, 2),
+                "basic_emp": round(basic, 0),
+                "basic_ratio": round(basic_ratio, 1),
+                "top_lq_industries": top_lq,
+                "rs_total": round(rs_total, 0),
+                "top_rs_industry": top_rs_industry,
+                "top_rs_value": round(top_rs_value, 0),
+                "aggregate_gap_factor": round(agg_gap, 1),
+            }
+        except Exception as e:
+            print(f"  Metro {key} error: {e}")
+    return results
 
 
 def _load_nlni_data() -> dict[str, pd.DataFrame]:
@@ -557,6 +691,16 @@ def main():
         json.dump(all_prefs, f, ensure_ascii=False, separators=(",", ":"))
     size_mb = out_path.stat().st_size / 1024 / 1024
     print(f"\nWrote {out_path} ({size_mb:.1f} MB, {len(all_prefs)} prefectures)")
+
+    # Write metro_summary.json (都市圏MSA相当)
+    print("\nComputing metropolitan area summary...")
+    metro_data = compute_metro_areas(accessor)
+    if metro_data:
+        metro_path = OUTPUT_DIR / "metro_summary.json"
+        with open(metro_path, "w", encoding="utf-8") as f:
+            json.dump(metro_data, f, ensure_ascii=False, separators=(",", ":"))
+        size_kb = metro_path.stat().st_size / 1024
+        print(f"  Wrote {metro_path} ({size_kb:.1f} KB, {len(metro_data)} metros)")
 
     # Write municipality data per prefecture
     print("\nComputing municipality data...")

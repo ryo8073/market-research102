@@ -62,6 +62,9 @@ const AccessibilityTab = dynamic(() => import("@/components/tabs/accessibility-t
 const DemographicsTab = dynamic(() => import("@/components/tabs/demographics-tab"), {
   loading: () => <TabSkeleton />,
 });
+const MetroTab = dynamic(() => import("@/components/tabs/metro-tab"), {
+  loading: () => <TabSkeleton />,
+});
 
 const COLORS = {
   primary: "#1B2A4A",
@@ -579,6 +582,23 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
 
   return (
     <div className="space-y-6">
+      {/* 通勤歪み警告（事業所所在地 vs 居住地の地理的不整合） */}
+      {pref.commute_distortion === "inflow" && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <strong>⚠️ 通勤流入による数値膨張</strong>: 雇用/人口 ={" "}
+          {pref.emp_to_pop_ratio ? (pref.emp_to_pop_ratio * 100).toFixed(0) : "—"}% （PER {pref.per.toFixed(2)}）。
+          e-Stat経済センサスは事業所所在地ベースのため、通勤者が雇用に算入されEBM・基盤雇用が住民あたりで見ると過大に見えます。
+          CI102の本来の分析単位はMSA（経済圏）です。
+        </div>
+      )}
+      {pref.commute_distortion === "outflow" && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <strong>⚠️ ベッドタウン特性</strong>: 雇用/人口 ={" "}
+          {pref.emp_to_pop_ratio ? (pref.emp_to_pop_ratio * 100).toFixed(0) : "—"}% （PER {pref.per.toFixed(2)}）。
+          市内事業所での雇用が薄く、EBM が {pref.ebm.toFixed(1)} と教科書範囲（3-6）を超える値を示しています。
+          都市圏全体（東京圏・京阪神圏など）での再評価を推奨します。
+        </div>
+      )}
       {/* ---- Score Header: Gauge + Radar + Benchmarks ---- */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left: Gauge + KPI cards */}
@@ -587,13 +607,28 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
             <ScoreGauge score={pref.suitability_score.total_score} label={`${scoreLabel} — ${pref.pref_name}`} />
           </Card>
           <div className="grid grid-cols-2 gap-2">
-            <KpiCard title="EBM" value={pref.ebm.toFixed(2)} subtitle="経済基盤乗数" tooltip="基盤雇用1人が支える総雇用数。値が大きいほど波及効果が大きい" />
-            <KpiCard title="PER" value={pref.per.toFixed(2)} subtitle="人口雇用比率" tooltip="就業者1人あたりの総人口。住戸需要の推計に使用" />
+            <KpiCard
+              title="EBM"
+              value={pref.ebm.toFixed(2)}
+              subtitle={pref.ebm_mid != null ? `中分類: ${pref.ebm_mid.toFixed(2)}` : "経済基盤乗数"}
+              tooltip="EBM = 1 / 基盤雇用比率。教科書Orlando 4.94 / 全国市区町村中央値4.99(大分類)・2.86(中分類)。健全レンジ3-6。値が大きいほど『基盤雇用が薄い』状態で、必ずしも経済が強い意味ではない。"
+            />
+            <KpiCard
+              title="PER"
+              value={pref.per.toFixed(2)}
+              subtitle={pref.commute_distortion === "inflow" ? "⚠️通勤流入" : pref.commute_distortion === "outflow" ? "⚠️通勤流出" : "人口雇用比率"}
+              tooltip="就業者1人あたりの総人口。CI102 Orlando MSA: 1.91。PER<1.0は通勤流入で雇用が膨張している（事業所所在地ベース）状態を示唆。"
+            />
             <KpiCard title="RS合計" value={pref.rs_total.toLocaleString()} trend={pref.rs_total > 0 ? "up" : pref.rs_total < 0 ? "down" : "flat"} tooltip="地域シフト合計。正=全国を上回る競争力、負=劣位" />
             <KpiCard title="漏損/余剰" value={pref.aggregate_gap_factor.toFixed(1)} tooltip="小売購買力の流出入度合い。正=漏損(出店機会)、負=余剰(供給過多)" />
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <KpiCard title="基盤雇用比率" value={`${pref.basic_ratio.toFixed(1)}%`} tooltip="LQ>1.0の産業の超過雇用が総雇用に占める割合" />
+            <KpiCard
+              title="基盤雇用比率"
+              value={`${pref.basic_ratio.toFixed(1)}%`}
+              subtitle={pref.basic_ratio_mid != null ? `中分類: ${pref.basic_ratio_mid.toFixed(1)}%` : undefined}
+              tooltip="LQ>1.0の産業の超過雇用が総雇用に占める割合。教科書Orlando: 20.2% / 全国市区町村中央値20.0%(大分類)。中分類で見ると埋もれていた特化産業が見える。"
+            />
             <KpiCard title="昼間人口" value={pref.daytime_population.toLocaleString()} tooltip="通勤・通学で流入する人口を含む日中の人口" />
             <KpiCard title="実績雇用変化" value={pref.actual_emp_change.toLocaleString()} subtitle="2016→2021" trend={pref.actual_emp_change > 0 ? "up" : "down"} tooltip="2016年→2021年の実際の雇用増減（経済センサス）" />
           </div>
@@ -976,6 +1011,10 @@ function DashboardContent() {
                 <span className="md:hidden">⑩</span>
                 <span className="hidden md:inline">⑩ 人口動態</span>
               </TabsTrigger>
+              <TabsTrigger value="metro" className="text-xs md:text-sm">
+                <span className="md:hidden">⑪</span>
+                <span className="hidden md:inline">⑪ 都市圏(MSA)</span>
+              </TabsTrigger>
             </TabsList>
 
             <div className="mt-6">
@@ -1082,6 +1121,13 @@ function DashboardContent() {
               <TabsContent value="demographics">
                 <ErrorBoundary>
                 <DemographicsTab prefCode={prefCode} prefName={pref.pref_name} pref={pref} allData={allData} />
+                </ErrorBoundary>
+              </TabsContent>
+
+              {/* Tab 11: Metropolitan Area (MSA相当) */}
+              <TabsContent value="metro">
+                <ErrorBoundary>
+                <MetroTab />
                 </ErrorBoundary>
               </TabsContent>
             </div>

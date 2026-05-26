@@ -76,6 +76,19 @@ export interface PrefectureData {
     factor: number;
     verdict: string;
   }>;
+  // 中分類95業種版（業種粒度補正、Mulligan & Murphy 1995の凸性質）
+  ebm_mid?: number | null;
+  basic_ratio_mid?: number | null;
+  basic_emp_mid?: number | null;
+  n_basic_industries_mid?: number | null;
+  top_lq_industries_mid?: Array<{
+    industry: string;
+    lq: number;
+    basic_emp_estimate: number;
+  }>;
+  // 通勤歪み判定（事業所所在地 vs 居住地の地理的不整合）
+  commute_distortion?: "balanced" | "inflow" | "outflow";
+  emp_to_pop_ratio?: number;
 }
 
 let _cache: Record<string, PrefectureData> | null = null;
