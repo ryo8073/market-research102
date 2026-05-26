@@ -1461,20 +1461,30 @@ export default function LearnPage() {
             />
 
             <h3 className="font-semibold text-lg mt-6">距離判定の方法 — 直線距離 vs 走行時間</h3>
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-              <p className="font-semibold mb-2">⚠️ 現状の距離判定は『直線距離（haversine）』</p>
+            <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+              <p className="font-semibold mb-2">✨ 両モード対応済み — 用途に応じて切替可能</p>
               <p className="text-sm">
-                半径 X km の範囲内の判定に<strong>直線距離（haversine）</strong>を使っています。
-                地形（山・川・湾）や道路網を考慮していないため、以下の制限があります:
+                商圏分析タブで <strong>直線距離 (km)</strong> と <strong>走行時間 (分)</strong> のモードを切替できます。
+                それぞれの特性:
               </p>
-              <ul className="list-disc list-inside text-sm mt-2 space-y-1">
-                <li><strong>山岳・河川・湾岸地域では実際の到達時間が直線距離より長い</strong>（例: 神戸→淡路島 直線3km だが実走で30分）</li>
-                <li><strong>市区町村セントロイドで判定</strong>するため、面積の大きな町村（北海道郡部等）では一部だけ圏内でも全体集計に含まれる</li>
-                <li>都市部は道路網が密なため、直線距離≈走行距離になりやすい</li>
-              </ul>
+              <InterpTable
+                headers={["モード", "計算方法", "速度", "得意な用途", "苦手"]}
+                rows={[
+                  ["📏 直線距離(km)", "haversine 公式", "即時", "都市部の同心円商圏、半径1-5km の徒歩商圏", "山・川・島による分断 (神戸→淡路島 直線3km だが実走30分)"],
+                  ["🚗 走行時間(分)", "OSRM Table API", "1-3秒", "車での実到達範囲、河川分断や山岳地形を反映した商圏", "公開OSRMサーバのレート制限 (短時間で大量呼出に注意)"],
+                ]}
+              />
               <p className="text-sm mt-2">
-                <strong>近日中の改善</strong>: OSRM（Open Source Routing Machine）の走行距離・時間データを
-                全国1,918市区町村に拡大して、車5分/10分圏内の正確な判定に切り替える予定。
+                <strong>使い分けの目安</strong>:
+              </p>
+              <ul className="list-disc list-inside text-sm mt-1 space-y-1">
+                <li><strong>都市部の物件 (東京・大阪・名古屋等)</strong> → 直線距離でも近似精度が高く即時計算で十分</li>
+                <li><strong>地方都市・郊外・島嶼部</strong> → 走行時間モードで地形による分断を反映 (車30分圏なら現実的な商圏)</li>
+                <li><strong>用途別物件</strong>: 住居系=徒歩・自転車圏 (1-5km直線) / 商業系=車到達圏 (15-30分走行) / オフィス系=通勤圏 (60-90分走行)</li>
+              </ul>
+              <p className="text-xs mt-2 text-slate-600">
+                技術詳細: 走行時間モードは OSRM デモサーバー (router.project-osrm.org) の Table API を内部 API <code className="bg-slate-200 px-1 rounded">/api/osrm-table</code> 経由で呼び出します。
+                公開サーバーへの過剰負荷を避けるため、haversine で事前フィルタ → 候補500件上限 → 80件/バッチで分割呼出 (200ms 間隔) しています。
               </p>
             </div>
 
@@ -1488,7 +1498,7 @@ export default function LearnPage() {
                 EBM={"{"}ebm{"}"} で『多角化された/特化した』経済構造、
                 基盤産業TOP3 は『{"{"}top3{"}"}』。{"{"}業態{"}"}との親和性が{"{"}高/低{"}"}いと評価できます。
                 <br />
-                <em>※ 距離は直線距離ベースの簡易判定です。実際の到達時間（車・徒歩）は地形と道路網で変動します。</em>」
+                <em>※ 直線距離モードと走行時間モード（OSRM 実走計算）が選べます。郊外・地方の物件は走行時間モードを推奨します。</em>」
               </p>
             </ClientTip>
 
