@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 
@@ -51,6 +51,8 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   const dailyRiders = city?.daily_riders ?? pref.total_daily_riders ?? 0;
   const segment = city?.segment;
   const hasLocationPlan = city?.has_location_plan ?? (pref.has_location_plan_count ?? 0) > 0;
+  const hasResidentialZone = city?.has_residential_zone ?? false;
+  const hasFunctionZone = city?.has_function_zone ?? false;
   const lqIndustries = pref.top_lq_industries;
 
   // 経済基盤の健全性（EBM 3-6 で最大）
@@ -97,16 +99,33 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
     { label: "人口動態", score: Math.max(0, Math.min(100, 50 + popChange20y * 3)), weight: 0.30, source: "社人研20年予測", interpretation: `20年変化 ${popChange20y >= 0 ? "+" : ""}${popChange20y.toFixed(1)}%` },
     { label: "災害リスク", score: flood, weight: 0.20, source: "国土数値情報 A31", interpretation: `浸水面積率 ${floodRisk.toFixed(1)}%` },
     { label: "交通アクセス", score: accessScore, weight: 0.20, source: "OSRM + 鉄道駅", interpretation: city?.nearest_station_min != null ? `最寄り駅まで${city.nearest_station_min}分` : `車依存度 ${carDep}` },
-    { label: "立地適正化", score: hasLocationPlan ? 90 : 50, weight: 0.15, source: "国土数値情報 A35", interpretation: hasLocationPlan ? "計画策定済(居住誘導の可能性)" : "未策定" },
+    {
+      label: "立地適正化",
+      score: hasResidentialZone ? 100 : hasLocationPlan ? 70 : 50,
+      weight: 0.15,
+      source: "国土数値情報 A35/A50",
+      interpretation: hasResidentialZone ? "✓ 居住誘導区域あり(住宅投資追い風)" :
+                      hasFunctionZone ? "都市機能誘導のみ(住宅は限定的)" :
+                      hasLocationPlan ? "計画策定済(区域不明)" : "未策定",
+    },
   ];
   const residentialScore = residentialFactors.reduce((s, f) => s + f.score * f.weight, 0);
 
   // ====== 2. 商業系 ======
   const commercialFactors = [
-    { label: "商業需要(Gap)", score: commercialDemand, weight: 0.25, source: "小売漏損係数", interpretation: `${gapFactor > 0 ? "漏損" : "余剰"} ${Math.abs(gapFactor).toFixed(1)}` },
-    { label: "商業セクター集積", score: hasRetail ? 85 : 40, weight: 0.20, source: "LQ分析", interpretation: hasRetail ? "卸売小売/宿泊飲食 LQ>1.1" : "商業特化弱い" },
-    { label: "交通利便性", score: transitDensity, weight: 0.20, source: "NLNI 鉄道", interpretation: `駅${numStations}箇所、乗降客${(dailyRiders/10000).toFixed(0)}万人/日` },
-    { label: "昼間人口比", score: Math.min(100, 100 * pref.daytime_population / Math.max(pref.population, 1)), weight: 0.15, source: "昼間/夜間人口比", interpretation: `${(pref.daytime_population / Math.max(pref.population, 1) * 100).toFixed(0)}%` },
+    { label: "商業需要(Gap)", score: commercialDemand, weight: 0.22, source: "小売漏損係数", interpretation: `${gapFactor > 0 ? "漏損" : "余剰"} ${Math.abs(gapFactor).toFixed(1)}` },
+    { label: "商業セクター集積", score: hasRetail ? 85 : 40, weight: 0.18, source: "LQ分析", interpretation: hasRetail ? "卸売小売/宿泊飲食 LQ>1.1" : "商業特化弱い" },
+    { label: "交通利便性", score: transitDensity, weight: 0.18, source: "NLNI 鉄道", interpretation: `駅${numStations}箇所、乗降客${(dailyRiders/10000).toFixed(0)}万人/日` },
+    { label: "昼間人口比", score: Math.min(100, 100 * pref.daytime_population / Math.max(pref.population, 1)), weight: 0.12, source: "昼間/夜間人口比", interpretation: `${(pref.daytime_population / Math.max(pref.population, 1) * 100).toFixed(0)}%` },
+    {
+      label: "都市機能誘導区域",
+      score: hasFunctionZone ? 100 : hasLocationPlan ? 60 : 50,
+      weight: 0.10,
+      source: "国土数値情報 A35/A50",
+      interpretation: hasFunctionZone ? "✓ 都市機能誘導区域あり(商業・公共投資の追い風)" :
+                      hasResidentialZone ? "居住誘導のみ(商業は限定的)" :
+                      hasLocationPlan ? "計画策定済(区域不明)" : "未策定",
+    },
     { label: "災害リスク", score: flood, weight: 0.10, source: "国土数値情報 A31", interpretation: `浸水${floodRisk.toFixed(1)}%` },
     { label: "経済成長", score: growth, weight: 0.10, source: "RS+人口変化", interpretation: `RS ${rsTotal >= 0 ? "+" : ""}${(rsTotal/1000).toFixed(0)}k` },
   ];
@@ -212,6 +231,50 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
   const target = selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name;
   const best = scores[0];
 
+  // AI 自然言語化
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const runAi = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    try {
+      const r = await fetch("/api/ai-decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target,
+          bestType: best.label,
+          bestScore: best.totalScore,
+          bestVerdict: best.verdict,
+          rationale: best.rationale,
+          risks: best.risks,
+          allScores: scores.map(s => ({
+            label: s.label,
+            score: s.totalScore,
+            verdict: s.verdict,
+            factors: s.factors.map(f => ({
+              label: f.label, score: f.score, weight: f.weight, interpretation: f.interpretation,
+            })),
+          })),
+          commuteDistortion: pref.commute_distortion,
+          segment: selectedCity?.segment,
+        }),
+      });
+      const data = await r.json();
+      if (data.error) {
+        setAiError(data.error);
+      } else {
+        setAiResult(data.analysis);
+      }
+    } catch (e) {
+      setAiError(String(e));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -242,9 +305,36 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
         ))}
       </div>
 
+      {/* AI 投資判断レポート */}
+      <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <p className="text-sm font-semibold">🤖 AI 投資判断レポート（Claude API による自然言語化）</p>
+          <button
+            onClick={runAi}
+            disabled={aiLoading}
+            className="px-3 py-1.5 text-xs rounded-md bg-blue-600 text-white disabled:bg-slate-300 hover:bg-blue-700"
+          >
+            {aiLoading ? "生成中..." : aiResult ? "再生成" : "AI レポート生成"}
+          </button>
+        </div>
+        {aiError && (
+          <p className="text-xs text-rose-700 bg-rose-50 p-2 rounded">エラー: {aiError}</p>
+        )}
+        {aiResult ? (
+          <div className="bg-white rounded p-3 mt-2 prose prose-sm max-w-none whitespace-pre-wrap text-xs leading-relaxed">
+            {aiResult}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-600">
+            ボタンを押すと、{target} のスコア結果から CCIM CI102 アナリスト視点の投資判断レポートを生成します。
+            EBM・基盤雇用比率の正しい解釈、What-If と実績の区別、通勤歪みの注釈などを含む詳細レポート。
+          </p>
+        )}
+      </div>
+
       {/* お客様向け説明テンプレート */}
       <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50 p-4">
-        <p className="text-sm font-semibold mb-2">📝 お客様向け説明テンプレート（自動生成）</p>
+        <p className="text-sm font-semibold mb-2">📝 お客様向け説明テンプレート（自動生成・ルールベース）</p>
         <div className="text-sm space-y-2 leading-relaxed">
           <p>
             『{target}』 の市場分析結果を統合的にご報告します。<strong>{best.label}</strong>が最も投資適格性が高く、

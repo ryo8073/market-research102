@@ -26,6 +26,9 @@ export interface MunicipalityData {
   pop_2030?: number;
   pop_2050?: number;
   has_location_plan?: boolean;
+  has_residential_zone?: boolean;  // 居住誘導 or 居住調整
+  has_function_zone?: boolean;     // 都市機能誘導
+  location_zones_summary?: Record<string, number>;
   zoning_dominant?: string;
   // Driving distance (OSRM)
   nearest_station_km?: number;

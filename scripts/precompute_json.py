@@ -671,6 +671,17 @@ def _enrich_municipality_with_nlni(rec: dict, pref_code: int, nlni: dict[str, pd
         df = nlni["location_opt"]
         muni_df = df[df["muni_code"] == muni_code]
         rec["has_location_plan"] = bool(len(muni_df) > 0)
+        # 区域種別ごとのフラグと区域数
+        if not muni_df.empty and "area_type" in muni_df.columns:
+            zones = muni_df["area_type"].tolist()
+            rec["has_residential_zone"] = any("居住誘導" in z or "居住調整" in z for z in zones)
+            rec["has_function_zone"] = any("都市機能誘導" in z for z in zones)
+            # 各区域種別の合計区域数
+            num_zone_col = "num_zones" if "num_zones" in muni_df.columns else None
+            if num_zone_col:
+                rec["location_zones_summary"] = (
+                    muni_df.groupby("area_type")[num_zone_col].sum().to_dict()
+                )
 
     # Zoning dominant
     if "zoning" in nlni:
