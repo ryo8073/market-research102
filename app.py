@@ -179,13 +179,61 @@ with tab_score:
         area_name=f"{_pref_name} {_city_name}",
     )
 
+    # 分類粒度トグル — お客様の用途に応じて切替
+    _has_mid = sc.ebm_mid is not None
+    _has_ext = sc.ebm_mid_extended is not None
+    _granularity_options = ["大分類17業種（CCIM教科書）"]
+    if _has_mid:
+        _granularity_options.append("中分類95業種（詳細診断）")
+    if _has_ext:
+        _granularity_options.append("+農林業補完（地方都市の実評価）")
+
+    _granularity = st.radio(
+        "📐 分類粒度の選択（KPI・基盤産業・投資スコアが連動します）",
+        options=_granularity_options,
+        horizontal=True,
+        key="scorecard_granularity",
+        help="お客様の用途に応じて切替: 教科書通り→大分類 / 詳細診断→中分類 / 地方農業地域→+農林業",
+    )
+
+    # アクティブな指標の選択
+    if _granularity.startswith("中分類"):
+        _active_ebm = sc.ebm_mid
+        _active_basic_ratio = sc.basic_ratio_mid
+        _active_basic_emp = sc.basic_emp_mid
+        _active_top_lq = sc.top_lq_industries_mid or sc.top_lq_industries
+        _granularity_label = "中分類95業種"
+    elif _granularity.startswith("+農林業"):
+        _active_ebm = sc.ebm_mid_extended
+        _active_basic_ratio = sc.basic_ratio_mid_extended
+        _active_basic_emp = sc.basic_emp_mid_extended if hasattr(sc, "basic_emp_mid_extended") else sc.basic_emp_mid
+        _active_top_lq = sc.top_lq_industries_mid or sc.top_lq_industries
+        _granularity_label = "+農林業補完"
+    else:
+        _active_ebm = sc.ebm
+        _active_basic_ratio = sc.basic_ratio
+        _active_basic_emp = sc.basic_emp
+        _active_top_lq = sc.top_lq_industries
+        _granularity_label = "大分類17業種"
+
+    # 投資スコアを選択された粒度で再計算（リアルタイム）
+    from calculator import investment_suitability_score
+    _active_score = investment_suitability_score(
+        _active_ebm or 0,
+        _active_basic_ratio or 0,
+        sc.rs_total,
+        sc.aggregate_gap_factor,
+        sc.total_employment,
+    )
+
     # Row 0: Investment Suitability Score (large)
-    if sc.suitability_score:
-        _score = sc.suitability_score["total_score"]
+    if _active_score:
+        _score = _active_score["total_score"]
         _score_color = "#2A9D8F" if _score >= 60 else "#D4A843" if _score >= 40 else "#E76F51"
         st.markdown(
             f"<h2 style='text-align:center;color:{_score_color}'>"
-            f"投資適格スコア: {_score:.0f} / 100</h2>",
+            f"投資適格スコア: {_score:.0f} / 100"
+            f"<span style='font-size:0.5em;color:#888'> ({_granularity_label}基準)</span></h2>",
             unsafe_allow_html=True,
         )
 
@@ -214,22 +262,33 @@ with tab_score:
     )
     if sc.commute_distortion == "outflow":
         _ebm_help += f"\n\n⚠️ 通勤流出で過大値（{sc.ebm:.1f}）になっています。"
-    _ebm_delta = None
-    if sc.ebm_mid_extended is not None:
-        _ebm_delta = f"中分類+農林業: {sc.ebm_mid_extended:.2f}"
-    elif sc.ebm_mid is not None:
-        _ebm_delta = f"中分類: {sc.ebm_mid:.2f}"
-    k1.metric("EBM", f"{sc.ebm:.2f}", delta=_ebm_delta, delta_color="off", help=_ebm_help)
+    # KPIカードはアクティブ粒度で表示
+    if _granularity.startswith("大分類"):
+        _ebm_delta = (
+            f"中分類+農林業: {sc.ebm_mid_extended:.2f}" if sc.ebm_mid_extended is not None
+            else f"中分類: {sc.ebm_mid:.2f}" if sc.ebm_mid is not None
+            else None
+        )
+    elif _granularity.startswith("中分類"):
+        _ebm_delta = f"大分類: {sc.ebm:.2f}"
+    else:
+        _ebm_delta = f"大分類: {sc.ebm:.2f} / 中分類: {sc.ebm_mid:.2f}" if sc.ebm_mid else f"大分類: {sc.ebm:.2f}"
+    k1.metric("EBM", f"{(_active_ebm or 0):.2f}", delta=_ebm_delta, delta_color="off", help=_ebm_help)
     _per_help = "就業者1人あたりの総人口。CI102 Orlando例は 1.91。"
     if sc.commute_distortion == "inflow":
         _per_help += f"\n\n⚠️ 通勤流入で過小値（{sc.per:.2f}）になっています。"
     k2.metric("PER", f"{sc.per:.2f}", help=_per_help)
-    _basic_delta = None
-    if sc.basic_ratio_mid_extended is not None:
-        _basic_delta = f"中分類+農林業: {sc.basic_ratio_mid_extended:.1f}%"
-    elif sc.basic_ratio_mid is not None:
-        _basic_delta = f"中分類: {sc.basic_ratio_mid:.1f}%"
-    k3.metric("基盤雇用比率", f"{sc.basic_ratio:.1f}%",
+    if _granularity.startswith("大分類"):
+        _basic_delta = (
+            f"中分類+農林業: {sc.basic_ratio_mid_extended:.1f}%" if sc.basic_ratio_mid_extended is not None
+            else f"中分類: {sc.basic_ratio_mid:.1f}%" if sc.basic_ratio_mid is not None
+            else None
+        )
+    elif _granularity.startswith("中分類"):
+        _basic_delta = f"大分類: {sc.basic_ratio:.1f}%"
+    else:
+        _basic_delta = f"大分類: {sc.basic_ratio:.1f}% / 中分類: {sc.basic_ratio_mid:.1f}%" if sc.basic_ratio_mid else f"大分類: {sc.basic_ratio:.1f}%"
+    k3.metric("基盤雇用比率", f"{(_active_basic_ratio or 0):.1f}%",
               delta=_basic_delta, delta_color="off",
               help="LQ>1.0 の産業の超過雇用合計を総雇用で割った比率。教科書 Orlando: 20.2%。"
                    "農林業センサス補完版は経済センサス民営事業所(法人のみ)に家族農家を加えた拡張版。")

@@ -232,6 +232,64 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
         except Exception:
             pass
 
+        # --- 中分類版・+農林業版の投資スコアと基盤TOP10を事前計算 ---
+        # 分類粒度トグルでKPI/スコアを即座に切り替えるため、3バージョンすべてを格納
+        score_mid = None
+        score_extended = None
+        top_lq_extended = []
+        basic_emp_extended = None
+        n_basic_industries_extended = None
+        try:
+            from data.census_cache import (
+                DS_EMPLOYMENT_MID, load_cached_dataset,
+                get_area_employment_mid, load_agri_census,
+            )
+            cache_dir = Path(__file__).resolve().parent.parent / "data" / "cache"
+            df_mid = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MID.csv_name)
+            agri_df_v = load_agri_census(cache_dir)
+            if df_mid is not None:
+                area_code = f"{pref_code:02d}000"
+                # 中分類版スコア
+                if ebm_mid and basic_ratio_mid is not None:
+                    # 総雇用は中分類版（民営事業所のみ）
+                    nat_mid = get_area_employment_mid(df_mid, "00000")
+                    local_mid_e = get_area_employment_mid(df_mid, area_code)
+                    if local_mid_e and nat_mid:
+                        total_mid_e = sum(local_mid_e.values())
+                        score_mid = investment_suitability_score(
+                            ebm_mid, basic_ratio_mid, rs_total, agg_gap, total_mid_e
+                        )
+
+                # +農林業補完版スコアと基盤TOP10
+                if agri_df_v is not None and ebm_mid_extended is not None:
+                    local_ext = get_area_employment_mid(
+                        df_mid, area_code,
+                        extend_agriculture=True, agri_df=agri_df_v,
+                    )
+                    national_ext = get_area_employment_mid(
+                        df_mid, "00000",
+                        extend_agriculture=True, agri_df=agri_df_v,
+                    )
+                    if local_ext and national_ext:
+                        df_lq_ext = lq_table(local_ext, national_ext)
+                        b_ext = total_basic_employment(df_lq_ext)
+                        t_ext = float(df_lq_ext["local_emp"].sum())
+                        basic_emp_extended = round(b_ext, 0)
+                        n_basic_industries_extended = int((df_lq_ext["lq"] > 1.0).sum())
+                        top_lq_extended = (
+                            df_lq_ext[df_lq_ext["lq"] > 1.0]
+                            .nlargest(10, "basic_emp_estimate")
+                            [["industry", "lq", "basic_emp_estimate"]]
+                            .to_dict("records")
+                        )
+                        if ebm_mid_extended and basic_ratio_mid_extended:
+                            score_extended = investment_suitability_score(
+                                ebm_mid_extended, basic_ratio_mid_extended,
+                                rs_total, agg_gap, t_ext
+                            )
+        except Exception:
+            pass
+
         # --- Commute distortion detection ---
         pop_basic = float(basics.get("population", 0))
         emp_to_pop = (total_emp / pop_basic) if pop_basic > 0 else 0.0
@@ -287,9 +345,14 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             "basic_emp_mid": basic_emp_mid,
             "n_basic_industries_mid": n_basic_mid,
             "top_lq_industries_mid": top_lq_mid,
+            "suitability_score_mid": score_mid,
             # 農林業センサス2020 補完版（家族農家含む）
             "ebm_mid_extended": ebm_mid_extended,
             "basic_ratio_mid_extended": basic_ratio_mid_extended,
+            "basic_emp_mid_extended": basic_emp_extended,
+            "n_basic_industries_extended": n_basic_industries_extended,
+            "top_lq_industries_extended": top_lq_extended,
+            "suitability_score_extended": score_extended,
             "agri_eco_workers": agri_eco_workers,
             "agri_extended_workers": agri_extended_workers,
             # 通勤歪み判定

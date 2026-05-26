@@ -575,13 +575,104 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
   const narrative = useMemo(() => generateNarrative(pref, allData), [pref, allData]);
   const allPrefs = allData ? Object.values(allData) : [];
 
-  const scoreLabel = pref.suitability_score.total_score >= 80 ? "優良"
-    : pref.suitability_score.total_score >= 60 ? "良好"
-    : pref.suitability_score.total_score >= 40 ? "標準"
+  // 分類粒度トグル（major: 大分類17 / mid: 中分類95 / extended: +農林業補完）
+  type Granularity = "major" | "mid" | "extended";
+  const [granularity, setGranularity] = useState<Granularity>("major");
+  const hasMid = pref.ebm_mid != null && pref.basic_ratio_mid != null;
+  const hasExtended = pref.ebm_mid_extended != null && pref.basic_ratio_mid_extended != null;
+
+  // 選択された粒度に応じてアクティブな指標を切り替え
+  const activeEbm =
+    granularity === "extended" && pref.ebm_mid_extended != null ? pref.ebm_mid_extended :
+    granularity === "mid" && pref.ebm_mid != null ? pref.ebm_mid :
+    pref.ebm;
+  const activeBasicRatio =
+    granularity === "extended" && pref.basic_ratio_mid_extended != null ? pref.basic_ratio_mid_extended :
+    granularity === "mid" && pref.basic_ratio_mid != null ? pref.basic_ratio_mid :
+    pref.basic_ratio;
+  const activeBasicEmp =
+    granularity === "extended" && pref.basic_emp_mid_extended != null ? pref.basic_emp_mid_extended :
+    granularity === "mid" && pref.basic_emp_mid != null ? pref.basic_emp_mid :
+    pref.basic_emp;
+  const activeNBasicIndustries =
+    granularity === "extended" && pref.n_basic_industries_extended != null ? pref.n_basic_industries_extended :
+    granularity === "mid" && pref.n_basic_industries_mid != null ? pref.n_basic_industries_mid :
+    pref.top_lq_industries.filter(i => i.lq > 1.0).length;
+  const activeTopLq =
+    granularity === "extended" && pref.top_lq_industries_extended && pref.top_lq_industries_extended.length > 0 ? pref.top_lq_industries_extended :
+    granularity === "mid" && pref.top_lq_industries_mid && pref.top_lq_industries_mid.length > 0 ? pref.top_lq_industries_mid :
+    pref.top_lq_industries;
+  const activeScore =
+    granularity === "extended" && pref.suitability_score_extended ? pref.suitability_score_extended :
+    granularity === "mid" && pref.suitability_score_mid ? pref.suitability_score_mid :
+    pref.suitability_score;
+
+  const scoreLabel = activeScore.total_score >= 80 ? "優良"
+    : activeScore.total_score >= 60 ? "良好"
+    : activeScore.total_score >= 40 ? "標準"
     : "要注意";
+
+  const granularityLabel = granularity === "major" ? "大分類17業種（CCIM教科書）"
+    : granularity === "mid" ? "中分類95業種（詳細診断）"
+    : "+農林業補完（地方都市の実評価）";
 
   return (
     <div className="space-y-6">
+      {/* 分類粒度トグル — 上部に目立つ位置で表示 */}
+      <Card className="p-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="text-sm">
+            <span className="font-semibold">📐 分類粒度:</span>
+            <span className="ml-2 text-slate-700">{granularityLabel}</span>
+          </div>
+          <div className="flex gap-1 text-xs">
+            <button
+              onClick={() => setGranularity("major")}
+              className={`px-3 py-1.5 rounded-md border transition-colors ${
+                granularity === "major"
+                  ? "bg-slate-800 text-white border-slate-800"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+              }`}
+              title="CCIM CI102 教科書の16業種に最も近い粒度。教科書通りの議論にはこちら。"
+            >
+              大分類17業種
+            </button>
+            <button
+              onClick={() => setGranularity("mid")}
+              disabled={!hasMid}
+              className={`px-3 py-1.5 rounded-md border transition-colors ${
+                granularity === "mid"
+                  ? "bg-slate-800 text-white border-slate-800"
+                  : !hasMid
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+              }`}
+              title="情報サービス業・機械器具卸売業など細分の特化産業を捉える。詳細診断向け。"
+            >
+              中分類95業種
+            </button>
+            <button
+              onClick={() => setGranularity("extended")}
+              disabled={!hasExtended}
+              className={`px-3 py-1.5 rounded-md border transition-colors ${
+                granularity === "extended"
+                  ? "bg-slate-800 text-white border-slate-800"
+                  : !hasExtended
+                    ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+              }`}
+              title="農林業センサス2020の個人経営家族農家を含む。地方都市・農業地域の現実評価向け。"
+            >
+              +農林業補完
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 mt-2">
+          ⚡ KPI・基盤産業TOP・投資スコアは選択した粒度に連動します。シフトシェア・小売ギャップ・地価は粒度と無関係（独立データ）。
+          詳細は <a href="/learn#ch9-granularity" className="underline text-blue-700">学習第9章</a>。
+        </p>
+      </Card>
+
       {/* 通勤歪み警告（事業所所在地 vs 居住地の地理的不整合） */}
       {pref.commute_distortion === "inflow" && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -604,18 +695,19 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
         {/* Left: Gauge + KPI cards */}
         <div className="space-y-4">
           <Card className="text-center p-4">
-            <ScoreGauge score={pref.suitability_score.total_score} label={`${scoreLabel} — ${pref.pref_name}`} />
+            <ScoreGauge score={activeScore.total_score} label={`${scoreLabel} — ${pref.pref_name}`} />
+            <p className="text-xs text-slate-500 mt-1">スコア基準: {granularityLabel}</p>
           </Card>
           <div className="grid grid-cols-2 gap-2">
             <KpiCard
               title="EBM"
-              value={pref.ebm.toFixed(2)}
+              value={activeEbm.toFixed(2)}
               subtitle={
-                pref.ebm_mid_extended != null
-                  ? `中分類+農林業: ${pref.ebm_mid_extended.toFixed(2)}`
-                  : pref.ebm_mid != null
-                    ? `中分類: ${pref.ebm_mid.toFixed(2)}`
-                    : "経済基盤乗数"
+                granularity === "major"
+                  ? (pref.ebm_mid != null ? `中分類: ${pref.ebm_mid.toFixed(2)}` : "経済基盤乗数")
+                  : granularity === "mid"
+                    ? `大分類: ${pref.ebm.toFixed(2)}`
+                    : `大分類: ${pref.ebm.toFixed(2)} / 中分類: ${pref.ebm_mid?.toFixed(2) ?? "—"}`
               }
               tooltip="EBM = 1 / 基盤雇用比率。教科書Orlando 4.94 / 全国市区町村中央値4.99(大分類)・2.86(中分類)。健全レンジ3-6。値が大きいほど『基盤雇用が薄い』状態で、必ずしも経済が強い意味ではない。"
             />
@@ -631,13 +723,13 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
           <div className="grid grid-cols-3 gap-2">
             <KpiCard
               title="基盤雇用比率"
-              value={`${pref.basic_ratio.toFixed(1)}%`}
+              value={`${activeBasicRatio.toFixed(1)}%`}
               subtitle={
-                pref.basic_ratio_mid_extended != null
-                  ? `中分類+農林業: ${pref.basic_ratio_mid_extended.toFixed(1)}%`
-                  : pref.basic_ratio_mid != null
-                    ? `中分類: ${pref.basic_ratio_mid.toFixed(1)}%`
-                    : undefined
+                granularity === "major"
+                  ? (pref.basic_ratio_mid != null ? `中分類: ${pref.basic_ratio_mid.toFixed(1)}%` : undefined)
+                  : granularity === "mid"
+                    ? `大分類: ${pref.basic_ratio.toFixed(1)}%`
+                    : `大分類: ${pref.basic_ratio.toFixed(1)}% / 中分類: ${pref.basic_ratio_mid?.toFixed(1) ?? "—"}%`
               }
               tooltip="LQ>1.0の産業の超過雇用が総雇用に占める割合。教科書Orlando: 20.2% / 全国市区町村中央値20.0%(大分類)。中分類で見ると埋もれていた特化産業が見える。農林業センサス補完版は経済センサス民営事業所(法人のみ)に家族農家を加えた拡張版。"
             />
@@ -922,9 +1014,17 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
 
         <div className="space-y-4">
           <Card className="p-4">
-            <h3 className="text-sm font-semibold mb-3">基盤産業 TOP 5</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-semibold">
+                基盤産業 TOP {Math.min(activeTopLq.length, 10)}
+              </h3>
+              <span className="text-[10px] text-slate-500">
+                {granularity === "major" ? "大分類17業種" : granularity === "mid" ? "中分類95業種" : "+農林業補完"}
+                {" "}({activeNBasicIndustries}業種が LQ&gt;1.0)
+              </span>
+            </div>
             <div className="space-y-2">
-              {pref.top_lq_industries.map((r, i) => (
+              {activeTopLq.slice(0, granularity === "major" ? 5 : 10).map((r, i) => (
                 <div key={r.industry} className="flex justify-between items-center rounded-lg border p-2.5">
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#2A9D8F]/10 text-[#2A9D8F] text-[10px] font-bold">{i + 1}</span>

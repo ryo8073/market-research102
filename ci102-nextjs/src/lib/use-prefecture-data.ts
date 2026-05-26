@@ -86,9 +86,33 @@ export interface PrefectureData {
     lq: number;
     basic_emp_estimate: number;
   }>;
+  // 中分類95業種版の投資スコア
+  suitability_score_mid?: {
+    total_score: number;
+    ebm_score: number;
+    ratio_score: number;
+    rs_score: number;
+    gap_score: number;
+    scale_score: number;
+  } | null;
   // 農林業センサス2020 補完版（家族農家含む推計）
   ebm_mid_extended?: number | null;
   basic_ratio_mid_extended?: number | null;
+  basic_emp_mid_extended?: number | null;
+  n_basic_industries_extended?: number | null;
+  top_lq_industries_extended?: Array<{
+    industry: string;
+    lq: number;
+    basic_emp_estimate: number;
+  }>;
+  suitability_score_extended?: {
+    total_score: number;
+    ebm_score: number;
+    ratio_score: number;
+    rs_score: number;
+    gap_score: number;
+    scale_score: number;
+  } | null;
   agri_eco_workers?: number | null;
   agri_extended_workers?: number | null;
   // 通勤歪み判定（事業所所在地 vs 居住地の地理的不整合）
