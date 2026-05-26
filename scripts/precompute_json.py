@@ -740,7 +740,7 @@ def _classify_municipality(
 
 
 def compute_municipalities(accessor: MarketDataAccessor, pref_code: int) -> list[dict]:
-    """Compute LQ summary + segment for all municipalities in a prefecture."""
+    """Compute LQ summary + segment + 中分類版 + 農林業補完版 for all municipalities."""
     try:
         df = map_data.compute_municipality_lq(pref_code)
         if df is None or df.empty:
@@ -750,12 +750,23 @@ def compute_municipalities(accessor: MarketDataAccessor, pref_code: int) -> list
 
         # Load census cache for segmentation classification
         from data.census_cache import (
-            load_cached_dataset, DS_EMPLOYMENT_MAJOR, DS_POPULATION,
-            get_area_employment, get_area_population,
+            load_cached_dataset, DS_EMPLOYMENT_MAJOR, DS_EMPLOYMENT_MID, DS_POPULATION,
+            get_area_employment, get_area_employment_mid, get_area_population,
+            load_agri_census, get_area_agri_workers,
         )
         cache_dir = Path(__file__).resolve().parent.parent / "data" / "cache"
         df_emp = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MAJOR.csv_name)
         df_pop = load_cached_dataset(cache_dir, DS_POPULATION.csv_name)
+        df_mid = load_cached_dataset(cache_dir, DS_EMPLOYMENT_MID.csv_name)
+        df_agri = load_agri_census(cache_dir)
+
+        # 全国の中分類雇用（一度だけロード）
+        national_mid = get_area_employment_mid(df_mid, "00000") if df_mid is not None else None
+        national_mid_ext = (
+            get_area_employment_mid(df_mid, "00000", extend_agriculture=True, agri_df=df_agri)
+            if df_mid is not None and df_agri is not None
+            else None
+        )
 
         for rec in records:
             area_code = rec["area_code"]
@@ -778,6 +789,56 @@ def compute_municipalities(accessor: MarketDataAccessor, pref_code: int) -> list
                     segment = _classify_municipality(emp_data, total_emp, persons_per_hh)
 
             rec["segment"] = segment
+
+            # 中分類版・+農林業版の計算（市区町村レベル）
+            if df_mid is not None and national_mid:
+                try:
+                    local_mid = get_area_employment_mid(df_mid, area_code)
+                    if local_mid:
+                        df_lq_mid = lq_table(local_mid, national_mid)
+                        b_mid = total_basic_employment(df_lq_mid)
+                        t_mid = float(df_lq_mid["local_emp"].sum())
+                        if t_mid > 0 and b_mid > 0:
+                            rec["ebm_mid"] = round(t_mid / b_mid, 2)
+                            rec["basic_ratio_mid"] = round(b_mid / t_mid * 100, 1)
+                            rec["basic_emp_mid"] = round(b_mid, 0)
+                            rec["n_basic_industries_mid"] = int((df_lq_mid["lq"] > 1.0).sum())
+                            rec["top_lq_industries_mid"] = (
+                                df_lq_mid[df_lq_mid["lq"] > 1.0]
+                                .nlargest(10, "basic_emp_estimate")
+                                [["industry", "lq", "basic_emp_estimate"]]
+                                .to_dict("records")
+                            )
+
+                    # +農林業補完版
+                    if df_agri is not None and national_mid_ext:
+                        local_ext = get_area_employment_mid(
+                            df_mid, area_code,
+                            extend_agriculture=True, agri_df=df_agri,
+                        )
+                        if local_ext:
+                            df_lq_ext = lq_table(local_ext, national_mid_ext)
+                            b_ext = total_basic_employment(df_lq_ext)
+                            t_ext = float(df_lq_ext["local_emp"].sum())
+                            if t_ext > 0 and b_ext > 0:
+                                rec["ebm_mid_extended"] = round(t_ext / b_ext, 2)
+                                rec["basic_ratio_mid_extended"] = round(b_ext / t_ext * 100, 1)
+                                rec["basic_emp_mid_extended"] = round(b_ext, 0)
+                                rec["n_basic_industries_extended"] = int((df_lq_ext["lq"] > 1.0).sum())
+                                rec["top_lq_industries_extended"] = (
+                                    df_lq_ext[df_lq_ext["lq"] > 1.0]
+                                    .nlargest(10, "basic_emp_estimate")
+                                    [["industry", "lq", "basic_emp_estimate"]]
+                                    .to_dict("records")
+                                )
+
+                        # 農業従業者の経済センサス値 / 補完値
+                        agri_info = get_area_agri_workers(df_agri, area_code)
+                        if agri_info:
+                            rec["agri_eco_workers"] = int(agri_info["eco_only"])
+                            rec["agri_extended_workers"] = int(agri_info["extended"])
+                except Exception:
+                    pass
 
         return records
     except Exception:

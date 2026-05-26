@@ -36,6 +36,22 @@ export interface MunicipalityData {
   nearest_commercial_km?: number;
   nearest_commercial_min?: number;
   car_dependency_score?: number;
+  // 大分類EBM
+  ebm?: number;
+  // 中分類95業種版（業種粒度補正）
+  ebm_mid?: number;
+  basic_ratio_mid?: number;
+  basic_emp_mid?: number;
+  n_basic_industries_mid?: number;
+  top_lq_industries_mid?: Array<{ industry: string; lq: number; basic_emp_estimate: number }>;
+  // 農林業センサス2020 補完版（家族農家含む推計）
+  ebm_mid_extended?: number;
+  basic_ratio_mid_extended?: number;
+  basic_emp_mid_extended?: number;
+  n_basic_industries_extended?: number;
+  top_lq_industries_extended?: Array<{ industry: string; lq: number; basic_emp_estimate: number }>;
+  agri_eco_workers?: number;
+  agri_extended_workers?: number;
 }
 
 const _cache: Record<number, MunicipalityData[]> = {};

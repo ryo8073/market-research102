@@ -65,6 +65,9 @@ const DemographicsTab = dynamic(() => import("@/components/tabs/demographics-tab
 const MetroTab = dynamic(() => import("@/components/tabs/metro-tab"), {
   loading: () => <TabSkeleton />,
 });
+const CustomMetroTab = dynamic(() => import("@/components/tabs/custom-metro-tab"), {
+  loading: () => <TabSkeleton />,
+});
 
 const COLORS = {
   primary: "#1B2A4A",
@@ -443,11 +446,32 @@ function MunicipalityRankBar({ label, value, allValues, unit, higherIsBetter = t
   );
 }
 
-function MunicipalityDetail({ city, municipalities, prefName }: {
+function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
   city: MunicipalityData;
   municipalities: MunicipalityData[];
   prefName: string;
+  granularity?: "major" | "mid" | "extended";
 }) {
+  // 粒度に応じてアクティブな指標を切替
+  const activeBasicRatio =
+    granularity === "extended" && city.basic_ratio_mid_extended != null ? city.basic_ratio_mid_extended :
+    granularity === "mid" && city.basic_ratio_mid != null ? city.basic_ratio_mid :
+    city.basic_ratio;
+  const activeBasicEmp =
+    granularity === "extended" && city.basic_emp_mid_extended != null ? city.basic_emp_mid_extended :
+    granularity === "mid" && city.basic_emp_mid != null ? city.basic_emp_mid :
+    city.basic_emp;
+  const activeNBasic =
+    granularity === "extended" && city.n_basic_industries_extended != null ? city.n_basic_industries_extended :
+    granularity === "mid" && city.n_basic_industries_mid != null ? city.n_basic_industries_mid :
+    city.num_basic;
+  const activeTopLq =
+    granularity === "extended" && city.top_lq_industries_extended ? city.top_lq_industries_extended :
+    granularity === "mid" && city.top_lq_industries_mid ? city.top_lq_industries_mid :
+    null;
+  const granularitySuffix = granularity === "mid" ? "（中分類95業種）"
+    : granularity === "extended" ? "（+農林業補完）"
+    : "（大分類17業種）";
   // Peer comparison: similar scale (±50% of total employment)
   const peers = municipalities
     .filter((m) => m.area_code !== city.area_code && m.total_emp >= city.total_emp * 0.5 && m.total_emp <= city.total_emp * 2)
@@ -483,14 +507,50 @@ function MunicipalityDetail({ city, municipalities, prefName }: {
         )}
       </div>
 
+      {/* 粒度連動の注記 */}
+      {granularity && granularity !== "major" && (
+        <p className="text-xs text-amber-700 -mt-2">
+          ℹ️ 粒度{granularitySuffix}: KPI と TOP 産業がスコアカードのトグルに連動
+        </p>
+      )}
+
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard title="総雇用" value={city.total_emp.toLocaleString()} />
-        <KpiCard title="基盤雇用" value={Math.round(city.basic_emp).toLocaleString()} />
-        <KpiCard title="基盤雇用比率" value={`${city.basic_ratio.toFixed(1)}%`} />
+        <KpiCard
+          title="基盤雇用"
+          value={Math.round(activeBasicEmp).toLocaleString()}
+          subtitle={granularity && granularity !== "major" ? `大分類: ${Math.round(city.basic_emp).toLocaleString()}` : undefined}
+        />
+        <KpiCard
+          title="基盤雇用比率"
+          value={`${activeBasicRatio.toFixed(1)}%`}
+          subtitle={granularity && granularity !== "major" ? `大分類: ${city.basic_ratio.toFixed(1)}%` : undefined}
+        />
         <KpiCard title="最大LQ産業" value={`${city.max_lq.toFixed(2)}`} subtitle={city.max_lq_industry} />
-        <KpiCard title="基盤産業数" value={String(city.num_basic)} />
+        <KpiCard
+          title="基盤産業数"
+          value={String(activeNBasic)}
+          subtitle={granularity && granularity !== "major" ? `大分類: ${city.num_basic}` : undefined}
+        />
       </div>
+
+      {/* 中分類/+農林業の基盤産業TOP (粒度トグル時のみ) */}
+      {activeTopLq && activeTopLq.length > 0 && (
+        <div className="rounded-lg border bg-white dark:bg-slate-900 p-3">
+          <p className="text-xs font-semibold mb-2">
+            基盤産業 TOP {Math.min(activeTopLq.length, 5)} {granularitySuffix}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            {activeTopLq.slice(0, 5).map((r) => (
+              <div key={r.industry} className="rounded border p-2 text-xs">
+                <div className="font-medium truncate" title={r.industry}>{r.industry}</div>
+                <div className="text-[10px] text-slate-500">LQ {r.lq.toFixed(2)} / 基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* County rank bars */}
       <div className="grid md:grid-cols-2 gap-6">
@@ -1002,7 +1062,12 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
       {selectedCity && (
         <>
           <Separator />
-          <MunicipalityDetail city={selectedCity} municipalities={municipalities} prefName={pref.pref_name} />
+          <MunicipalityDetail
+            city={selectedCity}
+            municipalities={municipalities}
+            prefName={pref.pref_name}
+            granularity={granularity}
+          />
         </>
       )}
 
@@ -1338,6 +1403,10 @@ function DashboardContent() {
                 <span className="md:hidden">⑪</span>
                 <span className="hidden md:inline">⑪ 都市圏(MSA)</span>
               </TabsTrigger>
+              <TabsTrigger value="custom_metro" className="text-xs md:text-sm">
+                <span className="md:hidden">⑫</span>
+                <span className="hidden md:inline">⑫ カスタム経済圏</span>
+              </TabsTrigger>
             </TabsList>
 
             <div className="mt-6">
@@ -1451,6 +1520,13 @@ function DashboardContent() {
               <TabsContent value="metro">
                 <ErrorBoundary>
                 <MetroTab />
+                </ErrorBoundary>
+              </TabsContent>
+
+              {/* Tab 12: Custom Metro (複数市区町村合算) */}
+              <TabsContent value="custom_metro">
+                <ErrorBoundary>
+                <CustomMetroTab />
                 </ErrorBoundary>
               </TabsContent>
             </div>
