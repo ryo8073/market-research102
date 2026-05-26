@@ -5,6 +5,8 @@
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -158,10 +160,11 @@ def _trend_arrow() -> str:
     return "→"
 
 
-tab_score, tab_lq, tab_ebm, tab_ss, tab_gap, tab_re, tab_map, tab_cross, tab_metro = st.tabs(
+tab_score, tab_lq, tab_ebm, tab_ss, tab_gap, tab_re, tab_map, tab_cross, tab_metro, tab_custom_metro, tab_trade_area = st.tabs(
     ["⓪ 投資スコアカード", "① LQ・経済基盤", "② EBM・PER・予測",
      "③ シフトシェア分析", "④ 小売ギャップ分析", "⑤ 不動産取引価格",
-     "⑥ 地図分析", "⑦ クロス分析", "⑧ 都市圏分析（MSA相当）"]
+     "⑥ 地図分析", "⑦ クロス分析", "⑧ 都市圏分析（MSA相当）",
+     "⑨ カスタム経済圏", "⑩ 商圏分析"]
 )
 
 
@@ -1933,6 +1936,276 @@ Orlando MSA 4.94 を絶対基準にすれば、両方とも『教科書範囲外
     except Exception as e:
         st.error(f"都市圏分析の処理中にエラーが発生しました: {e}")
         st.exception(e)
+
+
+# ---------------------------------------------------------------------------
+# Tab 9: カスタム経済圏（複数市区町村合算）
+# ---------------------------------------------------------------------------
+
+with tab_custom_metro:
+    st.header("⑨ カスタム経済圏分析")
+    st.markdown("""
+複数の市区町村を選択して**独自の経済圏として合算評価**します。
+例: 「藤沢市 + 鎌倉市 + 茅ヶ崎市 + 平塚市」で湘南エリア、
+「函館市 + 北斗市 + 七飯町」で道南エリアなど。
+    """)
+
+    st.info("""
+**💡 使い方**: ①対象県を選ぶ → ②市区町村を複数選択 → ③合算結果が即座に表示されます。
+都道府県をまたぐ選択も可能。
+    """)
+
+    # 県・市区町村選択
+    from data.census_cache import (
+        DS_EMPLOYMENT_MAJOR, load_cached_dataset,
+        get_area_employment, get_national_employment,
+    )
+    from data.codes import PREFECTURES as ALL_PREFECTURES_MAP
+
+    df_major_cm = load_cached_dataset(
+        Path(__file__).resolve().parent / "data" / "cache",
+        DS_EMPLOYMENT_MAJOR.csv_name,
+    ) if False else accessor._ensure_census_cache()
+
+    if df_major_cm is None:
+        st.warning("経済センサスキャッシュが未構築です。`python scripts/download_census.py` を実行してください。")
+    else:
+        col_select, col_result = st.columns([1, 1.3])
+
+        with col_select:
+            cm_pref = st.selectbox(
+                "対象都道府県（複数県の選択は下記からも追加可能）",
+                options=list(ALL_PREFECTURES_MAP.keys()),
+                format_func=lambda c: f"{c:02d} {ALL_PREFECTURES_MAP[c]}",
+                index=12,  # 東京
+                key="cm_pref",
+            )
+            # 県内の市区町村を取得
+            cm_cities_df = df_major_cm[
+                df_major_cm["area_code"].str.startswith(f"{cm_pref:02d}") &
+                (~df_major_cm["area_code"].str.endswith("000")) &
+                (df_major_cm["area_code"] != "00000")
+            ]["area_code"].drop_duplicates().tolist()
+            city_options = []
+            for code in cm_cities_df:
+                rows = df_major_cm[df_major_cm["area_code"] == code]
+                if not rows.empty:
+                    city_options.append((code, rows.iloc[0]["area_name"]))
+
+            cm_selected = st.multiselect(
+                f"{ALL_PREFECTURES_MAP[cm_pref]}内の市区町村を選択",
+                options=[c for c, _ in city_options],
+                format_func=lambda c: next(n for cc, n in city_options if cc == c),
+                key="cm_selected",
+            )
+
+        # 集計
+        if cm_selected:
+            with col_result:
+                from calculator import lq_table, total_basic_employment, economic_base_multiplier
+                # 合算
+                national_emp = get_national_employment(df_major_cm)
+                local_emp_combined = {}
+                for code in cm_selected:
+                    emp = get_area_employment(df_major_cm, code)
+                    for ind, val in emp.items():
+                        local_emp_combined[ind] = local_emp_combined.get(ind, 0) + val
+
+                if local_emp_combined:
+                    df_lq_cm = lq_table(local_emp_combined, national_emp)
+                    basic_cm = total_basic_employment(df_lq_cm)
+                    total_cm = float(df_lq_cm["local_emp"].sum())
+                    ebm_cm = total_cm / basic_cm if basic_cm > 0 else 0
+                    basic_ratio_cm = basic_cm / total_cm * 100 if total_cm > 0 else 0
+                    n_basic_cm = int((df_lq_cm["lq"] > 1.0).sum())
+
+                    st.markdown(f"**選択中**: {len(cm_selected)}市区町村")
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("総雇用", f"{int(total_cm):,}")
+                    c2.metric("基盤雇用", f"{int(basic_cm):,}")
+                    c3.metric("基盤雇用比率", f"{basic_ratio_cm:.1f}%", help="教科書 Orlando MSA: 20.2%")
+                    c4, c5, c6 = st.columns(3)
+                    c4.metric("EBM", f"{ebm_cm:.2f}", help="教科書 Orlando MSA: 4.94 / 健全 3-6")
+                    c5.metric("基盤産業数", f"{n_basic_cm}")
+                    # HHI
+                    import math
+                    shares = [v/total_cm for v in local_emp_combined.values() if v > 0]
+                    hhi_cm = sum(s*s for s in shares) * 10000
+                    c6.metric("HHI", f"{hhi_cm:.0f}", help="低いほど多角化")
+
+                    st.subheader("基盤産業 TOP")
+                    top_cm = df_lq_cm[df_lq_cm["lq"] > 1.0].nlargest(10, "basic_emp_estimate")
+                    if not top_cm.empty:
+                        st.dataframe(
+                            top_cm[["industry", "local_emp", "lq", "basic_emp_estimate"]].style.format({
+                                "local_emp": "{:,.0f}",
+                                "lq": "{:.2f}",
+                                "basic_emp_estimate": "{:,.0f}",
+                            }),
+                            use_container_width=True, hide_index=True,
+                        )
+
+                    # 解釈ガイド
+                    interp = []
+                    if 3.0 <= ebm_cm <= 6.0:
+                        interp.append("✅ EBM 健全レンジ（多角化＋輸出基盤）")
+                    elif ebm_cm > 8.0:
+                        interp.append(f"⚠️ EBM {ebm_cm:.1f} は教科書範囲（3-6）超。基盤雇用が薄め")
+                    if 15.0 <= basic_ratio_cm <= 30.0:
+                        interp.append("✅ 基盤雇用比率 健全レンジ（Orlando 20.2%並）")
+                    if interp:
+                        st.info(" / ".join(interp))
+
+
+# ---------------------------------------------------------------------------
+# Tab 10: 商圏分析
+# ---------------------------------------------------------------------------
+
+with tab_trade_area:
+    st.header("⑩ 商圏分析（住所→指定半径内の集計）")
+    st.markdown("""
+住所から緯度経度を取得し、**指定半径内の市区町村**を経済圏として合算評価します。
+物件単位の投資判断に使えます。
+    """)
+
+    st.info("""
+**💡 使い方**: ①住所入力 or 緯度経度を直接指定 → ②半径選択 → ③圏内市区町村の経済データが集計されます。
+距離は**直線距離(haversine)** ベース。
+    """)
+
+    col_input, col_result_ta = st.columns([1, 1.3])
+
+    with col_input:
+        st.subheader("📍 場所の指定")
+        ta_address = st.text_input(
+            "住所で検索",
+            placeholder="例: 東京都千代田区丸の内1-9-1",
+            key="ta_address",
+        )
+
+        col_geo1, col_geo2 = st.columns(2)
+        ta_manual_lon = col_geo1.text_input("経度（例:139.69）", key="ta_lon")
+        ta_manual_lat = col_geo2.text_input("緯度（例:35.69）", key="ta_lat")
+
+        ta_radius = st.select_slider(
+            "📏 商圏の半径(km)",
+            options=[1, 2, 5, 10, 30],
+            value=5,
+            format_func=lambda r: {1:"1km(徒歩)", 2:"2km(自転車)", 5:"5km(近隣)", 10:"10km(広域)", 30:"30km(都市圏)"}[r],
+            key="ta_radius",
+        )
+
+        ta_search = st.button("商圏を分析", type="primary", key="ta_search_btn")
+
+    # 商圏分析実行
+    if ta_search:
+        import requests, math
+        center_lon, center_lat = None, None
+        center_title = ""
+
+        # 緯度経度直接入力
+        if ta_manual_lon and ta_manual_lat:
+            try:
+                center_lon = float(ta_manual_lon)
+                center_lat = float(ta_manual_lat)
+                center_title = f"緯度経度直接指定 ({center_lat:.4f}, {center_lon:.4f})"
+            except ValueError:
+                with col_result_ta:
+                    st.error("緯度経度の入力が無効です。")
+        # 住所ジオコーディング
+        elif ta_address.strip():
+            try:
+                r = requests.get(
+                    "https://msearch.gsi.go.jp/address-search/AddressSearch",
+                    params={"q": ta_address.strip()}, timeout=10,
+                )
+                if r.ok:
+                    results = r.json()
+                    if results:
+                        coords = results[0]["geometry"]["coordinates"]
+                        center_lon, center_lat = coords[0], coords[1]
+                        center_title = results[0]["properties"]["title"]
+            except Exception as e:
+                with col_result_ta:
+                    st.error(f"ジオコーディング失敗: {e}")
+
+        if center_lon and center_lat:
+            with col_result_ta:
+                st.success(f"📍 中心: **{center_title}** ({center_lat:.4f}, {center_lon:.4f})")
+
+                # 全国セントロイドから圏内市区町村を判定（haversine）
+                # cache miss なら全市区町村ループ
+                df_major_ta = accessor._ensure_census_cache()
+                if df_major_ta is not None:
+                    # セントロイド JSON 読み込み
+                    centroids_path = Path(__file__).resolve().parent / "ci102-nextjs" / "public" / "data" / "muni_centroids.json"
+                    if centroids_path.exists():
+                        import json as _json
+                        with open(centroids_path, encoding="utf-8") as f:
+                            centroids = _json.load(f)
+
+                        # haversine
+                        def hav(lon1, lat1, lon2, lat2):
+                            R = 6371.0
+                            dlat = math.radians(lat2-lat1)
+                            dlon = math.radians(lon2-lon1)
+                            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1))*math.cos(math.radians(lat2))*math.sin(dlon/2)**2
+                            return R * 2 * math.asin(math.sqrt(a))
+
+                        in_radius = []
+                        for code, c in centroids.items():
+                            d = hav(center_lon, center_lat, c["lon"], c["lat"])
+                            if d <= ta_radius:
+                                in_radius.append((code, c["name"], d))
+                        in_radius.sort(key=lambda x: x[2])
+
+                        st.metric("圏内市区町村数", f"{len(in_radius)} 件")
+
+                        if in_radius:
+                            # 合算
+                            local_emp_ta = {}
+                            national_emp_ta = get_national_employment(df_major_ta)
+                            for code, name, dist in in_radius:
+                                emp = get_area_employment(df_major_ta, code)
+                                for ind, val in emp.items():
+                                    local_emp_ta[ind] = local_emp_ta.get(ind, 0) + val
+
+                            if local_emp_ta:
+                                df_lq_ta = lq_table(local_emp_ta, national_emp_ta)
+                                basic_ta = total_basic_employment(df_lq_ta)
+                                total_ta = float(df_lq_ta["local_emp"].sum())
+                                ebm_ta = total_ta / basic_ta if basic_ta > 0 else 0
+                                br_ta = basic_ta / total_ta * 100 if total_ta > 0 else 0
+
+                                tc1, tc2, tc3 = st.columns(3)
+                                tc1.metric("総雇用", f"{int(total_ta):,}")
+                                tc2.metric("基盤雇用比率", f"{br_ta:.1f}%")
+                                tc3.metric("EBM", f"{ebm_ta:.2f}")
+
+                                # 圏内市区町村リスト
+                                with st.expander(f"📍 圏内市区町村 {len(in_radius)}件"):
+                                    for code, name, dist in in_radius[:30]:
+                                        st.text(f"  {name}: {dist:.1f}km")
+                                    if len(in_radius) > 30:
+                                        st.caption(f"...他 {len(in_radius)-30}件")
+
+                                st.subheader("基盤産業 TOP")
+                                top_ta = df_lq_ta[df_lq_ta["lq"] > 1.0].nlargest(10, "basic_emp_estimate")
+                                if not top_ta.empty:
+                                    st.dataframe(
+                                        top_ta[["industry", "lq", "basic_emp_estimate"]].style.format({
+                                            "lq": "{:.2f}",
+                                            "basic_emp_estimate": "{:,.0f}",
+                                        }),
+                                        use_container_width=True, hide_index=True,
+                                    )
+
+                                st.caption(
+                                    f"※ 直線距離(haversine)ベース。地形・道路網を考慮しない簡易判定。"
+                                    f"実際の到達時間は車・徒歩でも変動します。"
+                                )
+                    else:
+                        st.warning("市区町村セントロイドデータがありません。`python scripts/generate_muni_centroids.py` を実行してください。")
 
 
 # ---------------------------------------------------------------------------
