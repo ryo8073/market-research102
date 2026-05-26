@@ -128,3 +128,100 @@
     @apply font-sans;
   }
 }
+
+/* ============================================================================
+ * PDF出力用 print スタイル (Decision Hub レポート)
+ *
+ * exportPdf() ボタン押下時に body に .printing-decision-hub が付き、
+ * window.print() が呼ばれる。ブラウザの「PDFとして保存」で A4出力する想定。
+ *
+ * ルール:
+ *   - .no-print が付いた要素は印刷時非表示 (ボタン、トグル等)
+ *   - サイドバー・ヘッダー・タブナビゲーションは非表示
+ *   - Decision Hub タブのみフル表示
+ *   - 用紙: A4 縦、余白12mm、横はみ出し抑制
+ *   - 配色: 高コントラスト、印刷可能な背景色
+ * ============================================================================ */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body.printing-decision-hub {
+    background: white !important;
+    color: black !important;
+    font-size: 10pt;
+  }
+
+  /* 非印刷要素 */
+  body.printing-decision-hub .no-print,
+  body.printing-decision-hub nav,
+  body.printing-decision-hub header,
+  body.printing-decision-hub aside,
+  body.printing-decision-hub [role="tablist"],
+  body.printing-decision-hub button,
+  body.printing-decision-hub [role="dialog"],
+  body.printing-decision-hub details:not([open]) {
+    display: none !important;
+  }
+
+  /* タブナビゲーション以外を非表示 — 開いているタブ内容のみ */
+  body.printing-decision-hub [role="tabpanel"][data-state="inactive"] {
+    display: none !important;
+  }
+
+  /* リンクの下線除去 */
+  body.printing-decision-hub a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+
+  /* スコアカード・PropertyTypeCard は ページ内改頁を避ける */
+  body.printing-decision-hub .property-card,
+  body.printing-decision-hub [data-print-block] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 背景色を強制保持 (Chrome の color-adjust) */
+  body.printing-decision-hub * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* AIレポートのテキストエリアを通常のdivとして表示 (印刷時に切り取られないため) */
+  body.printing-decision-hub textarea {
+    border: 1px solid #ccc !important;
+    height: auto !important;
+    min-height: 0 !important;
+    white-space: pre-wrap !important;
+    overflow: visible !important;
+    page-break-inside: avoid;
+  }
+
+  /* shadowなど印刷で見づらい装飾を除去 */
+  body.printing-decision-hub .shadow-md,
+  body.printing-decision-hub .shadow-lg,
+  body.printing-decision-hub .shadow-xl {
+    box-shadow: none !important;
+  }
+
+  /* details は印刷時すべて開く (重要情報を隠さない) */
+  body.printing-decision-hub details[open] > summary,
+  body.printing-decision-hub details > summary {
+    list-style: none;
+    cursor: default;
+  }
+
+  /* レポートヘッダ - 印刷時のみ表示 */
+  body.printing-decision-hub .print-only {
+    display: block !important;
+  }
+}
+
+/* 通常表示時は print-only を隠す */
+.print-only {
+  display: none;
+}

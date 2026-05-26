@@ -159,6 +159,12 @@ interface AllScore {
   verdict: string;
   factors: Factor[];
 }
+interface ShiftShareInsight {
+  topIndustry: string;
+  topValue: number;
+  rsTotal: number;
+}
+
 interface DecisionHubInput {
   target: string;
   bestType: string;
@@ -169,6 +175,8 @@ interface DecisionHubInput {
   allScores?: AllScore[];
   commuteDistortion?: string;
   segment?: string;
+  shiftShareMajor?: ShiftShareInsight | null;
+  shiftShareMid?: ShiftShareInsight | null;
 }
 
 function sanitizeInput(body: unknown): DecisionHubInput | null {
@@ -186,6 +194,20 @@ function sanitizeInput(body: unknown): DecisionHubInput | null {
   const risks = Array.isArray(b.risks) ? b.risks.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
   const allScores = Array.isArray(b.allScores) ? b.allScores.slice(0, 10) : [];
 
+  // Shift-share insight サニタイズ
+  const parseShiftShare = (v: unknown): ShiftShareInsight | null => {
+    if (typeof v !== "object" || v === null) return null;
+    const o = v as Record<string, unknown>;
+    if (typeof o.topIndustry !== "string" || o.topIndustry.length === 0) return null;
+    if (typeof o.topValue !== "number" || !isFinite(o.topValue)) return null;
+    if (typeof o.rsTotal !== "number" || !isFinite(o.rsTotal)) return null;
+    return {
+      topIndustry: o.topIndustry.substring(0, 100),
+      topValue: o.topValue,
+      rsTotal: o.rsTotal,
+    };
+  };
+
   return {
     target: b.target.substring(0, 200),
     bestType: (b.bestType as string).substring(0, 100),
@@ -196,6 +218,8 @@ function sanitizeInput(body: unknown): DecisionHubInput | null {
     allScores: allScores as AllScore[],
     commuteDistortion: typeof b.commuteDistortion === "string" ? b.commuteDistortion : undefined,
     segment: typeof b.segment === "string" ? b.segment : undefined,
+    shiftShareMajor: parseShiftShare(b.shiftShareMajor),
+    shiftShareMid: parseShiftShare(b.shiftShareMid),
   };
 }
 
@@ -301,6 +325,13 @@ ${(input.allScores ?? []).map((s) =>
   `## ${s.label} — ${s.score.toFixed(0)}点 (${s.verdict})\n` +
   s.factors.map((f) => `  - ${f.label}: ${f.score.toFixed(0)}点 × 重み${(f.weight * 100).toFixed(0)}% [${f.interpretation}]`).join("\n")
 ).join("\n\n")}
+
+# シフトシェア分析の競争力 (2016→2021 実績)
+${input.shiftShareMajor ? `- 大分類17業種: RS合計 ${input.shiftShareMajor.rsTotal.toLocaleString()} 人 / 最強RS産業「${input.shiftShareMajor.topIndustry}」(RS ${input.shiftShareMajor.topValue.toLocaleString()} 人)` : ""}
+${input.shiftShareMid ? `- 中分類95業種: RS合計 ${input.shiftShareMid.rsTotal.toLocaleString()} 人 / 最強RS産業「${input.shiftShareMid.topIndustry}」(RS ${input.shiftShareMid.topValue.toLocaleString()} 人) ※民営事業所のみ` : ""}
+${input.shiftShareMajor && input.shiftShareMid && input.shiftShareMajor.topIndustry !== input.shiftShareMid.topIndustry
+  ? `  ↑ 大分類と中分類で異なる場合、中分類の方が具体的な「テナント候補」を示唆`
+  : ""}
 
 # 補足情報
 ${input.commuteDistortion ? `- 通勤歪み: ${input.commuteDistortion}` : ""}

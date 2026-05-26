@@ -281,6 +281,17 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
           })),
           commuteDistortion: pref.commute_distortion,
           segment: selectedCity?.segment,
+          // 中分類シフトシェアからの追加コンテキスト (具体的な業種粒度)
+          shiftShareMajor: pref.top_rs_industry ? {
+            topIndustry: pref.top_rs_industry,
+            topValue: pref.top_rs_value,
+            rsTotal: pref.rs_total,
+          } : null,
+          shiftShareMid: pref.top_rs_industry_mid ? {
+            topIndustry: pref.top_rs_industry_mid,
+            topValue: pref.top_rs_value_mid,
+            rsTotal: pref.rs_total_mid,
+          } : null,
         }),
       });
       const data = await r.json();
@@ -309,8 +320,32 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
     }
   };
 
+  /**
+   * PDF出力 — print用CSSを一時的に有効化し window.print() を呼ぶ。
+   * ブラウザの「PDFとして保存」を使うことで Vercel 環境でも追加インフラ不要。
+   * print:* Tailwindクラスで非印刷要素を非表示、印刷時のみ最適レイアウトに切替。
+   */
+  const exportPdf = () => {
+    // print用クラスをbodyに付けて条件分岐
+    document.body.classList.add("printing-decision-hub");
+    window.print();
+    // afterprintイベント or タイムアウトでクラス削除
+    setTimeout(() => document.body.classList.remove("printing-decision-hub"), 500);
+  };
+
   return (
     <div className="space-y-6">
+      {/* 印刷時のみ表示するレポートヘッダ */}
+      <div className="print-only border-b-2 pb-3 mb-3">
+        <h1 className="text-2xl font-bold">不動産市場分析レポート</h1>
+        <p className="text-sm mt-1">対象エリア: <strong>{target}</strong></p>
+        <p className="text-xs mt-1">生成日: {new Date().toLocaleString("ja-JP")}</p>
+        <p className="text-xs mt-1">分析基準: CCIM CI102 不動産投資のための市場分析（経済基盤分析・シフトシェア・小売ギャップ・空間データ統合）</p>
+        <p className="text-[10px] mt-1 text-gray-700">
+          データ出典: e-Stat 経済センサス2021 / 国勢調査2020 / MLIT不動産情報ライブラリ / 国土数値情報NLNI / 社人研人口予測
+        </p>
+      </div>
+
       <div>
         <h2 className="text-xl font-bold mb-2">投資判断ハブ — 物件タイプ別の統合評価</h2>
         <p className="text-sm text-gray-700">
@@ -340,13 +375,13 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
       </div>
 
       {/* AI 投資判断レポート (4層ガードレール対応) */}
-      <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4 space-y-3">
+      <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4 space-y-3" data-print-block>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold">🤖 AI 投資判断レポート</p>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-600 text-white">AI 生成</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 no-print">
             {aiResult && (
               <button
                 onClick={copyToClipboard}
@@ -355,6 +390,13 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
                 📋 コピー
               </button>
             )}
+            <button
+              onClick={exportPdf}
+              className="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+              title="ブラウザの『PDFとして保存』で出力"
+            >
+              📄 PDF出力
+            </button>
             <button
               onClick={runAi}
               disabled={aiLoading}
@@ -467,7 +509,7 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
       </div>
 
       {/* お客様向け説明テンプレート */}
-      <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50 p-4">
+      <div className="rounded-lg border-2 border-emerald-300 bg-emerald-50 p-4" data-print-block>
         <p className="text-sm font-semibold mb-2">📝 お客様向け説明テンプレート（自動生成・ルールベース）</p>
         <div className="text-sm space-y-2 leading-relaxed">
           <p>
@@ -491,8 +533,8 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
         </div>
       </div>
 
-      {/* タブ間連携の案内 */}
-      <details className="rounded-lg border p-3 text-sm">
+      {/* タブ間連携の案内 (PDF出力では不要) */}
+      <details className="rounded-lg border p-3 text-sm no-print">
         <summary className="cursor-pointer font-semibold">🔗 各スコア要素の詳細はどのタブで見れますか？</summary>
         <table className="w-full text-xs mt-2">
           <thead>
@@ -521,7 +563,7 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
 
 function PropertyTypeCard({ score }: { score: PropertyScore }) {
   return (
-    <div className="rounded-lg border-2 p-4" style={{ borderColor: score.verdict_color + "60" }}>
+    <div className="rounded-lg border-2 p-4 property-card" data-print-block style={{ borderColor: score.verdict_color + "60" }}>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <div>
           <span className="text-2xl mr-2">{score.icon}</span>
