@@ -88,6 +88,13 @@ OSRM Table API プロキシを実装し、車での実到達範囲をリアル�
 - `/admin?token=<TOKEN>` で利用統計閲覧
 - 詳細: `docs/PHASE_6_AUTH_LOG_SETUP.md`
 
+### ✅ Phase 6.4: DCF (Proformer) 統合UI — マクロ×ミクロ
+- `<DcfSection>` を Decision Hub 内に追加
+- 物件 ID (external_id) 入力 → Cap rate / NOI / DSCR / LTV / IRR / NPV を取得
+- 地域経済スコア (マクロ) ×物件収益スコア (ミクロ) の統合判定
+  - 🌟強推奨 / 👍推奨 / ⚠ マクロ良ミクロ要改善 / ⚠ ミクロ良マクロ要注意 / 🚫回避
+- CI102 教科書「マクロ×ミクロ統合判断」の体現
+
 ### ✅ Phase 6.3: 卸売・小売業 細分類 LQ (Mulligan凸性質の最大解像度)
 - e-Stat 0004003257 から156業種 × 70地域 (47県 + 政令市) の細分類従業者数取得
 - 都道府県レベルで `top_lq[]` JSON 事前計算 (`minor_retail_lq.json`、95KB)

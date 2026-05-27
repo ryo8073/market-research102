@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 import { ECONOMIC_CENSUS_CURRENT, POPULATION_CENSUS_CURRENT } from "@/lib/data-versions";
+import { DcfSection } from "@/components/dcf-section";
 
 interface Props {
   pref: PrefectureData;
@@ -374,6 +375,9 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
           <PropertyTypeCard key={s.type} score={s} />
         ))}
       </div>
+
+      {/* 🏢 DCF (Proformer) 統合 - マクロ×ミクロ */}
+      <DcfSection macroScore={best.totalScore} macroPropertyType={best.label} />
 
       {/* AI 投資判断レポート (4層ガードレール対応) */}
       <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4 space-y-3" data-print-block>
