@@ -15,6 +15,7 @@ import {
 } from "@/lib/calculator";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 import { ReadingGuide } from "@/components/ui/reading-guide";
+import { useMinorRetailLq } from "@/lib/use-minor-retail-lq";
 
 interface Props {
   localEmp: Record<string, number>;
@@ -24,9 +25,10 @@ interface Props {
   nationalT0?: Record<string, number>;
   nationalT1?: Record<string, number>;
   selectedCity?: MunicipalityData | null;
+  prefCode?: number;  // 細分類 LQ 用 (都道府県限定)
 }
 
-export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationalT0, nationalT1, selectedCity }: Props) {
+export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationalT0, nationalT1, selectedCity, prefCode }: Props) {
   const [selectedSignalIndustries, setSelectedSignalIndustries] = useState<Set<string> | null>(null);
   const lqData = useMemo(() => lq_table(localEmp, nationalEmp), [localEmp, nationalEmp]);
   const basicTotal = useMemo(() => total_basic_employment(lqData), [lqData]);
@@ -281,6 +283,9 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
         </table>
       </div>
 
+      {/* 🛒 卸売・小売業 細分類 LQ (都道府県限定、Phase 6.3) */}
+      {prefCode && <MinorRetailLqSection prefCode={prefCode} />}
+
       {/* Educational content */}
       <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
         <summary className="font-medium cursor-pointer">ℹ️ 投資判断への活用</summary>
@@ -300,5 +305,91 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
         </div>
       </details>
     </div>
+  );
+}
+
+/**
+ * 🛒 卸売・小売業の細分類 LQ ランキング (都道府県限定)。
+ *
+ * Mulligan & Murphy (1995) の LQ 凸性質の「最大解像度」を示す教育セクション。
+ * 大分類「卸売業，小売業」では見えない、コンビニ / ドラッグストア /
+ * 自動車販売 / 婦人服小売 等の具体業態の地域特化が表示される。
+ *
+ * e-Stat 0004003257 の制限により都道府県レベル + 政令市 のみ。市区町村別
+ * 細分類は存在しない (中分類が市区町村レベルの最大解像度)。
+ */
+function MinorRetailLqSection({ prefCode }: { prefCode: number }) {
+  const { data, loading, error } = useMinorRetailLq(prefCode);
+
+  if (loading) {
+    return (
+      <details className="rounded-lg border-2 border-amber-200 bg-amber-50/30 p-4 text-sm">
+        <summary className="font-semibold text-amber-900 cursor-pointer">
+          🛒 卸売・小売業の細分類 LQ ランキング (読込中...)
+        </summary>
+      </details>
+    );
+  }
+  if (error || !data) {
+    return null;  // データなしは静かにスキップ
+  }
+
+  return (
+    <details open className="rounded-lg border-2 border-amber-200 bg-amber-50/30 p-4 text-sm">
+      <summary className="font-semibold text-amber-900 cursor-pointer">
+        🛒 {data.pref_name} 卸売・小売業の細分類 LQ ランキング (Top {data.top_lq.length}) — 商業不動産のテナント想定
+      </summary>
+      <div className="mt-3 space-y-3">
+        <p className="text-xs text-amber-800">
+          大分類「卸売業，小売業」(LQ ≈ 1.0前後) の<strong>内訳を4桁細分類で展開</strong>すると、
+          地域の具体的な特化業態が見えます (Mulligan &amp; Murphy 1995 の LQ凸性質)。
+          ファッション卸売 / コンビニ / 家電量販店 / 自動車販売など、
+          商業不動産のテナント想定や物販店出店判断に直結する解像度。
+        </p>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-amber-100">
+              <tr>
+                <th className="text-left p-2 w-12">順位</th>
+                <th className="text-left p-2">業種 (4桁コード)</th>
+                <th className="text-right p-2">LQ</th>
+                <th className="text-right p-2">県内従業者</th>
+                <th className="text-right p-2">全国従業者</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.top_lq.map((entry, idx) => (
+                <tr key={entry.code} className="border-b last:border-b-0 hover:bg-amber-100/50">
+                  <td className="p-2 text-amber-900 font-medium">{idx + 1}</td>
+                  <td className="p-2">
+                    {entry.name}
+                    <span className="ml-2 text-[10px] text-slate-400 font-mono">{entry.code}</span>
+                  </td>
+                  <td className="text-right p-2 font-mono font-semibold" style={{ color: entry.lq >= 2.0 ? "#92400e" : "#a16207" }}>
+                    {entry.lq.toFixed(2)}
+                  </td>
+                  <td className="text-right p-2 font-mono">{entry.local_emp.toLocaleString()}</td>
+                  <td className="text-right p-2 font-mono text-slate-500">{entry.national_emp.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="text-[10px] text-amber-700 space-y-1 mt-2">
+          <p>
+            ※ <strong>都道府県レベルのみ</strong>: 市区町村別の細分類データは経済センサスに存在しないため、
+            市区町村の評価には別途中分類 (95業種) を使用します。
+          </p>
+          <p>
+            ※ 業種別<strong>従業者50人未満は除外</strong> (極端なLQ値の発生防止)。
+          </p>
+          <p>
+            ※ データ出典: e-Stat 0004003257 (令和3年経済センサス活動調査 卸売・小売業 細分類別 都道府県表)。
+          </p>
+        </div>
+      </div>
+    </details>
   );
 }

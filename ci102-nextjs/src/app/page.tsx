@@ -1642,6 +1642,7 @@ function DashboardContent() {
                   nationalT0={undefined}
                   nationalT1={undefined}
                   selectedCity={selectedCity}
+                  prefCode={prefCode}
                 />
                 </ErrorBoundary>
               </TabsContent>
