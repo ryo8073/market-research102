@@ -18,6 +18,7 @@ import {
   POPULATION_CENSUS_CURRENT,
   shiftSharePeriodLabel,
 } from "@/lib/data-versions";
+import { logEvent } from "@/lib/usage-log";
 
 // ============================================================================
 // SYSTEM PROMPT — Layer 2 ガードレール
@@ -234,8 +235,12 @@ function sanitizeInput(body: unknown): DecisionHubInput | null {
 // ============================================================================
 
 export async function POST(request: NextRequest) {
+  const sid = request.headers.get("x-session-id") ?? undefined;
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined;
+
   const apiKey = getEnv("ANTHROPIC_API_KEY");
   if (!apiKey) {
+    await logEvent({ action: "ai_decision", sid, status: 503, meta: { reason: "no_api_key" } }, ip);
     return NextResponse.json({ error: "ANTHROPIC_API_KEY 未設定" }, { status: 503 });
   }
 
@@ -249,6 +254,7 @@ export async function POST(request: NextRequest) {
   // Layer 1: 入力サニタイズ
   const input = sanitizeInput(rawBody);
   if (!input) {
+    await logEvent({ action: "ai_decision", sid, status: 400, meta: { reason: "invalid_input" } }, ip);
     return NextResponse.json({ error: "入力データが不正です（型・範囲を確認してください）" }, { status: 400 });
   }
 
@@ -276,6 +282,13 @@ export async function POST(request: NextRequest) {
 
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
+      await logEvent({
+        action: "ai_decision",
+        sid,
+        status: res.status,
+        ms: Date.now() - startTime,
+        meta: { reason: "claude_api_error", target: input.target },
+      }, ip);
       return NextResponse.json({
         error: `Claude API error: ${res.status}`,
         detail: errText.substring(0, 500),
@@ -286,6 +299,7 @@ export async function POST(request: NextRequest) {
     const analysis: string = data?.content?.[0]?.text ?? "";
 
     if (!analysis) {
+      await logEvent({ action: "ai_decision", sid, status: 502, ms: Date.now() - startTime, meta: { reason: "empty" } }, ip);
       return NextResponse.json({ error: "分析結果が空です" }, { status: 502 });
     }
 
@@ -301,6 +315,21 @@ export async function POST(request: NextRequest) {
       warnings_count: warnings.length,
       high_warnings: warnings.filter((w) => w.level === "high").length,
     };
+
+    // 成功ログ
+    await logEvent({
+      action: "ai_decision",
+      sid,
+      status: 200,
+      ms: meta.latency_ms,
+      meta: {
+        target: input.target,
+        bestType: input.bestType,
+        warnings_high: meta.high_warnings,
+        warnings_total: meta.warnings_count,
+        chars: analysis.length,
+      },
+    }, ip);
 
     return NextResponse.json({
       analysis,

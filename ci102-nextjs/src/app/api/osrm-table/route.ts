@@ -16,6 +16,7 @@
  *   配列の順序は destinations と一致 (失敗した場合 null)
  */
 import { NextRequest, NextResponse } from "next/server";
+import { logEvent } from "@/lib/usage-log";
 
 const OSRM_BASE = "https://router.project-osrm.org";
 const OSRM_PROFILE = "car";
@@ -80,6 +81,9 @@ function isValidCoord(c: unknown): c is [number, number] {
 }
 
 export async function POST(request: NextRequest) {
+  const sid = request.headers.get("x-session-id") ?? undefined;
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined;
+
   let body: OsrmTableBody;
   try {
     body = await request.json();
@@ -132,16 +136,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const latencyMs = Date.now() - startTime;
+    await logEvent({
+      action: "osrm_table",
+      sid,
+      status: 200,
+      ms: latencyMs,
+      meta: {
+        destinations: body.destinations.length,
+        batches: Math.ceil(validDestinations.length / BATCH_SIZE),
+      },
+    }, ip);
+
     return NextResponse.json({
       durations_min: allDurationsMin,
       distances_km: allDistancesKm,
       meta: {
         total: body.destinations.length,
         batches: Math.ceil(validDestinations.length / BATCH_SIZE),
-        latency_ms: Date.now() - startTime,
+        latency_ms: latencyMs,
       },
     });
   } catch (err) {
+    await logEvent({
+      action: "osrm_table",
+      sid,
+      status: 502,
+      meta: { reason: String(err).substring(0, 200) },
+    }, ip);
     return NextResponse.json({
       error: `OSRM Table API 呼び出し失敗: ${String(err).substring(0, 200)}`,
     }, { status: 502 });

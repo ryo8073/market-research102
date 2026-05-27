@@ -1780,13 +1780,23 @@ function DashboardContent() {
               <DataVintageBadge variant="compact" />
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
             <a href="/compare" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
               地域比較 &rarr;
             </a>
             <a href="/learn" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
               分析手法を学ぶ &rarr;
             </a>
+            <button
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                window.location.href = "/login";
+              }}
+              className="text-xs text-slate-500 hover:underline whitespace-nowrap"
+              title="ログアウト"
+            >
+              ログアウト
+            </button>
           </div>
         </div>
       </footer>
