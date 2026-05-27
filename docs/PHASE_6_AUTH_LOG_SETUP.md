@@ -54,10 +54,16 @@ openssl rand -base64 32
 ### Vercel Dashboard で:
 
 1. プロジェクトを開く
-2. **Storage** タブ → **Create Database** → **KV (Powered by Upstash)** を選択
-3. リージョン: `hnd1` (東京) を選択
-4. プロジェクトに接続 (Connect to Project)
-5. 上記4変数が自動的に `KV_*` として注入される
+2. **Storage** タブ → **Create Database**
+3. **必ず「Upstash for Redis」を選択** ⚠️
+   - Upstash には4種類あるが、本ツールで使うのは **Redis のみ**
+   - ❌ Upstash Vector (AI埋め込み用、用途違い)
+   - ❌ Upstash QStash / Workflow (メッセージキュー、用途違い)
+   - ❌ Upstash Search (全文検索、用途違い)
+   - ✅ **Upstash for Redis** ← これ
+4. リージョン: `hnd1` (東京 / Tokyo) を選択 — レイテンシ最小化のため
+5. プロジェクトに接続 (Connect to Project)
+6. 環境変数 `KV_REST_API_URL` / `KV_REST_API_TOKEN` 等が自動注入される
 
 ### 課金プラン
 

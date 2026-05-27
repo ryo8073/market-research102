@@ -1180,15 +1180,38 @@ export default function LearnPage() {
               headers={["都市圏（EBM昇順）", "EBM", "基盤雇用比率", "基盤産業数", "HHI", "最大LQ"]}
               rows={[
                 ["札幌都市圏", "11.34", "8.8%", "11", "1,046", "2.37"],
-                ["東京圏（首都圏）", "11.41", "8.8%", "9", "960", "2.10"],
+                ["東京圏（首都圏 1都3県合算）", "11.41", "8.8%", "9", "960", "2.10"],
                 ["名古屋圏（中京）", "11.51", "8.7%", "2", "1,242", "1.60"],
                 ["仙台都市圏", "15.23", "6.6%", "9", "1,038", "1.63"],
                 ["福岡都市圏", "21.40", "4.7%", "7", "1,082", "1.32"],
                 ["広島都市圏", "22.98", "4.4%", "8", "1,123", "1.37"],
-                ["大阪圏（京阪神）", "28.98", "3.5%", "7", "1,093", "1.17"],
+                ["大阪圏（京阪神 2府2県合算）", "28.98", "3.5%", "7", "1,093", "1.17"],
               ]}
             />
-            <p>
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 mt-2 text-sm">
+              <p className="font-semibold mb-1">📌 重要: 都道府県単独で見ると EBM はもっと低い (=教科書範囲に近い)</p>
+              <table className="w-full text-xs mt-2">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-1">対象</th>
+                    <th className="text-right py-1">EBM</th>
+                    <th className="text-right py-1">基盤率</th>
+                    <th className="text-left py-1 pl-2">教科書(Orlando 4.94)との関係</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b"><td className="py-1">東京都<strong>単独</strong></td><td className="text-right font-bold text-emerald-700">5.79</td><td className="text-right">17.3%</td><td className="pl-2 text-emerald-700">✓ 範囲内</td></tr>
+                  <tr className="border-b"><td className="py-1">東京圏1都3県<strong>合算</strong></td><td className="text-right">11.41</td><td className="text-right">8.8%</td><td className="pl-2 text-amber-700">⚠ 合算で上振れ</td></tr>
+                  <tr className="border-b"><td className="py-1">大阪府<strong>単独</strong></td><td className="text-right text-amber-700">20.57</td><td className="text-right">4.9%</td><td className="pl-2 text-amber-700">既に範囲外</td></tr>
+                  <tr><td className="py-1">大阪圏2府2県<strong>合算</strong></td><td className="text-right text-rose-700">28.98</td><td className="text-right">3.5%</td><td className="pl-2 text-rose-700">合算でさらに悪化</td></tr>
+                </tbody>
+              </table>
+              <p className="text-[11px] mt-2 text-slate-700">
+                合算で EBM が上がる理由: 周辺県を加えると地域シェアが全国平均に近づき LQ&gt;1業種の優位性が薄まる。
+                教科書の MSA は中心都市+一体的な通勤圏を指すが、日本の1都3県 (3,613万人) は規模が大きすぎる可能性。
+              </p>
+            </div>
+            <p className="mt-2">
               <strong>日本最大の都市圏（東京、3613万人）のEBMが、日本の都市圏で最も低い</strong>。
               一見すると逆説的ですが、これは『多角化された強い輸出基盤』のサインです。
               4つの多角化指標で実証してみます。
@@ -1347,44 +1370,54 @@ export default function LearnPage() {
                 <li>基盤産業数は中程度だが、特化が深いため基盤雇用比率が20%を超える</li>
               </ul>
               <p className="mt-3 mb-2">
-                <strong>東京圏</strong> EBM 11.41 / 基盤産業 9業種 / 最大LQ 2.10 / 平均LQ ≈ 1.20
+                <strong>東京都単独</strong> EBM <strong>5.79</strong> / 基盤率 17.3% / 基盤産業 6業種 — <em>教科書範囲内</em>
               </p>
               <ul className="list-disc list-inside text-sm space-y-1">
-                <li>9業種で<strong>広く中程度に特化</strong></li>
-                <li>LQ平均は低めだが、業種数とエントロピーは大都市圏最大</li>
-                <li>『広く浅い』特化のため基盤雇用比率は 8.8% にとどまる</li>
+                <li>教科書 Orlando MSA 4.94 / 基盤率 20.2% に近い「健全圏」</li>
+                <li>金融・情報通信・専門サービス等で深く特化</li>
+              </ul>
+
+              <p className="mt-3 mb-2">
+                <strong>東京圏 (1都3県合算)</strong> EBM <strong>11.41</strong> / 基盤率 8.8% / 基盤産業 9業種 / 最大LQ 2.10
+              </p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>9業種で<strong>広く中程度に特化</strong> (基盤業種数は単独より増える)</li>
+                <li>しかし周辺県を加えると地域シェアが全国平均に近づき、LQ&gt;1業種の優位性が薄まる</li>
+                <li>結果として基盤雇用比率が 8.8% に下がり、EBM が単独の 5.79 から 11.41 に「上がって」見える</li>
               </ul>
               <p className="mt-3">
                 <strong>どちらも『多角化された健全な大都市圏』</strong>だが、特化のパターンが異なります。
-                日本固有の東京一極集中構造により、東京圏は「広い特化」、Orlando は「深い特化」を持つ。
-                日本の他都市圏は東京の影響で『LQが頭打ち』になり、特化が浅い。
+                東京都単独は Orlando と同じ「狭く深い」特化、東京圏合算は「広く中程度」の特化。
+                日本固有の東京一極集中構造により、日本の他都市圏は『LQが頭打ち』になり、特化が浅い。
               </p>
             </CaseStudy>
 
-            <h4 className="font-semibold mt-6">なぜ大阪圏のEBMが高い（28.98）のか</h4>
+            <h4 className="font-semibold mt-6">なぜ大阪圏のEBMが高い (大阪府単独20.57 → 大阪圏28.98) のか</h4>
             <p>
-              大阪圏は東京圏に次ぐ規模（人口1,835万人）ですが、EBMが28.98と最も大きい（基盤率3.5%）。
-              これは大阪圏が「全国第2位の経済圏」ではあるものの、<strong>東京一極集中の影響で
-              特化業種が少なくなっている</strong>ことを反映します:
+              大阪府<strong>単独</strong>でも既に EBM 20.57 / 基盤率 4.9% で教科書範囲外。
+              <strong>大阪圏 (2府2県合算)</strong> ではさらに上がって EBM 28.98 / 基盤率 3.5%。
+              これは大阪が「全国第2位の経済圏」ではあるものの、<strong>東京一極集中の影響で
+              主要産業が全国シェアと同等になっている</strong>ことを反映します:
             </p>
             <ul className="list-disc list-inside space-y-1">
               <li>金融商品取引業の本社機能は東京に集中 → 大阪は LQ 1.1 程度</li>
               <li>情報サービス業も東京集中 → 大阪は LQ 0.9 程度</li>
               <li>製造業は近郊（兵庫・京都）に分散しているが、大分類で見ると LQ ≈ 1.0</li>
-              <li>結果として基盤産業 7業種、最大LQ 1.17 と『弱い特化が点在』</li>
+              <li>結果として基盤産業 9業種 (単独) → 7業種 (合算)、最大LQ 1.17 と『弱い特化が点在』</li>
             </ul>
             <p>
               これは『大阪が衰退している』ではなく、<strong>『大阪の主要産業が全国シェアと同等』
               という意味</strong>。LQの計算原理上、全国シェアと同等の業種は基盤雇用に算入されない
-              ため、見かけ上 EBM が高くなります。
+              ため、見かけ上 EBM が高くなります。圏域合算でさらに「全国シェアに近づく」ため、EBM が単独より上がります。
             </p>
 
             <ClientTip>
               <p className="mb-2">「東京と大阪のEBMが大きく違うのは、東京が圧倒的に強いということですか？」と聞かれたら:</p>
               <p>
                 「いいえ、EBMが高い・低いは『強い・弱い』ではなく『多角化されているか・特化が浅いか』を示します。
-                東京圏EBM 11.41は『広く中程度に特化した9業種で経済が支えられている多角化大都市圏』。
-                大阪圏EBM 28.98は『東京一極集中の影響で特化業種が少なく、見かけ上の乗数が大きい』。
+                <strong>東京都単独 EBM 5.79</strong> は教科書 Orlando MSA 4.94 と近い「健全圏」、
+                <strong>東京圏(1都3県)合算 EBM 11.41</strong> は周辺県を加えた数学的副産物。
+                <strong>大阪府単独 EBM 20.57</strong> も既に高く、これは東京一極集中で大阪府の主要産業が全国シェアと同等になっているサイン。
                 両方とも『日本の経済中枢』である事実は変わりません。EBMは経済構造の<strong>分散度合い</strong>を
                 示す指標として解釈してください。」
               </p>
