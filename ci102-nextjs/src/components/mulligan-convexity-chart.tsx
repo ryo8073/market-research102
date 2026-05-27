@@ -190,6 +190,71 @@ export function MulliganConvexityChart({ prefCode }: Props) {
         </div>
       </div>
 
+      {/* 業種別寄与分析 — 各 level で新規に基盤入りした業種 */}
+      <details className="rounded bg-white border-2 border-indigo-200 p-3 text-xs" open>
+        <summary className="font-semibold cursor-pointer">
+          🔍 業種別寄与分析 — 各 level で新規に基盤入り (LQ&gt;1) した業種
+        </summary>
+        <div className="mt-2 grid md:grid-cols-2 gap-3">
+          {/* L0 → L1 で新規追加 */}
+          <div>
+            <p className="font-medium text-indigo-700 text-[11px] mb-1">
+              L0 → L1 で新規 (大分類では見えなかった中分類の特化業種)
+            </p>
+            {data.levels[1].newly_added && data.levels[1].newly_added.length > 0 ? (
+              <table className="w-full text-[11px]">
+                <thead className="bg-indigo-50">
+                  <tr>
+                    <th className="text-left p-1">業種</th>
+                    <th className="text-right p-1 w-12">LQ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.levels[1].newly_added.slice(0, 10).map((r, i) => (
+                    <tr key={i} className="border-b last:border-b-0">
+                      <td className="p-1">{r.name}</td>
+                      <td className="text-right p-1 font-mono font-semibold text-indigo-700">{r.lq.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-slate-400 text-[10px]">新規追加なし</p>
+            )}
+          </div>
+
+          {/* L1 → L2 で新規追加 */}
+          <div>
+            <p className="font-medium text-indigo-700 text-[11px] mb-1">
+              L1 → L2 で新規 (細分類化で初めて見えた特化業種)
+            </p>
+            {data.levels[2].newly_added && data.levels[2].newly_added.length > 0 ? (
+              <table className="w-full text-[11px]">
+                <thead className="bg-indigo-50">
+                  <tr>
+                    <th className="text-left p-1">業種</th>
+                    <th className="text-right p-1 w-12">LQ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.levels[2].newly_added.slice(0, 10).map((r, i) => (
+                    <tr key={i} className="border-b last:border-b-0">
+                      <td className="p-1">{r.name}</td>
+                      <td className="text-right p-1 font-mono font-semibold text-indigo-700">{r.lq.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-slate-400 text-[10px]">新規追加なし</p>
+            )}
+          </div>
+        </div>
+        <p className="text-[10px] text-slate-500 mt-2">
+          ※ 「新規追加」=この粒度で初めて LQ&gt;1 になった業種。L1 で消えた業種もあり得ますが (大分類で過大評価された業種)、ここでは表示していません。
+        </p>
+      </details>
+
       {/* 教育的解釈 */}
       <div className="rounded bg-amber-50 border border-amber-200 p-3 text-xs space-y-1.5">
         <p className="font-semibold">💡 このチャートから読み取れること</p>

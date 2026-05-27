@@ -51,24 +51,33 @@ WHOLESALE_RETAIL_MID_CODES = {
 }
 
 
-def compute_ebm_from_emp(emp_dict: dict[str, float], national_dict: dict[str, float]) -> tuple[float, float, float, int]:
-    """雇用辞書から EBM・基盤雇用・基盤率を計算。
+def compute_ebm_from_emp(emp_dict: dict[str, float], national_dict: dict[str, float]) -> tuple[float, float, float, int, list[dict]]:
+    """雇用辞書から EBM・基盤雇用・基盤率・基盤業種一覧を計算。
 
-    Returns: (ebm, basic_emp, basic_ratio_pct, n_basic_industries)
+    Returns: (ebm, basic_emp, basic_ratio_pct, n_basic_industries, basic_industries_list)
+      basic_industries_list = [{"name": ..., "lq": ..., "basic_emp": ...}, ...]
     """
     if not emp_dict or not national_dict:
-        return 0.0, 0.0, 0.0, 0
+        return 0.0, 0.0, 0.0, 0, []
 
     df_lq = lq_table(emp_dict, national_dict)
     basic = total_basic_employment(df_lq)
     total = float(df_lq["local_emp"].sum())
     if total <= 0:
-        return 0.0, 0.0, 0.0, 0
+        return 0.0, 0.0, 0.0, 0, []
 
     ebm = total / basic if basic > 0 else 0.0
     basic_ratio_pct = (basic / total * 100) if total > 0 else 0.0
     n_basic = int((df_lq["lq"] > 1.0).sum())
-    return ebm, basic, basic_ratio_pct, n_basic
+
+    # LQ>1 の基盤業種を basic_emp_estimate 順に取得
+    basic_industries = (
+        df_lq[df_lq["lq"] > 1.0]
+        .nlargest(50, "basic_emp_estimate")
+        [["industry", "lq", "basic_emp_estimate"]]
+        .to_dict("records")
+    )
+    return ebm, basic, basic_ratio_pct, n_basic, basic_industries
 
 
 def main():
@@ -93,6 +102,8 @@ def main():
     nat_minor = minor_df[minor_df["area_code"] == "00000"]
     # 細分類は area_code が prefcode+000 形式
     national_minor = dict(zip(nat_minor["category_code"], nat_minor["employees"]))
+    # 細分類コード → 業種名のマッピング (newly_added 表示用)
+    minor_code_to_name = dict(zip(nat_minor["category_code"], nat_minor["category_name"]))
 
     # 大分類は prefectures.json から既に計算済みの値を使用
     with open(PREF_JSON, encoding="utf-8") as f:
@@ -150,11 +161,42 @@ def main():
                 local_emp_l2[key] = float(row["employees"])
                 national_l2[key] = float(national_minor.get(row["category_code"], 0))
 
-        l2_ebm, l2_basic, l2_basic_ratio, l2_n_basic = compute_ebm_from_emp(local_emp_l2, national_l2)
+        l2_ebm, l2_basic, l2_basic_ratio, l2_n_basic, l2_basics = compute_ebm_from_emp(local_emp_l2, national_l2)
+
+        # minor_XXXX 形式のコードを実際の業種名に解決 (細分類は読みやすい名前で表示)
+        def resolve_minor_name(raw: str) -> str:
+            if raw.startswith("minor_"):
+                code = raw[6:]
+                return minor_code_to_name.get(code, raw)
+            return raw
+        for r in l2_basics:
+            r["industry"] = resolve_minor_name(r.get("industry", ""))
+
+        # L1 (中分類) の基盤業種一覧を取得 (prefectures.json の top_lq_industries_mid を再利用)
+        l1_basics = d.get("top_lq_industries_mid") or []
+
+        # L0 大分類の基盤業種は lq_table から
+        l0_basics = [
+            {"industry": r["industry"], "lq": r["lq"], "basic_emp_estimate": r["basic_emp_estimate"]}
+            for r in lq_table_records if r.get("lq", 0) > 1.0
+        ]
+
+        # 新規追加された基盤業種を計算 (L1 で L0 になかったもの、L2 で L1 になかったもの)
+        l0_names = {r.get("industry") for r in l0_basics}
+        l1_names = {r.get("industry") for r in l1_basics}
+        l2_names = {r.get("industry") for r in l2_basics}
+
+        newly_l1 = [r for r in l1_basics if r.get("industry") not in l0_names][:10]
+        newly_l2 = [r for r in l2_basics if r.get("industry") not in l1_names][:10]
 
         pref_name = PREFECTURES.get(pref_code, "")
+        # 圧縮率: L2 が L0 の何%に圧縮されたか (低いほど粒度効果が大きい)
+        compression_pct = (l2_ebm / l0_ebm * 100) if l0_ebm > 0 else 0
         output[str(pref_code)] = {
             "pref_name": pref_name,
+            "compression_pct": round(compression_pct, 1),
+            "ebm_reduction": round(l0_ebm - l2_ebm, 2),
+            "in_textbook_range": l2_ebm <= 5.5,  # Orlando 4.94 ± 0.56
             "levels": [
                 {
                     "label": "大分類17業種",
@@ -162,6 +204,10 @@ def main():
                     "ebm": round(l0_ebm, 2),
                     "basic_ratio_pct": round(l0_basic_ratio, 2),
                     "n_basic": l0_n_basic,
+                    "basic_industries": [
+                        {"name": r.get("industry", ""), "lq": round(r.get("lq", 0), 2)}
+                        for r in l0_basics[:10]
+                    ],
                 },
                 {
                     "label": "中分類95業種",
@@ -169,6 +215,14 @@ def main():
                     "ebm": round(l1_ebm, 2),
                     "basic_ratio_pct": round(l1_basic_ratio, 2),
                     "n_basic": l1_n_basic,
+                    "basic_industries": [
+                        {"name": r.get("industry", ""), "lq": round(r.get("lq", 0), 2)}
+                        for r in l1_basics[:10]
+                    ],
+                    "newly_added": [
+                        {"name": r.get("industry", ""), "lq": round(r.get("lq", 0), 2)}
+                        for r in newly_l1
+                    ],
                 },
                 {
                     "label": "中分類94 + 卸売小売細分類156",
@@ -176,6 +230,10 @@ def main():
                     "ebm": round(l2_ebm, 2),
                     "basic_ratio_pct": round(l2_basic_ratio, 2),
                     "n_basic": l2_n_basic,
+                    "newly_added": [
+                        {"name": r.get("industry", ""), "lq": round(r.get("lq", 0), 2)}
+                        for r in newly_l2
+                    ],
                 },
             ],
             "orlando_benchmark": {

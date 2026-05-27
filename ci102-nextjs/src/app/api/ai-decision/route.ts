@@ -60,6 +60,10 @@ const SYSTEM_PROMPT = `あなたは CCIM CI102（不動産投資のための市�
    - EBM = 1 / 基盤雇用比率 (多角化度の逆数、高いほど良い意味ではない)
    - 教科書 Orlando MSA: EBM 4.94 / 基盤率 20.2% が健全大都市圏ベンチマーク
    - 通勤歪み (inflow/outflow) は単独自治体の数値を歪める
+   - **Mulligan凸性質 (1995)**: 業種粒度を細かくすると EBM は単調減少。
+     大分類17で見た EBM は粒度が粗いため過大評価される。中分類95・細分類で評価し直す価値あり。
+   - **L2 EBM の解釈**: 卸売・小売業のみ細分類化済み。製造業特化県では L2 効果限定。
+     「L2 が教科書範囲内」は良いサインだが、「L2 がまだ高い」=不健全とは断言しない (細分類化余地)
 
 4. **データ時点の明示**
    - 経済センサス: 2021年6月時点
@@ -172,6 +176,14 @@ interface ShiftShareInsight {
   rsTotal: number;
 }
 
+interface GranularityInsight {
+  ebmL0: number;       // 大分類17
+  ebmL1: number;       // 中分類95
+  ebmL2: number;       // 中分類94 + 卸売小売細分類156
+  inTextbookRange: boolean;  // L2 ≤ 5.5
+  compressionPct: number;    // L2/L0 × 100
+}
+
 interface DecisionHubInput {
   target: string;
   bestType: string;
@@ -184,6 +196,7 @@ interface DecisionHubInput {
   segment?: string;
   shiftShareMajor?: ShiftShareInsight | null;
   shiftShareMid?: ShiftShareInsight | null;
+  granularity?: GranularityInsight | null;
 }
 
 function sanitizeInput(body: unknown): DecisionHubInput | null {
@@ -215,6 +228,23 @@ function sanitizeInput(body: unknown): DecisionHubInput | null {
     };
   };
 
+  // Granularity insight サニタイズ
+  const parseGranularity = (v: unknown): GranularityInsight | null => {
+    if (typeof v !== "object" || v === null) return null;
+    const o = v as Record<string, unknown>;
+    const nums = ["ebmL0", "ebmL1", "ebmL2", "compressionPct"];
+    for (const k of nums) {
+      if (typeof o[k] !== "number" || !isFinite(o[k] as number)) return null;
+    }
+    return {
+      ebmL0: o.ebmL0 as number,
+      ebmL1: o.ebmL1 as number,
+      ebmL2: o.ebmL2 as number,
+      inTextbookRange: Boolean(o.inTextbookRange),
+      compressionPct: o.compressionPct as number,
+    };
+  };
+
   return {
     target: b.target.substring(0, 200),
     bestType: (b.bestType as string).substring(0, 100),
@@ -227,6 +257,7 @@ function sanitizeInput(body: unknown): DecisionHubInput | null {
     segment: typeof b.segment === "string" ? b.segment : undefined,
     shiftShareMajor: parseShiftShare(b.shiftShareMajor),
     shiftShareMid: parseShiftShare(b.shiftShareMid),
+    granularity: parseGranularity(b.granularity),
   };
 }
 
@@ -361,7 +392,17 @@ ${(input.allScores ?? []).map((s) =>
   s.factors.map((f) => `  - ${f.label}: ${f.score.toFixed(0)}点 × 重み${(f.weight * 100).toFixed(0)}% [${f.interpretation}]`).join("\n")
 ).join("\n\n")}
 
-# シフトシェア分析の競争力 (${shiftSharePeriodLabel()} 実績)
+${input.granularity ? `# Mulligan凸性質 — 業種粒度による EBM 進行
+- L0 大分類17業種: EBM ${input.granularity.ebmL0.toFixed(2)}
+- L1 中分類95業種: EBM ${input.granularity.ebmL1.toFixed(2)}
+- L2 中分類94 + 卸売・小売業細分類156: EBM ${input.granularity.ebmL2.toFixed(2)}
+- 教科書 Orlando MSA EBM 4.94 との関係: ${input.granularity.inTextbookRange ? "✓ L2 が教科書範囲内 (5.5以下) = 米国健全大都市圏と同等以上の多角化" : "L2 が教科書範囲外 (5.5超) = まだ高い"}
+- L2/L0 圧縮率: ${input.granularity.compressionPct.toFixed(1)}% (低いほど粒度効果が大きい)
+- ⚠ **重要な制約**: L2 は **卸売・小売業のみ細分類化** (156業種、e-Stat 0004003257)。
+  製造業・サービス業・医療等は中分類のままなので、製造業特化県 (愛知・静岡等) では L2 効果が限定的。
+  「L2 EBM が低いから多角化されている」と単純比較するのは慎重に。
+
+` : ""}# シフトシェア分析の競争力 (${shiftSharePeriodLabel()} 実績)
 ${input.shiftShareMajor ? `- 大分類17業種: RS合計 ${input.shiftShareMajor.rsTotal.toLocaleString()} 人 / 最強RS産業「${input.shiftShareMajor.topIndustry}」(RS ${input.shiftShareMajor.topValue.toLocaleString()} 人)` : ""}
 ${input.shiftShareMid ? `- 中分類95業種: RS合計 ${input.shiftShareMid.rsTotal.toLocaleString()} 人 / 最強RS産業「${input.shiftShareMid.topIndustry}」(RS ${input.shiftShareMid.topValue.toLocaleString()} 人) ※民営事業所のみ` : ""}
 ${input.shiftShareMajor && input.shiftShareMid && input.shiftShareMajor.topIndustry !== input.shiftShareMid.topIndustry

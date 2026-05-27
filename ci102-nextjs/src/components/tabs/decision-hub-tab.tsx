@@ -6,6 +6,7 @@ import type { MunicipalityData } from "@/lib/use-municipality-data";
 import { ECONOMIC_CENSUS_CURRENT, POPULATION_CENSUS_CURRENT } from "@/lib/data-versions";
 import { DcfSection } from "@/components/dcf-section";
 import { PricePredictionSection } from "@/components/price-prediction-section";
+import { useGranularityProgression } from "@/lib/use-granularity-progression";
 
 interface Props {
   pref: PrefectureData;
@@ -230,6 +231,8 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
 }
 
 export default function DecisionHubTab({ pref, selectedCity }: Props) {
+  // 粒度進行データ (AI プロンプト + UI 用)
+  const { data: granularityData } = useGranularityProgression(pref.pref_code);
   const scores = useMemo(() => calculatePropertyScores(pref, selectedCity), [pref, selectedCity]);
   const target = selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name;
   const best = scores[0];
@@ -294,6 +297,14 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
             topIndustry: pref.top_rs_industry_mid,
             topValue: pref.top_rs_value_mid,
             rsTotal: pref.rs_total_mid,
+          } : null,
+          // 粒度進行 (Mulligan凸性質)
+          granularity: granularityData ? {
+            ebmL0: granularityData.levels[0].ebm,
+            ebmL1: granularityData.levels[1].ebm,
+            ebmL2: granularityData.levels[2].ebm,
+            inTextbookRange: granularityData.in_textbook_range,
+            compressionPct: granularityData.compression_pct,
           } : null,
         }),
       });

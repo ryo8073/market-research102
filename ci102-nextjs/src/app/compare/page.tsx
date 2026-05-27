@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PREFECTURES } from "@/lib/codes";
 import { usePrefectureData, type PrefectureData } from "@/lib/use-prefecture-data";
+import { GranularityRanking } from "@/components/granularity-ranking";
 
 /* ================================================================== */
 /*  Constants                                                          */
@@ -1023,6 +1024,9 @@ function CompareContent() {
                 <li>プリセットスコアのEBM部分は<strong>教科書MSA健全レンジ 3-6 を最高点</strong>とする山形関数（旧版『EBM 10で満点』のバグを修正済み）</li>
               </ul>
             </div>
+
+            {/* 🌀 Mulligan凸性質 全47県ランキング (Phase 6.6 拡張) */}
+            <GranularityRanking />
 
             {/* Data note */}
             <details open className="rounded-lg border p-4 text-sm text-muted-foreground">

@@ -18,6 +18,7 @@ const TOC = [
   { id: "ch8-compare", label: "第8章: 地域比較分析" },
   { id: "ch9-granularity", label: "第9章: 業種分類粒度とCI102分析" },
   { id: "ch10-trade-area", label: "第10章: カスタム経済圏・商圏分析" },
+  { id: "ch11-mulligan", label: "第11章: Mulligan凸性質 — 業種粒度の真の精度" },
   { id: "summary", label: "まとめ: 投資判断に活かす" },
 ];
 
@@ -1558,6 +1559,129 @@ export default function LearnPage() {
                 <li>圏内市区町村の経済構造が大きく異なる場合（都市部+山岳部の混在）、合算した EBM の解釈には注意が必要</li>
               </ul>
             </div>
+          </Section>
+
+          {/* ======================== 第11章: Mulligan凸性質 ======================== */}
+          <Section id="ch11-mulligan" title="第11章: Mulligan凸性質 — 業種粒度の真の精度 (Phase 6.6)">
+            <h3 className="font-semibold text-lg">日本の地域経済は「思っているほど不健全ではない」</h3>
+            <p>
+              CCIM CI102 教科書の Orlando MSA は EBM 4.94 / 基盤率 20.2%。日本の都道府県を大分類17業種で計算すると、
+              この値を満たすのは僅か数県のみで、「日本は東京一極集中で他県の経済基盤が薄い」という従来観点が定着していました。
+              本章では、<strong>業種粒度を細かくして再計算</strong>すると、この観点が
+              <strong>業種分類の粒度に起因する人工的な過大評価</strong>であった可能性を示します。
+            </p>
+
+            <h4 className="font-semibold text-base mt-4">Mulligan & Murphy (1995) の凸性質</h4>
+            <p>
+              「業種を細分類化すると、より多くの特化業種が LQ&gt;1 として検出される」という数学的性質。
+              業種数を n とすると、Hoover の LQ 計算で「基盤雇用 (域外向け雇用)」は <strong>n の単調増加関数</strong>。
+              結果として <strong>EBM = 総雇用 / 基盤雇用 は単調減少</strong>。
+            </p>
+            <div className="rounded-lg bg-slate-50 border p-3 my-2 font-mono text-sm">
+              <p>大分類17業種: 17個のうち何業種が LQ&gt;1 か</p>
+              <p>中分類95業種: 95個のうち何業種が LQ&gt;1 か (通常 17 → 95 で 5-10業種増)</p>
+              <p>細分類1400業種 (理想): 1400個のうち何業種が LQ&gt;1 か (理想的には 100業種以上)</p>
+              <p className="mt-2 text-emerald-700">→ 粒度を細かくするほど、隠れた特化業種が表面化</p>
+            </div>
+
+            <h4 className="font-semibold text-base mt-4">本ツールでの実証 (Phase 6.6)</h4>
+            <p>
+              全47都道府県で、3段階の粒度で EBM を計算しました:
+            </p>
+            <ul className="list-disc list-inside space-y-1">
+              <li><strong>L0 大分類17</strong>: 経済センサス 2021 (テーブル 0003449718)</li>
+              <li><strong>L1 中分類95</strong>: 経済センサス 2021 中分類民営事業所 (テーブル 0004005684)</li>
+              <li><strong>L2 中分類94 + 卸売・小売業細分類156</strong>: G大分類を細分類156に展開、他は中分類維持</li>
+            </ul>
+
+            <CaseStudy title="主要都道府県の Mulligan 進行 (実データ)">
+              <table className="w-full text-sm">
+                <thead className="border-b">
+                  <tr>
+                    <th className="text-left p-1">都道府県</th>
+                    <th className="text-right p-1">L0 大分類17</th>
+                    <th className="text-right p-1">L1 中分類95</th>
+                    <th className="text-right p-1">L2 +細分類156</th>
+                    <th className="text-right p-1">教科書 (4.94) との差</th>
+                    <th className="text-center p-1">範囲内</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b bg-emerald-50"><td className="p-1">沖縄県</td><td className="text-right p-1">7.94</td><td className="text-right p-1">5.42</td><td className="text-right p-1 font-bold">4.80</td><td className="text-right p-1 text-emerald-700">-0.14</td><td className="text-center p-1">✓</td></tr>
+                  <tr className="border-b bg-emerald-50"><td className="p-1">東京都</td><td className="text-right p-1">5.79</td><td className="text-right p-1">4.19</td><td className="text-right p-1 font-bold">4.03</td><td className="text-right p-1 text-emerald-700">-0.91</td><td className="text-center p-1">✓</td></tr>
+                  <tr className="border-b"><td className="p-1">北海道</td><td className="text-right p-1">11.34</td><td className="text-right p-1">6.76</td><td className="text-right p-1 font-bold">6.17</td><td className="text-right p-1">+1.23</td><td className="text-center p-1">—</td></tr>
+                  <tr className="border-b"><td className="p-1">愛知県</td><td className="text-right p-1">11.55</td><td className="text-right p-1">7.75</td><td className="text-right p-1 font-bold">7.15</td><td className="text-right p-1">+2.21</td><td className="text-center p-1">—</td></tr>
+                  <tr className="border-b"><td className="p-1">神奈川県</td><td className="text-right p-1">18.21</td><td className="text-right p-1">9.31</td><td className="text-right p-1 font-bold">8.50</td><td className="text-right p-1">+3.56</td><td className="text-center p-1">—</td></tr>
+                  <tr className="border-b"><td className="p-1">大阪府</td><td className="text-right p-1">20.57</td><td className="text-right p-1">9.89</td><td className="text-right p-1 font-bold">9.21</td><td className="text-right p-1">+4.27</td><td className="text-center p-1">—</td></tr>
+                  <tr><td className="p-1">福岡県</td><td className="text-right p-1">18.55</td><td className="text-right p-1">12.23</td><td className="text-right p-1 font-bold">10.72</td><td className="text-right p-1">+5.78</td><td className="text-center p-1">—</td></tr>
+                </tbody>
+              </table>
+              <p className="mt-3 text-sm">
+                <strong>全47都道府県で例外なく単調減少</strong> = Mulligan凸性質の理論的予測と完全一致。
+                これは偶然ではなく、LQ計算の数学的構造による必然の結果。
+              </p>
+            </CaseStudy>
+
+            <h4 className="font-semibold text-base mt-6">教育的・政策的含意</h4>
+            <ol className="list-decimal list-inside space-y-2">
+              <li>
+                <strong>「日本は一極集中で地方が不健全」観点の再検討</strong>:
+                大分類17で見ると確かに東京以外の県は EBM 10-20 で「過剰特化」に見えるが、
+                細分類化すると多くの県が <strong>米国 Orlando MSA (EBM 4.94) と同等以上の多角化</strong>を持つ。
+                「地方は特化が薄い」のではなく「業種統計の粒度が粗くて見えていなかった」可能性。
+              </li>
+              <li>
+                <strong>沖縄・東京の「教科書範囲内」入り</strong>:
+                沖縄 L2 = 4.80 は観光業 (細分類で旅館・ホテル・宿泊・遊園地・観光土産小売 等が表面化) の特化で多角化される
+                完璧な例。東京 L2 = 4.03 は本社機能・金融・情報・専門サービス・卸売多種で多角化、Orlando より高い多様性。
+              </li>
+              <li>
+                <strong>大阪・福岡の「依然として高い」</strong>:
+                製造業・サービス業の細分類化が未実装のため、L2 は卸売・小売業のみで圧縮。
+                これらの県は<strong>製造業細分類 (例: 自動車・電気機械)</strong> を加えれば更に下がる余地。
+              </li>
+              <li>
+                <strong>不動産投資への含意</strong>:
+                「大分類17の EBM が高いから経済基盤が弱い」と即断せず、中分類・細分類で再評価する習慣を持つこと。
+                地方都市でも、細分類化で表面化する特化業種に関連する不動産需要は健全に存在する。
+              </li>
+            </ol>
+
+            <ClientTip>
+              <p className="mb-2">「日本の地方都市の不動産投資はリスクが高いですよね？」と聞かれたら:</p>
+              <p>
+                「単純な大分類17業種で計算された EBM ではそう見えますが、業種を細分類化して再評価すると、
+                日本の<strong>{`{X}`}/47都道府県</strong>が米国 Orlando MSA と同等以上の経済多様性を持つことが分かります
+                ({`/compare`}ページの『Mulligan凸性質ランキング』参照)。地方都市の特化業種を中分類・細分類で
+                丁寧に見ると、観光・農業・製造業の細分野で確固たる基盤を持つことが多く、それに関連する不動産需要は
+                健全です。一括りに『地方=リスク高』と判断するのは、業種分類の粒度に起因する錯覚の可能性があります。」
+              </p>
+            </ClientTip>
+
+            <h4 className="font-semibold text-base mt-6">本ツールの実装範囲と将来課題</h4>
+            <InterpTable
+              headers={["粒度", "業種数", "実装状況", "備考"]}
+              rows={[
+                ["L0 大分類", "17", "✓ 全47都道府県+市区町村", "経済センサス 0003449718"],
+                ["L1 中分類", "95", "✓ 全47都道府県+市区町村", "経済センサス 0004005684"],
+                ["L2 (G細分類)", "+156 (卸売・小売)", "✓ 全47都道府県", "経済センサス 0004003257"],
+                ["L3 (製造業細分類)", "+~210", "✗ 未実装", "経済センサス 0004003993 等。1-2日の追加作業"],
+                ["L3 (医療・福祉)", "+~30", "✗ 未実装", "別テーブル特定必要"],
+                ["L4 完全細分類", "~1400", "✗ 未実装", "8-10テーブル統合。1-2週間の追加作業"],
+              ]}
+            />
+            <p className="text-sm mt-2">
+              現状の L2 は<strong>卸売・小売業のみ細分類化</strong>。製造業特化県 (愛知・静岡・三重)・
+              医療特化県では、本来あるべき粒度効果がまだ反映されていません。将来課題として、製造業・医療等の
+              細分類化を進めれば、L2 EBM が更に下がる県が増えると予想されます。
+            </p>
+
+            <h4 className="font-semibold text-base mt-6">参考文献</h4>
+            <ul className="list-disc list-inside text-sm space-y-1">
+              <li>Mulligan, G. F., & Murphy, J. (1995). "Economic Base Multipliers and the Identification of Activities". <em>Journal of Regional Science</em>.</li>
+              <li>Isard, W. (1960). <em>Methods of Regional Analysis</em>. MIT Press.</li>
+              <li>CCIM Institute. <em>CI102: Market Analysis for Commercial Investment Real Estate</em>.</li>
+            </ul>
           </Section>
 
           {/* ======================== まとめ ======================== */}
