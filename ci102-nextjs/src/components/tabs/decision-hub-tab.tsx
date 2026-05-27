@@ -5,6 +5,7 @@ import type { PrefectureData } from "@/lib/use-prefecture-data";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 import { ECONOMIC_CENSUS_CURRENT, POPULATION_CENSUS_CURRENT } from "@/lib/data-versions";
 import { DcfSection } from "@/components/dcf-section";
+import { PricePredictionSection } from "@/components/price-prediction-section";
 
 interface Props {
   pref: PrefectureData;
@@ -375,6 +376,9 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
           <PropertyTypeCard key={s.type} score={s} />
         ))}
       </div>
+
+      {/* 🤖 ML 地価予測 (マクロ説明力) */}
+      <PricePredictionSection pref={pref} />
 
       {/* 🏢 DCF (Proformer) 統合 - マクロ×ミクロ */}
       <DcfSection macroScore={best.totalScore} macroPropertyType={best.label} />

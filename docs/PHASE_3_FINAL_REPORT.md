@@ -88,6 +88,15 @@ OSRM Table API プロキシを実装し、車での実到達範囲をリアル�
 - `/admin?token=<TOKEN>` で利用統計閲覧
 - 詳細: `docs/PHASE_6_AUTH_LOG_SETUP.md`
 
+### ✅ Phase 6.5: ML 地価予測 (マクロ経済の説明力)
+- Python sklearn 風線形回帰を numpy で実装 (`scripts/train_price_model.py`)
+- 47都道府県 × 10経済特徴量 で MLIT 取引価格中央値を予測
+- **R² = 91.4%** — マクロ経済データだけで地価分散の91%を説明
+- 係数+正規化パラメータを JSON 化、TS側は内積で予測再現 (TF.js 不要)
+- Decision Hub に予測 vs 実績散布図、寄与度内訳、残差分析を表示
+- 教育的発見: 京都+71k (観光プレミアム)、神奈川+54k (通勤プレミアム)、
+  大阪-62k (規模割に低い)、福岡-52k
+
 ### ✅ Phase 6.4: DCF (Proformer) 統合UI — マクロ×ミクロ
 - `<DcfSection>` を Decision Hub 内に追加
 - 物件 ID (external_id) 入力 → Cap rate / NOI / DSCR / LTV / IRR / NPV を取得
