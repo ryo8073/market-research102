@@ -16,6 +16,7 @@ import {
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 import { ReadingGuide } from "@/components/ui/reading-guide";
 import { useMinorRetailLq } from "@/lib/use-minor-retail-lq";
+import { MulliganConvexityChart } from "@/components/mulligan-convexity-chart";
 
 interface Props {
   localEmp: Record<string, number>;
@@ -282,6 +283,9 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
           </tbody>
         </table>
       </div>
+
+      {/* 🌀 Mulligan凸性質 動的可視化 (都道府県限定、Phase 6.6) */}
+      {prefCode && <MulliganConvexityChart prefCode={prefCode} />}
 
       {/* 🛒 卸売・小売業 細分類 LQ (都道府県限定、Phase 6.3) */}
       {prefCode && <MinorRetailLqSection prefCode={prefCode} />}
