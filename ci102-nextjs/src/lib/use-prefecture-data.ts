@@ -42,8 +42,21 @@ export interface PrefectureData {
   num_commercial?: number;
   total_bus_stops?: number;
   pop_projection?: Record<string, number>;
-  pop_change_pct?: number;     // 20-year (2020→2040)
-  pop_change_10y_pct?: number; // 10-year (2020→2030)
+  pop_change_pct?: number;     // 20-year projection (2020→2040, NLNI推計)
+  pop_change_10y_pct?: number; // 10-year projection (2020→2030, NLNI推計)
+  // 2025年国勢調査 人口速報集計 (2026-05公表): 直近5年の「実測」モメンタム
+  census2025?: {
+    population: number;
+    population_2020: number;
+    households: number;
+    pop_change_pct: number;
+    hh_change_pct: number;
+    national_pop_change_pct: number;
+    momentum_gap: number;
+    momentum_class: "growth" | "resilient" | "outperform_decline" | "decline" | "severe_decline";
+    density: number;
+    source: string;
+  };
   has_location_plan_count?: number;
   total_road_segments?: number;
   enhanced_score?: number;

@@ -11,6 +11,7 @@ import type { PrefectureData } from "@/lib/use-prefecture-data";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
 import { ReadingGuide } from "@/components/ui/reading-guide";
 import { InfoBox, RiskAlert, CaseStudy, ClientTip, InterpTable } from "@/components/ui/callouts";
+import { PopulationMomentumCard } from "@/components/ui/population-momentum-card";
 
 interface Props {
   prefCode: number;
@@ -130,11 +131,15 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
     <div className="space-y-6">
       <ReadingGuide
         steps={[
+          { title: "人口モメンタムで需要の現在地を把握", description: "2020→2025の実測増減で市場が伸縮しているかを最初に確認" },
           { title: "人口推計→住宅需要カスケード", description: "人口変動から世帯数→住宅需要への波及を数量的に把握" },
           { title: "立地戦略マトリクスで投資先を選定", description: "人口動態×立地適正化計画の4象限で将来性を判定" },
-          { title: "DID密度で都市集約度を評価", description: "コンパクトシティの進行度が不動産価値の持続性を決める" },
         ]}
       />
+
+      {pref.census2025 && (
+        <PopulationMomentumCard area={prefName} c={pref.census2025} />
+      )}
 
       {/* So What? — 結論サマリー */}
       {hasData && (

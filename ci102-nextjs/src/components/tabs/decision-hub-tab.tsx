@@ -7,6 +7,8 @@ import { ECONOMIC_CENSUS_CURRENT, POPULATION_CENSUS_CURRENT } from "@/lib/data-v
 import { DcfSection } from "@/components/dcf-section";
 import { PricePredictionSection } from "@/components/price-prediction-section";
 import { useGranularityProgression } from "@/lib/use-granularity-progression";
+import { PopulationMomentumCard } from "@/components/ui/population-momentum-card";
+import { AreaDiagnosisPanel } from "@/components/ui/area-diagnosis-panel";
 
 interface Props {
   pref: PrefectureData;
@@ -369,6 +371,9 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
         </p>
       </div>
 
+      {/* CI102 エリア総合診断 — 需要・供給・強み・将来性の統合サマリー */}
+      <AreaDiagnosisPanel area={target} pref={pref} city={selectedCity} />
+
       <div className="rounded-lg border-2 bg-gradient-to-br from-emerald-50 to-blue-50 p-4">
         <p className="text-xs text-slate-600">💡 最有力候補</p>
         <p className="text-2xl font-bold mt-1">
@@ -380,6 +385,11 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
           <strong style={{ color: best.verdict_color }}>{best.verdict}</strong>
         </p>
       </div>
+
+      {/* 人口モメンタム — 需要側の直近実測(2020→2025)。CI102スコア(供給側)と並置 */}
+      {pref.census2025 && (
+        <PopulationMomentumCard area={target} c={pref.census2025} supplyScore={best.totalScore} />
+      )}
 
       {/* 物件タイプ別カード */}
       <div className="space-y-4">

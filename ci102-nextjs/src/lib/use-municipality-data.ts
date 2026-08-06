@@ -12,6 +12,18 @@ export interface MunicipalityData {
   max_lq: number;
   max_lq_industry: string;
   segment?: string;
+  census2025?: {
+    population: number;
+    population_2020: number;
+    households: number;
+    pop_change_pct: number;
+    hh_change_pct: number;
+    national_pop_change_pct: number;
+    momentum_gap: number;
+    momentum_class: "growth" | "resilient" | "outperform_decline" | "decline" | "severe_decline";
+    density: number;
+    source: string;
+  };
   // NLNI spatial data (optional)
   num_stations?: number;
   daily_riders?: number;

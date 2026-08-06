@@ -44,18 +44,27 @@ export const ECONOMIC_CENSUS_NEXT_PLAN = {
   monitoringUrl: "https://www.e-stat.go.jp/stat-search?page=1&toukei=00200553",
 } as const;
 
-/** 国勢調査現行版 */
+/** 国勢調査現行版 (2025年 人口速報集計, 2026-05-29公表) */
 export const POPULATION_CENSUS_CURRENT = {
+  surveyYear: 2025,
+  labelShort: "2025年",
+  labelFull: "国勢調査 2025年10月 (人口速報集計)",
+  popReferenceYear: 2025,  // 実測人口 (組替値ではない)
+} as const;
+
+/** 前回版 (2020国勢調査 = 2015組替人口) */
+export const POPULATION_CENSUS_PREVIOUS = {
   surveyYear: 2020,
   labelShort: "2020年",
   labelFull: "国勢調査 2020年10月 (人口は2015年組替値)",
-  popReferenceYear: 2015,  // 人口の実際の参照年 (組替値のため)
+  popReferenceYear: 2015,
 } as const;
 
+/** 次回: 2025確定値 (2027年頃) */
 export const POPULATION_CENSUS_NEXT_PLAN = {
   surveyYear: 2025,
   publicationYearEstimate: 2027,
-  labelShort: "2025年 (公表予定)",
+  labelShort: "2025年 確定値 (公表予定)",
   monitoringUrl: "https://www.e-stat.go.jp/stat-search?page=1&toukei=00200521",
 } as const;
 
