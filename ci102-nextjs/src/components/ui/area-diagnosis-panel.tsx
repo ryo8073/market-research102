@@ -263,7 +263,7 @@ export function AreaDiagnosisPanel({
             </p>
           </div>
           <div className="flex-none rounded-xl border-2 px-4 py-2 text-center" style={{ borderColor: st.color }}>
-            <div className="text-[9px] font-bold text-muted-foreground">総合スコア</div>
+            <div className="text-[9px] font-bold text-muted-foreground">エリア総合スコア</div>
             <div className="text-[26px] font-black leading-none" style={{ color: st.color }}>
               {overall}<span className="text-xs text-muted-foreground">/100</span>
             </div>
@@ -277,7 +277,7 @@ export function AreaDiagnosisPanel({
         </div>
 
         <div className="rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: `${st.color}12`, borderLeft: `5px solid ${st.color}` }}>
-          <p className="text-[10px] font-bold tracking-wider text-muted-foreground">総合スタンス（購入・売却判断）</p>
+          <p className="text-[10px] font-bold tracking-wider text-muted-foreground">エリア投資スタンス（購入・売却）</p>
           <p className="text-[21px] font-black leading-tight" style={{ color: st.color }}>{st.label}</p>
           <p className="text-[12.5px] leading-relaxed text-slate-700 dark:text-slate-200 mt-0.5">{st.text}</p>
         </div>
@@ -307,11 +307,11 @@ export function AreaDiagnosisPanel({
 
         {/* 📊 雇用の変化とRS (2016→2021 シフトシェア分解・都道府県) */}
         {ssTable.length > 0 && (
-          <div className="rounded-xl border px-4 py-3 mb-4 bg-card">
-            <p className="text-[13px] font-extrabold">
+          <details className="rounded-xl border px-4 py-3 mb-4 bg-card">
+            <summary className="text-[13px] font-extrabold cursor-pointer select-none">
               📊 雇用の変化とRS（競争力）
-              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— 2016 → 2021 シフトシェア分解（経済センサス・都道府県）</span>
-            </p>
+              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— 2016 → 2021 シフトシェア分解（経済センサス・都道府県。クリックで展開）</span>
+            </summary>
             <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200 mt-1.5">
               総雇用の実測変化 <strong>{fmtNum(ssActual)} 人</strong> ＝ 全国トレンド {fmtNum(ssNat)} ＋ 産業構成 {fmtNum(ssMix)} ＋ <strong>地域シフト（RS＝競争力） {fmtNum(rs)}</strong>
             </p>
@@ -335,7 +335,7 @@ export function AreaDiagnosisPanel({
             <p className="text-[10px] text-muted-foreground mt-2">
               ※ RSがプラス＝「全国平均を上回る地域固有の競争力で雇用が純増」。将来の基盤雇用の増減を示す先行シグナル。<strong>期間は2016→2021の1期間</strong>（経済センサス。より新しい版は未公表）。多期間のRS推移には2011センサスの取込が必要（未取得）。
             </p>
-          </div>
+          </details>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -346,11 +346,11 @@ export function AreaDiagnosisPanel({
         </div>
 
         {/* 🧮 指標の計算フロー (CI102の導出過程) */}
-        <div className="mt-4 rounded-xl border-2 px-4 py-3.5" style={{ borderColor: "rgba(37,99,235,0.2)", backgroundColor: "rgba(37,99,235,0.03)" }}>
-          <p className="text-[13px] font-extrabold text-blue-800 dark:text-blue-300">
+        <details className="mt-4 rounded-xl border-2 px-4 py-3.5" style={{ borderColor: "rgba(37,99,235,0.2)", backgroundColor: "rgba(37,99,235,0.03)" }}>
+          <summary className="text-[13px] font-extrabold text-blue-800 dark:text-blue-300 cursor-pointer select-none">
             🧮 指標の計算フロー（CI102）
-            <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— LQ → 基盤雇用 → EBM → PER → 人口・世帯・住宅需要（{ebScopeName}・中分類）</span>
-          </p>
+            <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— LQ → 基盤雇用 → EBM → PER → 人口・世帯・住宅需要（{ebScopeName}・中分類。クリックで展開）</span>
+          </summary>
           <div className="mt-3 space-y-2.5">
             {calcSteps.map((s, i) => (
               <div key={i} className="rounded-lg border bg-card px-3 py-2">
@@ -365,7 +365,7 @@ export function AreaDiagnosisPanel({
             ))}
           </div>
           <p className="mt-2 text-[10px] text-muted-foreground">※ 乗数(EBM/PER)は現在の産業構造が続くと仮定した理論値。基盤雇用はLQ&gt;1産業の超過雇用の合計（中分類95業種で算出）。</p>
-        </div>
+        </details>
 
         {/* 🏭 経済基盤分析 (基盤/非基盤の可視化 + 特化産業) */}
         <div className="mt-4 rounded-xl border-2 px-4 py-3.5" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>

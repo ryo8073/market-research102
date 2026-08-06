@@ -1390,7 +1390,7 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
   );
 }
 
-const VALID_TABS = ["scorecard", "lq", "ebm", "shift", "gap", "realestate", "map", "cross"] as const;
+const VALID_TABS = ["scorecard", "lq", "ebm", "shift", "gap", "realestate", "map", "cross", "risk", "access", "demographics", "metro", "custom_metro", "trade_area", "decision_hub"] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
 function isValidTab(v: string | null): v is TabValue {

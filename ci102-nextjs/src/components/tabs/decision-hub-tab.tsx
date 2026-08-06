@@ -50,6 +50,20 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   const gapFactor = pref.aggregate_gap_factor;
   const popChange20y = pref.pop_change_pct ?? 0;
   const popChange10y = pref.pop_change_10y_pct ?? 0;
+  // 2025国勢調査の直近実測モメンタム（市区町村があれば細分）を判断に反映
+  const recentC = city?.census2025 ?? pref.census2025;
+  const recentPct = recentC?.pop_change_pct ?? null;
+  const recentGap = recentC?.momentum_gap ?? null;
+  const projScore20 = Math.max(0, Math.min(100, 50 + popChange20y * 3));
+  const recentScore = recentGap != null ? Math.max(0, Math.min(100, 50 + recentGap * 6)) : projScore20;
+  const popDynScore = recentPct != null ? Math.round(0.5 * projScore20 + 0.5 * recentScore) : projScore20;
+  const popDynInterp = recentPct != null
+    ? "実測 " + (recentPct >= 0 ? "+" : "") + recentPct.toFixed(1) + "%(20\u201925" + (recentGap != null ? ",全国比" + (recentGap >= 0 ? "+" : "") + recentGap.toFixed(1) + "pt" : "") + ") / 推計 " + (popChange20y >= 0 ? "+" : "") + popChange20y.toFixed(1) + "%(20年)"
+    : "20年変化 " + (popChange20y >= 0 ? "+" : "") + popChange20y.toFixed(1) + "%";
+  const agingProj = Math.max(0, Math.min(100, -popChange20y * 3 + 30));
+  const agingRecent = recentPct != null ? Math.max(0, Math.min(100, -recentPct * 4 + 40)) : agingProj;
+  const agingScore = recentPct != null ? Math.round(0.5 * agingProj + 0.5 * agingRecent) : agingProj;
+  const agingInterp = "直近" + (recentPct != null ? (recentPct >= 0 ? "+" : "") + recentPct.toFixed(1) + "%" : "\u2014") + "/20年" + popChange20y.toFixed(1) + "%(減少=高齢化=需要増)";
   const floodRisk = (city?.flood_risk_pct ?? pref.flood_risk_avg_pct ?? 0);
   const landPrice = city?.land_price_median ?? pref.land_price_median_l01 ?? 0;
   const carDep = city?.car_dependency_score ?? 50;
@@ -74,7 +88,7 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
     40;
 
   // 成長性（RS + 10年人口変化）
-  const growthRaw = (rsTotal / 1000) + popChange10y * 2;
+  const growthRaw = (rsTotal / 1000) + popChange10y * 2 + (recentGap ?? 0) * 1.5;
   const growth = Math.max(0, Math.min(100, 50 + growthRaw * 2));
 
   // リスク（洪水）
@@ -102,7 +116,7 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   // ====== 1. 住居系 ======
   const residentialFactors = [
     { label: "経済基盤", score: economicHealth, weight: 0.15, source: "EBM/基盤雇用比率", interpretation: `EBM ${ebm.toFixed(1)} / 基盤率 ${basicRatio.toFixed(1)}%` },
-    { label: "人口動態", score: Math.max(0, Math.min(100, 50 + popChange20y * 3)), weight: 0.30, source: "社人研20年予測", interpretation: `20年変化 ${popChange20y >= 0 ? "+" : ""}${popChange20y.toFixed(1)}%` },
+    { label: "人口動態", score: popDynScore, weight: 0.30, source: "国勢2025実測+社人研推計", interpretation: popDynInterp },
     { label: "災害リスク", score: flood, weight: 0.20, source: "国土数値情報 A31", interpretation: `浸水面積率 ${floodRisk.toFixed(1)}%` },
     { label: "交通アクセス", score: accessScore, weight: 0.20, source: "OSRM + 鉄道駅", interpretation: city?.nearest_station_min != null ? `最寄り駅まで${city.nearest_station_min}分` : `車依存度 ${carDep}` },
     {
@@ -160,7 +174,7 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   // ====== 5. 医療・介護 ======
   const medicalFactors = [
     { label: "医療セクター集積", score: hasMedical ? 85 : 40, weight: 0.25, source: "LQ分析", interpretation: hasMedical ? "医療福祉 LQ>1.05" : "弱い" },
-    { label: "高齢化進度(20年)", score: Math.max(0, Math.min(100, -popChange20y * 3 + 30)), weight: 0.30, source: "社人研", interpretation: `人口変化 ${popChange20y.toFixed(1)}%(低い=高齢化進行=需要拡大)` },
+    { label: "高齢化進度", score: agingScore, weight: 0.30, source: "国勢2025実測+社人研", interpretation: agingInterp },
     { label: "アクセス", score: accessScore, weight: 0.15, source: "OSRM", interpretation: `車依存度 ${carDep}` },
     { label: "競争(既存施設)", score: city?.num_medical != null ? Math.max(0, 100 - Math.min(100, city.num_medical / 5)) : 60, weight: 0.15, source: "NLNI 医療施設数", interpretation: city?.num_medical != null ? `既存 ${city.num_medical}施設` : "市区町村未選択" },
     { label: "災害リスク", score: flood, weight: 0.15, source: "浸水想定", interpretation: `${floodRisk.toFixed(1)}%` },
@@ -238,6 +252,7 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
   const scores = useMemo(() => calculatePropertyScores(pref, selectedCity), [pref, selectedCity]);
   const target = selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name;
   const best = scores[0];
+  const momentumC = selectedCity?.census2025 ?? pref.census2025;
 
   // AI 自然言語化（4層ガードレール対応）
   interface AiWarning {
@@ -380,15 +395,15 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
           <span className="mr-2">{best.icon}</span>{best.label}
         </p>
         <p className="text-sm mt-1">
-          総合スコア <strong style={{ color: best.verdict_color }}>{best.totalScore.toFixed(0)}/100</strong>
+          物件適格スコア <strong style={{ color: best.verdict_color }}>{best.totalScore.toFixed(0)}/100</strong>
           {" → "}
           <strong style={{ color: best.verdict_color }}>{best.verdict}</strong>
         </p>
       </div>
 
       {/* 人口モメンタム — 需要側の直近実測(2020→2025)。CI102スコア(供給側)と並置 */}
-      {pref.census2025 && (
-        <PopulationMomentumCard area={target} c={pref.census2025} supplyScore={best.totalScore} />
+      {momentumC && (
+        <PopulationMomentumCard area={target} c={momentumC} supplyScore={best.totalScore} />
       )}
 
       {/* 物件タイプ別カード */}
@@ -544,7 +559,7 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
         <div className="text-sm space-y-2 leading-relaxed">
           <p>
             『{target}』 の市場分析結果を統合的にご報告します。<strong>{best.label}</strong>が最も投資適格性が高く、
-            総合スコア <strong style={{ color: best.verdict_color }}>{best.totalScore.toFixed(0)}点</strong>で<strong>{best.verdict}</strong>と判断されます。
+            物件適格スコア <strong style={{ color: best.verdict_color }}>{best.totalScore.toFixed(0)}点</strong>で<strong>{best.verdict}</strong>と判断されます。
           </p>
           <p>
             <strong>根拠</strong>:
