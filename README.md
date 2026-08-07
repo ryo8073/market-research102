@@ -30,7 +30,7 @@ CCIM CI102（Market Analysis for Commercial Investment Real Estate）の数理�
 | データ | ソース | 時点 |
 |---|---|---|
 | 産業別従業者数 | e-Stat 経済センサス活動調査 | 2021年6月 |
-| 人口・世帯 | e-Stat 国勢調査 | 2020年10月 |
+| 人口・世帯・5年間増減 | e-Stat 国勢調査 人口速報集計 | 2025年10月 |
 | 不動産取引価格 | 国土交通省 不動産情報ライブラリ API | 四半期更新 |
 | 物件DCF分析 | Proformer不動産投資診断プロ API | リアルタイム |
 | AI分析 | Anthropic Claude API | リアルタイム |

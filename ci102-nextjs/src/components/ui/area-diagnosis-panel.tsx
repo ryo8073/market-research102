@@ -3,6 +3,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine,
+} from "recharts";
 
 type Cls = NonNullable<PrefectureData["census2025"]>["momentum_class"];
 
@@ -54,6 +57,38 @@ function supplyFromBase(ebm: number, basicRatio: number, totalEmp: number): numb
 
 type Need = { icon: string; label: string; why: string };
 
+/* ── データ性質バッジ ── */
+type DataTag = "実測" | "推計" | "理論";
+const TAG_STYLE: Record<DataTag, { bg: string; text: string }> = {
+  "実測": { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-700 dark:text-emerald-400" },
+  "推計": { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-700 dark:text-amber-400" },
+  "理論": { bg: "bg-blue-100 dark:bg-blue-900/40", text: "text-blue-700 dark:text-blue-400" },
+};
+function DataBadge({ tag }: { tag: DataTag }) {
+  const s = TAG_STYLE[tag];
+  return <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-bold ${s.bg} ${s.text}`}>{tag}</span>;
+}
+
+/* ── 指標カード（1指標＝数値＋投資家への意味） ── */
+function MetricRow({ label, value, unit, meaning, tag }: {
+  label: string; value: string; unit?: string; meaning: string; tag: DataTag;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-lg border bg-muted/20 px-3 py-2">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-bold text-muted-foreground">{label}</span>
+          <DataBadge tag={tag} />
+        </div>
+        <div className="text-[14px] font-black leading-tight mt-0.5">
+          {value}{unit && <span className="text-[11px] font-semibold text-muted-foreground ml-0.5">{unit}</span>}
+        </div>
+        <p className="text-[10.5px] leading-snug text-slate-600 dark:text-slate-400 mt-0.5">{meaning}</p>
+      </div>
+    </div>
+  );
+}
+
 export function AreaDiagnosisPanel({
   area,
   pref,
@@ -71,6 +106,29 @@ export function AreaDiagnosisPanel({
   const popDelta = c.population - pop2020;
   const hh2020 = Math.round(c.households / (1 + (c.hh_change_pct || 0) / 100));
   const hhDelta = c.households - hh2020;
+
+  // 時系列データ（2000-2025）
+  const ts = (city?.pop_timeseries ?? pref.pop_timeseries ?? []).filter(
+    (d) => d.population != null
+  );
+  // 5年ごとの変化率を算出
+  const tsWithRate = ts.map((d, i) => {
+    const prev = i > 0 ? ts[i - 1] : null;
+    const popRate = prev ? ((d.population - prev.population) / prev.population) * 100 : null;
+    const hhRate = prev && d.households && prev.households
+      ? ((d.households - prev.households) / prev.households) * 100 : null;
+    const agingRate = d.pop_over65 && d.population ? (d.pop_over65 / d.population) * 100 : null;
+    return {
+      year: d.year,
+      population: d.population,
+      households: d.households ?? null,
+      popRate,
+      hhRate,
+      agingRate,
+    };
+  });
+  const hasTimeseries = tsWithRate.length >= 3;
+
   const ssTable = pref.shift_share_table ?? [];
   const ssNat = ssTable.reduce((sum, i) => sum + i.national_growth, 0);
   const ssMix = ssTable.reduce((sum, i) => sum + i.industry_mix, 0);
@@ -129,13 +187,6 @@ export function AreaDiagnosisPanel({
 
   const projTxt = dPct != null ? `${fmtPct(dPct)}（2025→2035推計・都道府県）` : "—";
   const lqNames = lq.length ? lq.map((i) => `${i.industry}(LQ ${i.lq.toFixed(2)})`).join("、") : "際立った特化産業なし";
-  const rsNames = rsWin.length ? rsWin.map((i) => `${i.industry}(RS ${fmtNum(i.regional_shift)})`).join("、") : "競争優位産業なし";
-
-  const gapTxt = agg > 5 ? "購買力の域外流出＝出店余地あり" : agg < -5 ? "供給過多ぎみ" : "ほぼ均衡";
-  const demandTxt = `人口モメンタム ${fmtPct(c.pop_change_pct)}（全国比 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}pt・${momoFine ? "市区町村実測" : "都道府県実測"}）／世帯 ${fmtPct(c.hh_change_pct)}。長期人口は ${projTxt}。小売需給ギャップ ${agg >= 0 ? "+" : ""}${agg.toFixed(1)}（${gapTxt}）。PER ${perLocal.toFixed(2)}。`;
-  const supplyTxt = `経済基盤（${ebScopeName}・中分類）: 基盤雇用 ${basicMid.toLocaleString()} 人・基盤比率 ${basicRatioMid.toFixed(1)}%、EBM ${ebmMid.toFixed(1)}（基盤雇用1人が総雇用を約${ebmMid.toFixed(1)}人支える波及力）。総雇用 ${totalEmp.toLocaleString()} 人。${ebmMid >= 3 && ebmMid <= 6 ? "EBMはCI102健全域(3〜6)。" : ebmMid > 6 ? "EBMがやや高く基盤過小/通勤流入の可能性。" : "EBMが低く基盤依存度が高い。"}${basicRatioMid >= 12 ? "輸出基盤に厚みあり。" : "輸出基盤はやや薄め。"}`;
-  const strengthTxt = `特化（域外を稼ぐ産業）: ${lqNames}。全国を上回る競争力で伸びる産業: ${rsNames}。市場規模スコア ${(su?.scale_score ?? 0).toFixed(0)}/100。`;
-  const futureTxt = `将来性は「直近需要(全国比 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}pt)×競争力(RSが雇用の${rsShare >= 0 ? "+" : ""}${rsShare.toFixed(2)}%)×長期推計(${projTxt})」で評価。${rs > 0 ? "競争力は全国平均を上回り、基盤雇用の純増余地がある。" : "競争力は全国平均を下回り、構造的に劣後。"}`;
 
   // CI102 指標の計算フロー（LQ→基盤雇用→EBM→PER→予測カスケード）
   const lqEx = baseInd.slice(0, 3);
@@ -198,28 +249,97 @@ export function AreaDiagnosisPanel({
   const seenNeed = new Set<string>();
   const needsTop = needs.filter((n) => (seenNeed.has(n.label) ? false : (seenNeed.add(n.label), true))).slice(0, 5);
 
-  // 投資の根拠(✓)と留意点(⚠)
-  const strengths: string[] = [];
-  const risks: string[] = [];
+  // 投資の根拠(✓)と留意点(⚠) — 事実・解釈・出典を構造化
+  type Evidence = { fact: string; implication: string; source: string };
+  const strengths: Evidence[] = [];
+  const risks: Evidence[] = [];
+
   if (c.momentum_class === "growth" || c.momentum_class === "resilient" || gap >= 0)
-    strengths.push(`需要が全国平均を上回る（人口 ${fmtPct(c.pop_change_pct)}・全国比 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}pt）（国勢調査2025速報）`);
+    strengths.push({
+      fact: `人口 ${fmtPct(c.pop_change_pct)}（全国比 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}pt）`,
+      implication: "入居需要が全国平均を上回る — 空室リスクが相対的に低い",
+      source: "国勢調査2025速報",
+    });
   if (c.pop_change_pct < 0 && c.hh_change_pct > 0)
-    strengths.push(`世帯増で賃貸・単身向け需要が底堅い（世帯 ${fmtPct(c.hh_change_pct)}）（国勢調査2025速報）`);
-  lq.forEach((i) => strengths.push(`${i.industry}に特化（LQ ${i.lq.toFixed(2)}）＝域外から所得を稼ぐ基盤（経済センサス2021 / LQ）`));
-  rsWin.slice(0, 2).forEach((i) => strengths.push(`${i.industry}が全国を上回る競争力で伸長（RS ${fmtNum(i.regional_shift)}）（シフトシェア分析）`));
-  if (agg > 10) strengths.push(`小売購買力が域外へ流出＝出店余地（漏損 +${agg.toFixed(1)}）（小売ギャップ）`);
-  if (fd && fd.dHH > 0) strengths.push(`長期で世帯純増 約${fd.dHH.toLocaleString()}（都道府県推計→住宅純需要の拡大）`);
-  if (ebmMid >= 3 && ebmMid <= 6) strengths.push(`EBM ${ebmMid.toFixed(1)} はCI102健全域(3〜6)＝基盤と波及のバランス良好`);
+    strengths.push({
+      fact: `人口減でも世帯は増加（${fmtPct(c.hh_change_pct)}）`,
+      implication: "単身化・世帯分裂 → 小型賃貸の実需が底堅い",
+      source: "国勢調査2025速報",
+    });
+  lq.forEach((i) => strengths.push({
+    fact: `${i.industry}に特化（LQ ${i.lq.toFixed(2)}）`,
+    implication: "域外から所得を稼ぐ基盤産業 — テナント需要の安定源",
+    source: "経済センサス2021 / LQ分析",
+  }));
+  rsWin.slice(0, 2).forEach((i) => strengths.push({
+    fact: `${i.industry}が競争力で純増（RS ${fmtNum(i.regional_shift)}）`,
+    implication: "全国トレンド以上に伸びる産業 — 将来の雇用増・賃料上昇の可能性",
+    source: "シフトシェア分析 2016→2021",
+  }));
+  if (agg > 10) strengths.push({
+    fact: `小売購買力が域外流出（漏損 +${agg.toFixed(1)}）`,
+    implication: "地元で買えない需要がある — 商業施設の出店余地",
+    source: "小売ギャップ分析",
+  });
+  if (fd && fd.dHH > 0) strengths.push({
+    fact: `10年後に世帯 約${fd.dHH.toLocaleString()} 純増見込み`,
+    implication: "新規住宅の実需が期待でき、中長期の稼働率を下支え",
+    source: "社人研推計（都道府県）",
+  });
+  if (ebmMid >= 3 && ebmMid <= 6) strengths.push({
+    fact: `EBM ${ebmMid.toFixed(1)}（CI102健全域 3〜6）`,
+    implication: "基盤産業と地域サービスのバランスが良好 — 外部ショックへの耐性あり",
+    source: "経済センサス2021 / EBM",
+  });
 
   if (c.momentum_class === "decline" || c.momentum_class === "severe_decline")
-    risks.push(`直近人口が減少（${fmtPct(c.pop_change_pct)}・全国比 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}pt）（国勢調査2025速報）`);
-  if (dPct != null && dPct < -10) risks.push(`長期人口が大きく縮小見込み（${fmtPct(dPct)} 2025→2035）（社人研推計）`);
-  if (basicRatioMid < 5) risks.push(`輸出基盤が薄く域外需要ショックに弱い（基盤比率 ${basicRatioMid.toFixed(1)}%）（EBM/基盤雇用）`);
-  if (ebmMid > 8) risks.push(`EBMが高く基盤過小/通勤流入の可能性 → 経済圏での再評価を推奨（EBM ${ebmMid.toFixed(1)}）`);
-  if (agg < -10) risks.push(`小売が供給過多＝新規出店は競争激化（余剰 ${agg.toFixed(1)}）（小売ギャップ）`);
-  if (rs < 0) risks.push(`競争力が全国平均を下回る（RS ${fmtNum(rs)}）（シフトシェア分析）`);
-  const strengthsTop = strengths.slice(0, 4);
-  const risksTop = risks.slice(0, 4);
+    risks.push({
+      fact: `人口減少 ${fmtPct(c.pop_change_pct)}（全国比 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}pt）`,
+      implication: "入居需要の縮小 → 空室率上昇・賃料下落圧力",
+      source: "国勢調査2025速報",
+    });
+  if (dPct != null && dPct < -10) risks.push({
+    fact: `長期人口が大幅縮小見込み（${fmtPct(dPct)} 2025→2035）`,
+    implication: "出口（売却）時の買い手減少 → 流動性リスク",
+    source: "社人研推計",
+  });
+  if (basicRatioMid < 5) risks.push({
+    fact: `輸出基盤が薄い（基盤比率 ${basicRatioMid.toFixed(1)}%）`,
+    implication: "域外需要に依存できず、外部ショック時に雇用が急減しやすい",
+    source: "経済センサス2021 / EBM",
+  });
+  if (ebmMid > 8) risks.push({
+    fact: `EBMが高い（${ebmMid.toFixed(1)}）`,
+    implication: "基盤雇用が少ない or 通勤流入が多い → 経済圏での再評価を推奨",
+    source: "経済センサス2021 / EBM",
+  });
+  if (agg < -10) risks.push({
+    fact: `小売が供給過多（余剰 ${agg.toFixed(1)}）`,
+    implication: "商業テナントの競争激化 → 賃料・稼働率に下方圧力",
+    source: "小売ギャップ分析",
+  });
+  if (rs < 0) risks.push({
+    fact: `競争力が全国平均未満（RS ${fmtNum(rs)}）`,
+    implication: "産業が他地域に流出傾向 — 将来の雇用減少リスク",
+    source: "シフトシェア分析 2016→2021",
+  });
+  const strengthsTop = strengths.slice(0, 5);
+  const risksTop = risks.slice(0, 5);
+
+  /* ── EBMの投資家向け解釈 ── */
+  const ebmInterpretation = (): string => {
+    if (ebmMid >= 3 && ebmMid <= 6) return "健全域 — 基盤産業と地域サービスのバランスが取れ、経済ショックへの耐性がある";
+    if (ebmMid > 6) return "高め — 基盤雇用が少ないか通勤流入が多い。ベッドタウン型の可能性があり、雇用の質を精査";
+    if (ebmMid >= 2) return "やや低め — 基盤産業への依存度が高い。特定企業の撤退リスクに注意";
+    return "低い — 基盤産業に過度に依存。産業の多様性不足";
+  };
+
+  /* ── Chipコンポーネント（説明付き） ── */
+  const CHIP_DESC: Record<string, string> = {
+    "需要": "入居者・テナントの量と増減トレンド",
+    "供給": "地域経済の自立度と雇用基盤の厚み",
+    "将来性": "今後10年の需要変化と競争力の方向",
+  };
 
   const Chip = ({ label, score }: { label: string; score: number }) => {
     const r = rating(score);
@@ -228,23 +348,10 @@ export function AreaDiagnosisPanel({
         <div className="text-[11px] font-bold text-muted-foreground">{label}</div>
         <div className="text-base font-black" style={{ color: r.color }}>{r.label}</div>
         <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{score}<span className="text-muted-foreground">/100</span></div>
-        <div className="mt-1.5 h-[5px] rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+        <div className="mt-1 h-[5px] rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
           <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: r.color }} />
         </div>
-      </div>
-    );
-  };
-
-  const Section = ({ icon, title, score, body }: { icon: string; title: string; score: number; body: string }) => {
-    const r = rating(score);
-    return (
-      <div className="rounded-xl border bg-card px-4 py-3">
-        <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-base">{icon}</span>
-          <span className="text-[13px] font-extrabold flex-1">{title}</span>
-          <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: r.color }}>{r.label} {score}</span>
-        </div>
-        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{body}</p>
+        <p className="text-[9.5px] text-muted-foreground mt-1 leading-snug">{CHIP_DESC[label] ?? ""}</p>
       </div>
     );
   };
@@ -252,14 +359,15 @@ export function AreaDiagnosisPanel({
   return (
     <Card className="overflow-hidden shadow-sm" data-print-block>
       <CardContent className="pt-4">
+        {/* ── ヘッダー ── */}
         <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
           <div>
             <p className="text-[17px] font-extrabold tracking-tight">
-              🏙️ CI102 エリア総合診断 <span className="font-semibold text-muted-foreground">— {area}</span>
+              CI102 エリア総合診断 <span className="font-semibold text-muted-foreground">— {area}</span>
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              需要・供給・強み・将来性をCI102手法で統合し、購入/売却の「将来性」を判定
-              <span className="ml-2 inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">経済基盤: {scopeTag}（{ebScopeName}）</span>
+              不動産投資の根拠となる需要・供給・将来性を、政府統計から定量評価
+              <span className="ml-2 inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">{scopeTag}（{ebScopeName}）</span>
             </p>
           </div>
           <div className="flex-none rounded-xl border-2 px-4 py-2 text-center" style={{ borderColor: st.color }}>
@@ -270,23 +378,205 @@ export function AreaDiagnosisPanel({
           </div>
         </div>
 
+        {/* ── 投資家が最初に知るべき3つの問い ── */}
+        <div className="rounded-xl border bg-slate-50 dark:bg-slate-900/40 px-4 py-3 mb-4">
+          <p className="text-[11px] font-bold text-muted-foreground mb-2">この分析で答える3つの問い</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="text-[11.5px] leading-snug"><span className="font-bold">1. 借り手・買い手はいるか？</span><span className="text-muted-foreground"> → 需要スコア</span></div>
+            <div className="text-[11.5px] leading-snug"><span className="font-bold">2. 地域経済は自立しているか？</span><span className="text-muted-foreground"> → 供給スコア</span></div>
+            <div className="text-[11.5px] leading-snug"><span className="font-bold">3. 10年後も需要は続くか？</span><span className="text-muted-foreground"> → 将来性スコア</span></div>
+          </div>
+        </div>
+
+        {/* ── 3スコアチップ ── */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           <Chip label="需要" score={demand} />
           <Chip label="供給" score={supply} />
           <Chip label="将来性" score={future} />
         </div>
 
+        {/* ── 投資スタンス ── */}
         <div className="rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: `${st.color}12`, borderLeft: `5px solid ${st.color}` }}>
-          <p className="text-[10px] font-bold tracking-wider text-muted-foreground">エリア投資スタンス（購入・売却）</p>
+          <p className="text-[10px] font-bold tracking-wider text-muted-foreground">エリア投資スタンス</p>
           <p className="text-[21px] font-black leading-tight" style={{ color: st.color }}>{st.label}</p>
           <p className="text-[12.5px] leading-relaxed text-slate-700 dark:text-slate-200 mt-0.5">{st.text}</p>
         </div>
 
-        {/* 🔁 データ更新の変化 (以前2020 → 最新2025 実測) */}
+        {/* ── 📈 需要（構造化指標カード） ── */}
+        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(22,163,74,0.2)", backgroundColor: "rgba(22,163,74,0.03)" }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">📈</span>
+            <span className="text-[13px] font-extrabold flex-1">需要 — 借り手・買い手はいるか？</span>
+            <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(demand).color }}>{rating(demand).label} {demand}</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-3">人口と世帯の増減が、入居率・賃料・売却価格に直結します</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <MetricRow
+              label="人口の増減（直近5年）"
+              value={fmtPct(c.pop_change_pct)}
+              unit={`全国比 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}pt`}
+              meaning={c.pop_change_pct >= 0
+                ? "人口が増えている — 入居需要の拡大が見込める"
+                : gap >= 0
+                  ? "人口は減少しているが全国平均よりは良好 — 相対的に底堅い"
+                  : "全国平均を下回る減少 — 空室リスクに注意"
+              }
+              tag="実測"
+            />
+            <MetricRow
+              label="世帯数の増減（直近5年）"
+              value={fmtPct(c.hh_change_pct)}
+              unit={`${fmtNum(hhDelta)} 世帯`}
+              meaning={c.hh_change_pct > 0
+                ? c.pop_change_pct < 0
+                  ? "人口減でも世帯は増加 — 単身化が進み小型賃貸に実需あり"
+                  : "世帯も増加 — 住宅需要の裏付けが強い"
+                : "世帯も減少 — 需要縮小。立地を厳選すべき"
+              }
+              tag="実測"
+            />
+            <MetricRow
+              label="小売需給バランス"
+              value={agg >= 0 ? `+${agg.toFixed(1)}` : agg.toFixed(1)}
+              unit={agg > 5 ? "漏損（流出）" : agg < -5 ? "余剰（過剰）" : "均衡"}
+              meaning={agg > 10
+                ? `購買力が域外に流出 → 地元で買えない需要が${leak}業種。商業施設の出店余地`
+                : agg < -10
+                  ? "供給過多 — 商業テナントは競争激化。差別化が必須"
+                  : "需給はほぼ均衡。商業は安定するが大きな成長余地は限定的"
+              }
+              tag="実測"
+            />
+            <MetricRow
+              label="長期人口見通し（10年後）"
+              value={dPct != null ? fmtPct(dPct) : "—"}
+              unit="2025→2035"
+              meaning={dPct != null
+                ? dPct >= 0
+                  ? "人口増加が続く見込み — 中長期の投資に適した市場"
+                  : dPct > -5
+                    ? "緩やかな縮小 — 好立地に絞れば投資は成立"
+                    : "大幅な縮小見込み — 出口戦略を先に設計すべき"
+                : "推計データなし"
+              }
+              tag="推計"
+            />
+          </div>
+        </div>
+
+        {/* ── 🏭 供給（経済基盤の厚み） ── */}
+        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">🏭</span>
+            <span className="text-[13px] font-extrabold flex-1">供給 — 地域経済は自立しているか？</span>
+            <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(supply).color }}>{rating(supply).label} {supply}</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-3">域外から所得を稼ぐ「基盤産業」の厚みが、雇用と賃料の安定性を左右します</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+            <MetricRow
+              label="経済基盤乗数（EBM）"
+              value={ebmMid.toFixed(1)}
+              unit="倍"
+              meaning={ebmInterpretation()}
+              tag="理論"
+            />
+            <MetricRow
+              label="基盤雇用比率"
+              value={`${basicRatioMid.toFixed(1)}%`}
+              unit={`${basicMid.toLocaleString()}人 / ${totalEmp.toLocaleString()}人`}
+              meaning={basicRatioMid >= 15
+                ? "輸出基盤が厚い — 域外需要に支えられ経済ショックに強い"
+                : basicRatioMid >= 8
+                  ? "基盤は標準的 — 主要産業の動向をモニタリング"
+                  : "基盤が薄い — 域内消費依存が高く、景気感応度が大きい"
+              }
+              tag="理論"
+            />
+          </div>
+
+          {/* 基盤/非基盤バー */}
+          <div>
+            <div className="flex justify-between text-[10px] font-semibold mb-1">
+              <span className="text-emerald-700 dark:text-emerald-400">基盤雇用 {basicMid.toLocaleString()}人（{basicPct.toFixed(1)}%）</span>
+              <span className="text-slate-500">非基盤雇用 {nonBasic.toLocaleString()}人</span>
+            </div>
+            <div className="flex h-4 w-full overflow-hidden rounded-md bg-slate-200 dark:bg-slate-700">
+              <div className="h-full" style={{ width: `${Math.min(100, basicPct)}%`, backgroundColor: "#16A34A" }} />
+            </div>
+          </div>
+
+          {/* 特化産業 */}
+          <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-200 mt-2.5">
+            域外から所得を稼ぐ特化産業（LQ &gt; 1 = 全国平均より集積）:
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {baseInd.length ? (
+              baseInd.map((i) => (
+                <span key={i.industry} className="rounded-full border bg-white dark:bg-slate-800 px-2.5 py-0.5 text-[11px] font-bold">
+                  {i.industry} <span className="text-emerald-600 dark:text-emerald-400">LQ {i.lq.toFixed(2)}</span>
+                </span>
+              ))
+            ) : (
+              <span className="text-[11px] text-muted-foreground">LQが1を超える特化産業は乏しく、域外を稼ぐ基盤は限定的。</span>
+            )}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            ※ 中分類95業種で算出（大分類17業種はLQ&gt;1業種が少なく基盤を過小評価するため）。参考: 大分類EBM {(pref.ebm ?? 0).toFixed(1)}。
+          </p>
+        </div>
+
+        {/* ── 🔭 将来性 ── */}
+        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(13,148,136,0.2)", backgroundColor: "rgba(13,148,136,0.03)" }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">🔭</span>
+            <span className="text-[13px] font-extrabold flex-1">将来性 — 10年後も需要は続くか？</span>
+            <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(future).color }}>{rating(future).label} {future}</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-3">出口（売却）時の価値を左右する「将来の需要と競争力」を3つの指標で評価</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+            <MetricRow
+              label="需要モメンタム"
+              value={`全国比 ${gap >= 0 ? "+" : ""}${gap.toFixed(1)}pt`}
+              meaning={gap >= 2 ? "全国を大きく上回る — 成長市場" : gap >= 0 ? "全国並みかやや上 — 安定" : "全国より弱い — 縮小傾向"}
+              tag="実測"
+            />
+            <MetricRow
+              label="産業競争力（RS）"
+              value={`${rsShare >= 0 ? "+" : ""}${rsShare.toFixed(2)}%`}
+              unit="雇用比"
+              meaning={rs > 0 ? "全国トレンド以上に雇用が伸びている — 基盤雇用の増加余地あり" : "雇用が全国に対し流出傾向 — 構造的劣後"}
+              tag="実測"
+            />
+            <MetricRow
+              label="長期人口推計"
+              value={dPct != null ? fmtPct(dPct) : "—"}
+              unit="2025→2035"
+              meaning={dPct != null
+                ? fd!.dHH >= 0
+                  ? `世帯が約${fd!.dHH.toLocaleString()}増 → 新規住宅の純需要あり`
+                  : `世帯が約${Math.abs(fd!.dHH).toLocaleString()}減 → 更新・建替中心`
+                : "推計データなし"
+              }
+              tag="推計"
+            />
+          </div>
+
+          <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-200">
+            {rs > 0
+              ? "産業の競争力が全国平均を上回っており、基盤雇用の純増余地がある。需要の下支えが期待できる市場。"
+              : "産業の競争力は全国平均を下回る。構造的な改善がなければ、需要は徐々に縮小する見通し。"
+            }
+            {fd && fd.dHH < 0 && basicRatioMid >= 12 ? " ただし輸出基盤の厚みが縮小を緩和する可能性あり。" : ""}
+          </p>
+        </div>
+
+        {/* ── 🔁 データ更新の変化 (以前2020 → 最新2025 実測) ── */}
         <div className="rounded-xl border px-4 py-3 mb-4 bg-card">
           <p className="text-[13px] font-extrabold">
-            🔁 データ更新の変化
-            <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— 以前 2020 → 最新 2025（国勢調査 実測 / {momoFine ? city!.area_name : pref.pref_name}）</span>
+            🔁 前回→今回の変化
+            <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— 2020 → 2025（国勢調査 実測 / {momoFine ? city!.area_name : pref.pref_name}）</span>
           </p>
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div className="rounded-lg border bg-muted/30 px-3 py-2">
@@ -300,20 +590,101 @@ export function AreaDiagnosisPanel({
               <div className="text-[11px] font-bold" style={{ color: c.hh_change_pct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(hhDelta)} 世帯（{fmtPct(c.hh_change_pct)}）{c.pop_change_pct < 0 && c.hh_change_pct > 0 ? "／人口減でも世帯増=単身化" : ""}</div>
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-2">
-            ※ 以前の分析は長期推計（2020→2040 {fmtPct(pref.pop_change_pct ?? 0)}）が主指標。今回のデータ更新で直近5年の<strong>実測</strong>モメンタムを追加し、需要判断を最新化。
-          </p>
         </div>
 
-        {/* 📊 雇用の変化とRS (2016→2021 シフトシェア分解・都道府県) */}
+        {/* ── 📈 人口推移チャート（2000-2025 国勢調査6回分） ── */}
+        {hasTimeseries && (
+          <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(99,102,241,0.2)", backgroundColor: "rgba(99,102,241,0.03)" }}>
+            <p className="text-[13px] font-extrabold text-indigo-800 dark:text-indigo-300">
+              📈 人口推移（過去25年の国勢調査）
+              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— {momoFine ? city!.area_name : pref.pref_name}・2000→2025</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+              投資判断で最も重要なのは「減少の加速度」。直近の変化率が改善傾向か悪化傾向かで、将来の需要見通しが変わります。
+            </p>
+            <div className="h-[220px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={tsWithRate} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="year" tick={{ fontSize: 11 }} />
+                  <YAxis
+                    yAxisId="pop"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v: unknown) => `${(Number(v) / 10000).toFixed(0)}万`}
+                    width={52}
+                  />
+                  <YAxis
+                    yAxisId="rate"
+                    orientation="right"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v: unknown) => `${Number(v).toFixed(1)}%`}
+                    width={48}
+                  />
+                  <Tooltip
+                    formatter={(value: unknown, name: unknown) => {
+                      const v = Number(value);
+                      const n = String(name);
+                      if (n === "人口") return [`${v.toLocaleString()} 人`, n];
+                      if (n === "変化率") return [`${v.toFixed(2)}%`, n];
+                      if (n === "高齢化率") return [`${v.toFixed(1)}%`, n];
+                      return [String(value), String(name)];
+                    }}
+                    labelFormatter={(label: unknown) => `${label}年 国勢調査`}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <ReferenceLine yAxisId="rate" y={0} stroke="#94A3B8" strokeDasharray="3 3" />
+                  <Bar yAxisId="pop" dataKey="population" name="人口" fill="#6366F1" opacity={0.35} radius={[3, 3, 0, 0]} />
+                  <Line yAxisId="rate" type="monotone" dataKey="popRate" name="変化率" stroke="#DC2626" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                  {tsWithRate.some((d) => d.agingRate != null) && (
+                    <Line yAxisId="rate" type="monotone" dataKey="agingRate" name="高齢化率" stroke="#F59E0B" strokeWidth={1.5} dot={{ r: 3 }} strokeDasharray="4 4" connectNulls />
+                  )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            {/* 加速度の解釈 */}
+            {tsWithRate.length >= 3 && (() => {
+              const rates = tsWithRate.filter((d) => d.popRate != null).map((d) => d.popRate!);
+              if (rates.length < 2) return null;
+              const latest = rates[rates.length - 1];
+              const prev = rates[rates.length - 2];
+              const accel = latest - prev;
+              const trend = accel > 0.5 ? "改善" : accel < -0.5 ? "悪化" : "横ばい";
+              const trendColor = accel > 0.5 ? "#16A34A" : accel < -0.5 ? "#DC2626" : "#CA8A04";
+              return (
+                <div className="mt-2 rounded-lg border bg-muted/30 px-3 py-2">
+                  <p className="text-[11.5px] leading-relaxed">
+                    <span className="font-bold" style={{ color: trendColor }}>トレンド: {trend}</span>
+                    <span className="text-slate-600 dark:text-slate-300 ml-1">
+                      — 直近5年の変化率 {latest > 0 ? "+" : ""}{latest.toFixed(2)}%（前期比 {accel > 0 ? "+" : ""}{accel.toFixed(2)}pt）。
+                      {accel > 0.5
+                        ? "減少が鈍化または増加に転じており、需要回復の兆し。"
+                        : accel < -0.5
+                          ? "減少が加速しており、中長期の需要縮小リスクが高まっている。"
+                          : "変化のペースは安定しており、直近のトレンドが当面続く見通し。"}
+                    </span>
+                  </p>
+                </div>
+              );
+            })()}
+            <p className="text-[10px] text-muted-foreground mt-2">
+              出典: 総務省統計局 国勢調査（各回）/ 社会・人口統計体系。全て <DataBadge tag="実測" /> 確定値。
+              {tsWithRate.some((d) => d.agingRate != null) && " 高齢化率 = 65歳以上人口 ÷ 総人口（2025年は速報のため年齢別未公表）。"}
+            </p>
+          </div>
+        )}
+
+        {/* ── 📊 雇用の変化とRS (2016→2021 シフトシェア分解・都道府県) ── */}
         {ssTable.length > 0 && (
           <details className="rounded-xl border px-4 py-3 mb-4 bg-card">
             <summary className="text-[13px] font-extrabold cursor-pointer select-none">
-              📊 雇用の変化とRS（競争力）
-              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— 2016 → 2021 シフトシェア分解（経済センサス・都道府県。クリックで展開）</span>
+              📊 雇用の変化と競争力（シフトシェア分析）
+              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— 2016 → 2021（クリックで展開）</span>
             </summary>
-            <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200 mt-1.5">
-              総雇用の実測変化 <strong>{fmtNum(ssActual)} 人</strong> ＝ 全国トレンド {fmtNum(ssNat)} ＋ 産業構成 {fmtNum(ssMix)} ＋ <strong>地域シフト（RS＝競争力） {fmtNum(rs)}</strong>
+            <p className="text-[11px] text-muted-foreground mt-1.5 mb-2">
+              雇用の増減を「①全国トレンド ②産業構成 ③地域固有の競争力（RS）」の3要因に分解。RSがプラスなら、全国平均を上回る地域固有の強みがある。
+            </p>
+            <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200">
+              総雇用の実測変化 <strong>{fmtNum(ssActual)} 人</strong> ＝ 全国トレンド {fmtNum(ssNat)} ＋ 産業構成 {fmtNum(ssMix)} ＋ <strong>地域シフト（RS） {fmtNum(rs)}</strong>
             </p>
             <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2.5">
               <div className="rounded-lg border bg-muted/30 px-3 py-2 text-center">
@@ -333,113 +704,17 @@ export function AreaDiagnosisPanel({
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground mt-2">
-              ※ RSがプラス＝「全国平均を上回る地域固有の競争力で雇用が純増」。将来の基盤雇用の増減を示す先行シグナル。<strong>期間は2016→2021の1期間</strong>（経済センサス。より新しい版は未公表）。多期間のRS推移には2011センサスの取込が必要（未取得）。
+              ※ RSがプラス＝「全国平均を上回る地域固有の競争力で雇用が純増」。将来の基盤雇用の増減を示す先行シグナル。<strong>期間は2016→2021の1期間</strong>（経済センサス）。
             </p>
           </details>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <Section icon="📈" title="需要 — 買い手・借り手の量と将来" score={demand} body={demandTxt} />
-          <Section icon="🏭" title="供給 — 雇用基盤の厚み" score={supply} body={supplyTxt} />
-          <Section icon="💪" title="このエリアの強み — 何で稼ぐ地域か" score={Math.max(demand, future)} body={strengthTxt} />
-          <Section icon="🔭" title="将来性 — 伸びるか縮むか" score={future} body={futureTxt} />
-        </div>
-
-        {/* 🧮 指標の計算フロー (CI102の導出過程) */}
-        <details className="mt-4 rounded-xl border-2 px-4 py-3.5" style={{ borderColor: "rgba(37,99,235,0.2)", backgroundColor: "rgba(37,99,235,0.03)" }}>
-          <summary className="text-[13px] font-extrabold text-blue-800 dark:text-blue-300 cursor-pointer select-none">
-            🧮 指標の計算フロー（CI102）
-            <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— LQ → 基盤雇用 → EBM → PER → 人口・世帯・住宅需要（{ebScopeName}・中分類。クリックで展開）</span>
-          </summary>
-          <div className="mt-3 space-y-2.5">
-            {calcSteps.map((s, i) => (
-              <div key={i} className="rounded-lg border bg-card px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex-none w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-black grid place-items-center">{i + 1}</span>
-                  <span className="text-[12px] font-extrabold">{s.title}</span>
-                </div>
-                <p className="mt-1 text-[11px] font-mono text-slate-700 dark:text-slate-200">{s.formula}</p>
-                <p className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400">{s.calc}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">{s.note}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-[10px] text-muted-foreground">※ 乗数(EBM/PER)は現在の産業構造が続くと仮定した理論値。基盤雇用はLQ&gt;1産業の超過雇用の合計（中分類95業種で算出）。</p>
-        </details>
-
-        {/* 🏭 経済基盤分析 (基盤/非基盤の可視化 + 特化産業) */}
-        <div className="mt-4 rounded-xl border-2 px-4 py-3.5" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>
-          <p className="text-[13px] font-extrabold text-[#1B2A4A] dark:text-white">
-            🏭 経済基盤分析
-            <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— {ebScopeName}：域外から所得を呼ぶ「基盤雇用」</span>
-          </p>
-          <div className="mt-2.5">
-            <div className="flex justify-between text-[10px] font-semibold mb-1">
-              <span className="text-emerald-700 dark:text-emerald-400">基盤雇用 {basicMid.toLocaleString()}人（{basicPct.toFixed(1)}%）</span>
-              <span className="text-slate-500">非基盤雇用 {nonBasic.toLocaleString()}人</span>
-            </div>
-            <div className="flex h-4 w-full overflow-hidden rounded-md bg-slate-200 dark:bg-slate-700">
-              <div className="h-full" style={{ width: `${Math.min(100, basicPct)}%`, backgroundColor: "#16A34A" }} />
-            </div>
-          </div>
-          <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200 mt-2.5">
-            基盤を担う特化産業（LQが1を超える＝域外を稼ぐ）:
-          </p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {baseInd.length ? (
-              baseInd.map((i) => (
-                <span key={i.industry} className="rounded-full border bg-white dark:bg-slate-800 px-2.5 py-0.5 text-[11px] font-bold">
-                  {i.industry} <span className="text-emerald-600 dark:text-emerald-400">LQ {i.lq.toFixed(2)}</span>
-                </span>
-              ))
-            ) : (
-              <span className="text-[11px] text-muted-foreground">LQが1を超える特化産業は乏しく、域外を稼ぐ基盤は限定的。</span>
-            )}
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-2">
-            ※ 中分類95業種で算出（大分類17業種はLQ&gt;1業種が少なく基盤を過小評価するため / Mulligan凸性質）。参考: 大分類EBM {(pref.ebm ?? 0).toFixed(1)}。
-          </p>
-        </div>
-
-        {/* 🔮 将来需要予測 (社人研 → 世帯 → 住宅戸数) */}
-        {fd && (
-          <div className="mt-4 rounded-xl border-2 px-4 py-3.5" style={{ borderColor: "rgba(13,148,136,0.25)", backgroundColor: "rgba(13,148,136,0.04)" }}>
-            <p className="text-[13px] font-extrabold text-teal-800 dark:text-teal-300">
-              🔮 将来需要予測
-              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— 社人研 2025→2035 推計（都道府県）を投資判断用の「戸数」に換算</span>
-            </p>
-            <div className="mt-2.5 grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-lg border bg-card px-3 py-2 text-center">
-                <div className="text-[10px] font-bold text-muted-foreground">人口 (2025→2035)</div>
-                <div className="text-lg font-black" style={{ color: fd.dPop >= 0 ? "#16A34A" : "#DC2626" }}>{fmtPct(fd.dPct)}</div>
-                <div className="text-[10px] text-muted-foreground">{fmtNum(fd.dPop)} 人</div>
-              </div>
-              <div className="rounded-lg border bg-card px-3 py-2 text-center">
-                <div className="text-[10px] font-bold text-muted-foreground">世帯増減 → 住宅純需要</div>
-                <div className="text-lg font-black" style={{ color: fd.dHH >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(fd.dHH)} 戸</div>
-                <div className="text-[10px] text-muted-foreground">世帯人員 {pph.toFixed(2)} 人で換算</div>
-              </div>
-              <div className="rounded-lg border bg-card px-3 py-2 text-center">
-                <div className="text-[10px] font-bold text-muted-foreground">供給の耐性（基盤）</div>
-                <div className="text-lg font-black" style={{ color: rating(supply).color }}>{rating(supply).label}</div>
-                <div className="text-[10px] text-muted-foreground">基盤比率 {basicRatioMid.toFixed(1)}% / RS {rs > 0 ? "上向き" : "下向き"}</div>
-              </div>
-            </div>
-            <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200 mt-2.5">
-              {fd.dHH >= 0
-                ? `今後10年で世帯が約${fd.dHH.toLocaleString()}増える見込み。新規住宅の純需要が期待でき、${rs > 0 ? "競争力ある基盤雇用が下支え。" : "ただし雇用競争力は弱く、立地選別が重要。"}`
-                : `今後10年で世帯が約${Math.abs(fd.dHH).toLocaleString()}減る見込み。新規供給より更新・建替・用途転換の需要が中心。${basicRatioMid >= 12 ? "厚い輸出基盤が縮小を緩和。" : "輸出基盤が薄く、縮小が加速しやすい。"}`}
-              <span className="text-muted-foreground"> ※ 戸数は世帯純増減の目安（空室・建替除く）。</span>
-            </p>
-          </div>
-        )}
-
-        {/* 🎯 このエリアのニーズ */}
+        {/* ── 🎯 このエリアのニーズ ── */}
         {needsTop.length > 0 && (
-          <div className="mt-4 rounded-xl border px-4 py-3.5 bg-card">
+          <div className="rounded-xl border px-4 py-3.5 mb-4 bg-card">
             <p className="text-[13px] font-extrabold">
               🎯 このエリアで狙うべきニーズ（用途別）
-              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— {area} の需要構造から</span>
+              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— データから導かれる投資対象</span>
             </p>
             <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
               {needsTop.map((n) => (
@@ -455,23 +730,31 @@ export function AreaDiagnosisPanel({
           </div>
         )}
 
-        {/* 投資の根拠 × リスク */}
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* ── 投資の根拠 × リスク（構造化: 事実→意味→出典） ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           <div className="rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-3">
-            <p className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 mb-1.5">✓ 投資の根拠（このエリアの強み）</p>
+            <p className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400 mb-2">✓ 投資の根拠</p>
             {strengthsTop.length ? (
-              strengthsTop.map((t, i) => (
-                <p key={i} className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200">・{t}</p>
+              strengthsTop.map((e, i) => (
+                <div key={i} className="mb-2 last:mb-0">
+                  <p className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100">{e.fact}</p>
+                  <p className="text-[10.5px] text-slate-600 dark:text-slate-300 leading-snug">{e.implication}</p>
+                  <p className="text-[9.5px] text-muted-foreground">{e.source}</p>
+                </div>
               ))
             ) : (
               <p className="text-[11.5px] text-muted-foreground">際立った強みは限定的。</p>
             )}
           </div>
           <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/20 px-4 py-3">
-            <p className="text-xs font-extrabold text-rose-700 dark:text-rose-400 mb-1.5">⚠ 留意すべきリスク</p>
+            <p className="text-xs font-extrabold text-rose-700 dark:text-rose-400 mb-2">⚠ 留意すべきリスク</p>
             {risksTop.length ? (
-              risksTop.map((t, i) => (
-                <p key={i} className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200">・{t}</p>
+              risksTop.map((e, i) => (
+                <div key={i} className="mb-2 last:mb-0">
+                  <p className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100">{e.fact}</p>
+                  <p className="text-[10.5px] text-slate-600 dark:text-slate-300 leading-snug">{e.implication}</p>
+                  <p className="text-[9.5px] text-muted-foreground">{e.source}</p>
+                </div>
               ))
             ) : (
               <p className="text-[11.5px] text-muted-foreground">重大なリスクは検出されず。</p>
@@ -479,9 +762,43 @@ export function AreaDiagnosisPanel({
           </div>
         </div>
 
-        <p className="mt-4 border-t pt-2 text-[10px] text-muted-foreground">
-          CI102: LQ特化・シフトシェア競争力・小売ギャップ需給・EBM/PER（2021経済センサス）＋人口モメンタム（2025国勢調査速報）＋将来推計（社人研）を統合。経済基盤は{scopeTag}で算出。将来性 = 直近需要 × 競争力(RS/雇用比) × 長期推計。
-        </p>
+        {/* ── 🧮 指標の計算フロー (CI102の導出過程) ── */}
+        <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(37,99,235,0.2)", backgroundColor: "rgba(37,99,235,0.03)" }}>
+          <summary className="text-[13px] font-extrabold text-blue-800 dark:text-blue-300 cursor-pointer select-none">
+            🧮 計算の根拠を確認する（CI102 計算フロー）
+            <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— クリックで展開</span>
+          </summary>
+          <p className="text-[11px] text-muted-foreground mt-1.5 mb-2.5">
+            上記のスコアは以下の手順で算出しています。各ステップは米国CCIM CI102教科書に準拠した標準的な不動産市場分析手法です。
+          </p>
+          <div className="space-y-2.5">
+            {calcSteps.map((s, i) => (
+              <div key={i} className="rounded-lg border bg-card px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex-none w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-black grid place-items-center">{i + 1}</span>
+                  <span className="text-[12px] font-extrabold">{s.title}</span>
+                </div>
+                <p className="mt-1 text-[11px] font-mono text-slate-700 dark:text-slate-200">{s.formula}</p>
+                <p className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400">{s.calc}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{s.note}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">※ 乗数(EBM/PER)は現在の産業構造が続くと仮定した理論値。基盤雇用はLQ&gt;1産業の超過雇用の合計（中分類95業種で算出）。</p>
+        </details>
+
+        {/* ── データの鮮度と凡例 ── */}
+        <div className="rounded-xl border bg-slate-50 dark:bg-slate-900/30 px-4 py-3">
+          <p className="text-[11px] font-bold text-muted-foreground mb-1.5">データの性質と鮮度</p>
+          <div className="flex flex-wrap gap-3 mb-2">
+            <span className="flex items-center gap-1 text-[10px]"><DataBadge tag="実測" /> 政府統計の確定値（国勢調査・経済センサス）</span>
+            <span className="flex items-center gap-1 text-[10px]"><DataBadge tag="推計" /> 国立社会保障・人口問題研究所等の将来推計</span>
+            <span className="flex items-center gap-1 text-[10px]"><DataBadge tag="理論" /> CI102手法に基づく算出値（LQ・EBM・PER等）</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            人口・世帯: 2025年国勢調査速報（実測）｜ 産業・雇用: 2021年経済センサス活動調査 ｜ 将来推計: 社人研2025→2035 ｜ 経済基盤: {scopeTag}（中分類95業種）で算出
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

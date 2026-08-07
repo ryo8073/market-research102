@@ -93,6 +93,15 @@ class ScorecardData:
     agri_eco_workers: Optional[int] = None
     agri_extended_workers: Optional[int] = None
 
+    # 人口モメンタム（2025年国勢調査 人口速報集計: 2020→2025 実測増減率）
+    # EBM/PER が供給側(雇用構造)を測るのに対し、需要が現に伸縮しているかを
+    # 直近実測で示す先行指標。CI102の100点スコアには含めず別軸で並置する。
+    pop_change_pct: float = 0.0            # 5年間の人口増減率(%)
+    hh_change_pct: float = 0.0             # 5年間の世帯増減率(%)
+    pop_change_pct_national: float = 0.0   # 全国の人口増減率(%) — ベンチマーク
+    pop_momentum_class: str = ""           # growth|resilient|outperform_decline|decline|severe_decline
+    pop_momentum_gap: float = 0.0          # 全国比の差分ポイント（正=全国より良い）
+
 
 def build_scorecard(
     accessor,
@@ -279,6 +288,13 @@ def build_scorecard(
     # 日本の単独市町村ではこれを外れることが多く、解釈に注意が必要。
     pop_basic = float(basics.get("population", 0))
     emp_to_pop = (total_emp / pop_basic) if pop_basic > 0 else 0.0
+
+    # --- 人口モメンタム（2025年国勢調査速報: 2020→2025実測） ---
+    pop_change_pct = round(float(basics.get("pop_change_pct", 0.0)), 2)
+    hh_change_pct = round(float(basics.get("hh_change_pct", 0.0)), 2)
+    nat_pop_change = _national_pop_change_pct(accessor)
+    momentum_class = classify_population_momentum(pop_change_pct, nat_pop_change)
+    momentum_gap = round(pop_change_pct - nat_pop_change, 2)
     if per > 0 and per < 1.2:
         # 人口より雇用が多い（PER<1.2 = 雇用/人口 > 83%） = 通勤流入で事業所が膨張
         commute_distortion = "inflow"
@@ -327,7 +343,55 @@ def build_scorecard(
         agri_extended_workers=agri_extended_workers,
         lq_above1_share=round(lq_above1_share, 1),
         avg_excess_coef=round(avg_excess_coef, 3),
+        pop_change_pct=pop_change_pct,
+        hh_change_pct=hh_change_pct,
+        pop_change_pct_national=nat_pop_change,
+        pop_momentum_class=momentum_class,
+        pop_momentum_gap=momentum_gap,
     )
+
+
+def _national_pop_change_pct(accessor) -> float:
+    """全国の2020→2025人口増減率(%)を取得。ベンチマーク用。取得不可なら-2.45。"""
+    try:
+        from config import get_settings
+        from data.census_cache import (
+            load_cached_dataset, DS_POPULATION, get_area_population_momentum,
+        )
+        df = load_cached_dataset(get_settings().cache_dir, DS_POPULATION.csv_name)
+        if df is not None:
+            m = get_area_population_momentum(df, "00000")
+            if "pop_change_pct" in m:
+                return round(float(m["pop_change_pct"]), 2)
+    except Exception:
+        pass
+    return -2.45  # 2025速報の全国値フォールバック
+
+
+def classify_population_momentum(pop_pct: float, nat_pct: float) -> str:
+    """2020→2025人口増減率を投資判断向けカテゴリに分類する。
+
+    全国(nat_pct, 速報で約-2.45%)が縮小基調のため、「維持」でも実質的に
+    全国を上回る相対的な優位となる点をカテゴリ設計に反映する。
+    """
+    if pop_pct >= 1.0:
+        return "growth"                # 明確な成長市場
+    if pop_pct >= 0.0:
+        return "resilient"             # 全国減少下で人口を維持〜微増
+    if pop_pct >= nat_pct:
+        return "outperform_decline"    # 縮小だが全国平均より緩やか
+    if pop_pct >= -5.0:
+        return "decline"               # 全国を上回る人口減少
+    return "severe_decline"            # 深刻な人口減少（5年で5%超減）
+
+
+_MOMENTUM_LABELS = {
+    "growth": ("success", "成長市場"),
+    "resilient": ("success", "人口維持（全国減少下で底堅い）"),
+    "outperform_decline": ("info", "緩やかな縮小（全国平均より良好）"),
+    "decline": ("warning", "人口減少（全国平均を下回る）"),
+    "severe_decline": ("warning", "深刻な人口減少"),
+}
 
 
 def generate_insights(sc: ScorecardData) -> list[dict]:
@@ -336,6 +400,41 @@ def generate_insights(sc: ScorecardData) -> list[dict]:
     Returns list of {level: 'success'|'warning'|'info', text: str}.
     """
     insights: list[dict] = []
+
+    # === 人口モメンタム（需要側の先行指標） ===
+    # 投資家が最初に知りたい「この市場は伸びているか縮んでいるか」を、
+    # 2025年国勢調査速報の実測増減率で全国ベンチマークと並べて提示する。
+    if sc.pop_change_pct != 0.0 or sc.pop_momentum_class:
+        level, label = _MOMENTUM_LABELS.get(
+            sc.pop_momentum_class, ("info", "人口動向"))
+        gap = sc.pop_momentum_gap
+        gap_txt = (f"全国平均（{sc.pop_change_pct_national:+.1f}%）を"
+                   f"{abs(gap):.1f}ポイント" + ("上回る" if gap >= 0 else "下回る"))
+        # 世帯と人口の乖離（世帯細分化・単身化）を投資示唆として補足
+        hh_note = ""
+        if sc.pop_change_pct < 0 and sc.hh_change_pct > 0:
+            hh_note = (f" 一方、世帯数は{sc.hh_change_pct:+.1f}%と増加しており、"
+                       "単身・小世帯化で賃貸・コンパクト住戸の需要は底堅い可能性があります。")
+        elif sc.pop_change_pct > 0 and sc.hh_change_pct > sc.pop_change_pct + 2:
+            hh_note = (f" 世帯数は{sc.hh_change_pct:+.1f}%と人口以上に増加しており、"
+                       "世帯形成が活発で住宅需要の裾野が広い市場です。")
+        decision = {
+            "growth": "供給側(EBM/基盤雇用)の強さが確認できれば、開発・取得の順張り候補。",
+            "resilient": "縮小基調の全国にあって需要が維持されており、選別的な取得に値します。",
+            "outperform_decline": "縮小は緩やかで、立地・用途を絞れば投資機会は残ります。",
+            "decline": "需要は縮小局面。出口(売却)前提の保有期間とテナント信用力を要精査。",
+            "severe_decline": "需要が構造的に縮小。新規取得は原則見送り、既存保有は早期出口を検討。",
+        }.get(sc.pop_momentum_class, "")
+        insights.append({
+            "level": level,
+            "text": (
+                f"🧭 人口モメンタム: {label}｜2020→2025で人口 {sc.pop_change_pct:+.1f}%"
+                f"・世帯 {sc.hh_change_pct:+.1f}%（{gap_txt}）。"
+                f"{hh_note} 投資判断: {decision}"
+                "（出典: 総務省 令和7年国勢調査 人口速報集計。EBM/PERは供給側、"
+                "本指標は需要側の直近実測を示す補完指標です）"
+            ),
+        })
 
     # Commute distortion warning — geographic mismatch in single-municipality analysis
     # CI102のMSA前提と日本の市町村単位の不整合を明示する

@@ -70,6 +70,47 @@ def _safe_float(val, default: float = 0.0, decimals: int = 1) -> float:
         return default
 
 
+_POP_MOMENTUM_CACHE: dict = {}
+
+
+def _pop_momentum_block(area_code: str) -> dict | None:
+    """2025年国勢調査速報から人口モメンタム(census2025)ブロックを構築する。
+
+    既存の pop_change_pct(NLNI将来推計) とは別軸の『実測2020→2025』指標。
+    投資家が最初に確認する需要側の直近トレンド。
+    """
+    from data.census_cache import (
+        load_cached_dataset, DS_POPULATION, get_area_population_momentum,
+    )
+    from scorecard import classify_population_momentum
+    cache_dir = Path(__file__).resolve().parent.parent / "data" / "cache"
+    if "df" not in _POP_MOMENTUM_CACHE:
+        df0 = load_cached_dataset(cache_dir, DS_POPULATION.csv_name)
+        _POP_MOMENTUM_CACHE["df"] = df0
+        natm = get_area_population_momentum(df0, "00000") if df0 is not None else {}
+        _POP_MOMENTUM_CACHE["nat"] = round(float(natm.get("pop_change_pct", -2.45)), 2)
+    df = _POP_MOMENTUM_CACHE["df"]
+    if df is None:
+        return None
+    m = get_area_population_momentum(df, area_code)
+    if not m or "population" not in m:
+        return None
+    nat = _POP_MOMENTUM_CACHE["nat"]
+    pc = round(float(m.get("pop_change_pct", 0.0)), 2)
+    return {
+        "population": int(m.get("population", 0)),
+        "population_2020": int(m.get("population_2020", 0)),
+        "households": int(m.get("households", 0)),
+        "pop_change_pct": pc,
+        "hh_change_pct": round(float(m.get("hh_change_pct", 0.0)), 2),
+        "national_pop_change_pct": nat,
+        "momentum_gap": round(pc - nat, 2),
+        "momentum_class": classify_population_momentum(pc, nat),
+        "density": round(float(m.get("density", 0.0)), 1),
+        "source": "総務省 令和7年国勢調査 人口速報集計 (2026-05公表)",
+    }
+
+
 def _get_median_unit_price(accessor: MarketDataAccessor, pref_code: int) -> float | None:
     """Fetch MLIT median unit price (yen/m2) for a prefecture."""
     mlit = accessor.mlit
@@ -349,6 +390,7 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             "pref_name": PREFECTURES.get(pref_code, ""),
             "population": basics["population"],
             "households": basics["households"],
+            "census2025": _pop_momentum_block(f"{pref_code:02d}000"),
             "total_employment": basics["total_employment"],
             "persons_per_household": basics["persons_per_household"],
             "ebm": round(ebm, 2),
@@ -847,7 +889,7 @@ def compute_municipalities(accessor: MarketDataAccessor, pref_code: int) -> list
                     if df_pop is not None:
                         pop_data = get_area_population(df_pop, area_code)
                         if pop_data:
-                            population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                            population = pop_data.get("人口", 0)
                             households = pop_data.get("世帯数", 0)
                             if households > 0:
                                 persons_per_hh = population / households
@@ -855,6 +897,7 @@ def compute_municipalities(accessor: MarketDataAccessor, pref_code: int) -> list
                     segment = _classify_municipality(emp_data, total_emp, persons_per_hh)
 
             rec["segment"] = segment
+            rec["census2025"] = _pop_momentum_block(area_code)
 
             # 中分類版・+農林業版の計算（市区町村レベル）
             if df_mid is not None and national_mid:

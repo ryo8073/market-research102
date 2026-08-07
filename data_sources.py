@@ -636,13 +636,13 @@ class MarketDataAccessor:
                 pop_data = get_area_population(df_pop, area_code)
 
                 # 人口から需要推計（全国平均の1人あたり消費支出で按分）
-                population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                population = pop_data.get("人口", 0)
 
                 if supply and population > 0:
                     # 全国の小売販売総額と人口から1人あたり販売額を推計
                     national_supply = get_area_retail_sales(df_retail, "00000")
                     national_pop = get_area_population(df_pop, "00000")
-                    nat_population = national_pop.get("2015年（平成27年）の人口（組替）", 0)
+                    nat_population = national_pop.get("人口", 0)
 
                     if nat_population > 0 and national_supply:
                         sectors = []
@@ -682,11 +682,13 @@ class MarketDataAccessor:
                 pop_data = get_area_population(df_pop, area_code)
                 emp_data = get_area_employment(df_emp, area_code)
 
-                # 国勢調査2020テーブル: 「2015年の人口(組替)」は2020年境界に
-                # 組替えた2015年時点の人口（2020年人口ではない点に注意）
-                # 「世帯数」は2020年の世帯数
-                population = pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                # 国勢調査2025年 人口速報集計 (2026-05-29公表)。
+                # "人口"=2025年実測人口、"世帯数"=2025年世帯数。
+                # 5年間増減率は2020→2025の実測モメンタム（需要側先行指標）。
+                population = pop_data.get("人口", 0)
                 households = pop_data.get("世帯数", 0)
+                pop_change_pct = pop_data.get("5年間の人口増減率", 0)
+                hh_change_pct = pop_data.get("5年間の世帯増減率", 0)
 
                 total_emp = sum(emp_data.values()) if emp_data else 0
                 pph = population / households if households > 0 else 2.21
@@ -695,6 +697,8 @@ class MarketDataAccessor:
                     return {
                         "population": int(population),
                         "households": int(households),
+                        "pop_change_pct": round(float(pop_change_pct), 2),
+                        "hh_change_pct": round(float(hh_change_pct), 2),
                         "total_employment": int(total_emp),
                         "persons_per_household": round(pph, 2),
                     }
@@ -765,19 +769,29 @@ class MarketDataAccessor:
             total_pop = 0.0
             total_hh = 0.0
             total_emp = 0.0
+            total_pop_2020 = 0.0
+            total_hh_2020 = 0.0
             for pc in pref_codes:
                 area_code = f"{pc:02d}000"
                 pop_data = get_area_population(df_pop, area_code)
                 emp_data = get_area_employment(df_emp, area_code)
-                total_pop += pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                total_pop += pop_data.get("人口", 0)
                 total_hh += pop_data.get("世帯数", 0)
+                total_pop_2020 += pop_data.get("2020年（令和2年）の人口（組替）", 0)
+                total_hh_2020 += pop_data.get("2020年（令和2年）の世帯数（組替）", 0)
                 total_emp += sum(emp_data.values()) if emp_data else 0
 
             pph = total_pop / total_hh if total_hh > 0 else 2.21
+            pop_change_pct = ((total_pop - total_pop_2020) / total_pop_2020 * 100
+                              ) if total_pop_2020 > 0 else 0.0
+            hh_change_pct = ((total_hh - total_hh_2020) / total_hh_2020 * 100
+                             ) if total_hh_2020 > 0 else 0.0
             if total_pop > 0 and total_emp > 0:
                 return {
                     "population": int(total_pop),
                     "households": int(total_hh),
+                    "pop_change_pct": round(pop_change_pct, 2),
+                    "hh_change_pct": round(hh_change_pct, 2),
                     "total_employment": int(total_emp),
                     "persons_per_household": round(pph, 2),
                 }
@@ -806,7 +820,7 @@ class MarketDataAccessor:
                 area_code = f"{pc:02d}000"
                 sup = get_area_retail_sales(df_retail, area_code)  # 既にフィルタ済み（小売中分類のみ）
                 pop_data = get_area_population(df_pop, area_code)
-                combined_pop += pop_data.get("2015年（平成27年）の人口（組替）", 0)
+                combined_pop += pop_data.get("人口", 0)
                 for k, v in sup.items():
                     combined_supply[k] = combined_supply.get(k, 0.0) + v
 
@@ -815,7 +829,7 @@ class MarketDataAccessor:
 
             national_supply = get_area_retail_sales(df_retail, "00000")
             national_pop = get_area_population(df_pop, "00000")
-            nat_population = national_pop.get("2015年（平成27年）の人口（組替）", 0)
+            nat_population = national_pop.get("人口", 0)
             if nat_population <= 0:
                 return sample_data.TAKAMATSU_RETAIL_SECTORS, "sample_data"
 

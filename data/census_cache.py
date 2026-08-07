@@ -100,12 +100,32 @@ DS_EMPLOYMENT_MID = DatasetConfig(
     value_column="employees",
 )
 
-# --- 3. 人口・世帯数（国勢調査 2020） ---
+# --- 3. 人口・世帯数・5年間増減（国勢調査 2025年 人口速報集計） ---
+# scripts/download_population_2025.py で以下2テーブルをマージした専用CSV:
+#   0004050397 男女別人口(総数)      → "人口"(2025)
+#   0004050417 世帯数・増減・人口密度 → "世帯数","5年間の人口増減率" 等
+# 既存 census_population_2020.csv と long 形式スキーマ互換
+# (area_code, area_name, category_code, category_name, value)。
+# ダウンロードロジックが特殊なため download_all_datasets() からは除外し、
+# 事前生成済みキャッシュとして参照する。
 DS_POPULATION = DatasetConfig(
+    table_id="0004050397",
+    csv_name="census_population_2025.csv",
+    description="2025年国勢調査 人口・世帯・増減率（PER・住宅需要・人口モメンタム用）",
+    tab_filter=None,
+    cat_filters={},
+    skip_categories=set(),
+    name_map_id="tab",
+    name_resolver="none",
+    value_column="value",
+)
+
+# 旧版 (2020国勢調査 = 2015組替人口)。監査・比較用に定義のみ保持。
+DS_POPULATION_2020 = DatasetConfig(
     table_id="0003433220",
     csv_name="census_population_2020.csv",
-    description="人口・世帯数（PER・住宅需要計算用）",
-    tab_filter=None,  # 全表章項目取得
+    description="人口・世帯数 2020年国勢調査（旧: 2015組替人口）",
+    tab_filter=None,
     cat_filters={},
     skip_categories=set(),
     name_map_id="tab",
@@ -144,7 +164,6 @@ ALL_DATASETS = [
     DS_EMPLOYMENT_MAJOR,
     DS_EMPLOYMENT_MAJOR_2016,
     DS_EMPLOYMENT_MID,
-    DS_POPULATION,
     DS_RETAIL_SALES,
     DS_ESTABLISHMENTS,
 ]
@@ -465,6 +484,44 @@ def get_area_population(
     if area_df.empty:
         return {}
     return dict(zip(area_df["category_name"], area_df["value"]))
+
+
+def get_area_population_momentum(
+    df: pd.DataFrame,
+    area_code: str,
+) -> dict[str, float]:
+    """2025年国勢調査速報から地域の人口モメンタム指標を抽出する。
+
+    投資判断向け先行指標。EBM/PER が供給側(雇用)の構造を測るのに対し、
+    人口モメンタムは需要側が現に伸びているか縮んでいるかを直近実測で示す。
+
+    Returns
+    -------
+    dict: population / population_2020 / households / households_2020 /
+          pop_change_num / pop_change_pct / hh_change_num / hh_change_pct /
+          sex_ratio / area_km2 / density。値の無い指標はキーを省略。
+    """
+    raw = get_area_population(df, area_code)
+    if not raw:
+        return {}
+    field_map = {
+        "人口": "population",
+        "2020年（令和2年）の人口（組替）": "population_2020",
+        "世帯数": "households",
+        "2020年（令和2年）の世帯数（組替）": "households_2020",
+        "5年間の人口増減数": "pop_change_num",
+        "5年間の人口増減率": "pop_change_pct",
+        "5年間の世帯増減数": "hh_change_num",
+        "5年間の世帯増減率": "hh_change_pct",
+        "人口性比": "sex_ratio",
+        "面積（参考）": "area_km2",
+        "人口密度": "density",
+    }
+    out: dict[str, float] = {}
+    for jp, en in field_map.items():
+        if jp in raw:
+            out[en] = float(raw[jp])
+    return out
 
 
 # 小売業の中分類コード（56〜61）。CI102ギャップ分析の対象セクター。

@@ -128,9 +128,23 @@ st.title("📊 不動産市場分析ダッシュボード")
 st.markdown(f"### 対象: {_pref_name} {_city_name}")
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("総人口", f"{basics['population']:,}")
-c2.metric("総世帯数", f"{basics['households']:,}")
-c3.metric("総従業者数", f"{basics['total_employment']:,}")
+_popd = basics.get("pop_change_pct", 0.0)
+_hhd = basics.get("hh_change_pct", 0.0)
+c1.metric(
+    "総人口", f"{basics['population']:,}",
+    delta=(f"{_popd:+.1f}% (2020→25)" if _popd else None),
+    help="人口・世帯は2025年国勢調査 人口速報集計（総務省, 2026年5月公表）。"
+         "deltaは2020→2025の実測増減率（需要側の直近トレンド）。",
+)
+c2.metric(
+    "総世帯数", f"{basics['households']:,}",
+    delta=(f"{_hhd:+.1f}% (2020→25)" if _hhd else None),
+    help="世帯数の増減。人口減でも世帯増なら単身・小世帯化で賃貸需要は底堅い。",
+)
+c3.metric(
+    "総従業者数", f"{basics['total_employment']:,}",
+    help="就業者数は2021年経済センサス活動調査。人口(2025)とは時点差がある。",
+)
 c4.metric("平均世帯人員", f"{basics['persons_per_household']:.2f}")
 
 
@@ -608,7 +622,7 @@ Orlandoは Leisure 1.75・Financial 1.74・Transportation 1.50 と**強い特化
     with st.expander("ℹ️ データの時点と制限", expanded=True):
         st.caption(
             "経済センサス: 2021年6月時点（5年ごと更新、次回2026年）\n"
-            "国勢調査: 2020年10月時点（人口は2015年組替値）\n"
+            "国勢調査(人口・世帯): 2025年10月時点（令和7年 人口速報集計, 2026年5月公表）\n"
             "MLIT取引価格: 選択した四半期の実績（リアルタイムではない）\n"
             "これらは過去のスナップショットであり、"
             "現在の市場状況と異なる可能性があります。"
@@ -1764,7 +1778,7 @@ with tab_metro:
 - **EBM の絶対値ではなく『相対比較』で使う** — 都市圏間で比べて、低い圏ほど多角化
 - **基盤産業の中身を見る** — どの業種で特化しているかが、その都市圏の経済キャラクター
 
-注: 総雇用は経済センサス事業所所在地ベース、人口は国勢調査2020常住地ベース。
+注: 総雇用は経済センサス(2021)事業所所在地ベース、人口は国勢調査(2025速報)常住地ベース。
 両者の地理的単位がほぼ揃うことで都市圏レベルでは PER の歪みが解消される。
         """)
 
@@ -1802,7 +1816,12 @@ with tab_metro:
         # KPI cards
         st.subheader("経済圏 KPI")
         c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("人口", f"{metro_basics_data['population']:,}")
+        _mpopd = metro_basics_data.get("pop_change_pct", 0.0)
+        c1.metric(
+            "人口", f"{metro_basics_data['population']:,}",
+            delta=(f"{_mpopd:+.1f}% (2020→25)" if _mpopd else None),
+            help="2025年国勢調査 人口速報集計。deltaは2020→2025の圏域集計増減率。",
+        )
         c2.metric("総雇用", f"{int(total_emp_m):,}")
         c3.metric("PER", f"{per_m:.2f}",
                   help="教科書Orlando MSA: 1.91")

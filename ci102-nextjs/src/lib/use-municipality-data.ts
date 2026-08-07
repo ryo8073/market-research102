@@ -24,6 +24,14 @@ export interface MunicipalityData {
     density: number;
     source: string;
   };
+  // 過去6回分の国勢調査（2000-2025）人口・世帯時系列
+  pop_timeseries?: Array<{
+    year: number;
+    population: number;
+    households?: number;
+    pop_under15?: number;
+    pop_over65?: number;
+  }>;
   // NLNI spatial data (optional)
   num_stations?: number;
   daily_riders?: number;

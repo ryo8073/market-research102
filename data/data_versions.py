@@ -96,7 +96,7 @@ class PopulationCensusVersion:
     pop_key: str
 
 
-POPULATION_CENSUS_CURRENT: Final = PopulationCensusVersion(
+POPULATION_CENSUS_2020: Final = PopulationCensusVersion(
     survey_year=2020,
     label_short="2020年",
     label_full="国勢調査 2020年10月 (人口は2015年組替値)",
@@ -105,13 +105,30 @@ POPULATION_CENSUS_CURRENT: Final = PopulationCensusVersion(
     pop_key="2015年（平成27年）の人口（組替）",
 )
 
+# 現行版: 2025年国勢調査 人口速報集計 (2026-05-29 総務省統計局 公表)
+# 旧来の「2015年組替値」を廃し、2025年時点の実測人口・世帯数に更新。
+# 併せて 2020→2025 の人口・世帯増減率を投資判断向け先行指標として取得
+# (data/cache/census_population_2025.csv, scripts/download_population_2025.py)。
+POPULATION_CENSUS_CURRENT: Final = PopulationCensusVersion(
+    survey_year=2025,
+    label_short="2025年",
+    label_full="国勢調査 2025年10月 (人口速報集計)",
+    csv_suffix="2025",
+    table_id="0004050397",
+    pop_key="人口",
+)
+
+# 前回版エイリアス (シフトシェア・組替人口の参照用)
+POPULATION_CENSUS_PREVIOUS: Final = POPULATION_CENSUS_2020
+
 POPULATION_CENSUS_NEXT_PLAN: Final = {
     "survey_year": 2025,
     "survey_month": 10,
     "publication_year_estimate": 2027,
-    "label_short": "2025年 (公表予定)",
+    "label_short": "2025年 確定値 (公表予定)",
     "monitoring_url": "https://www.e-stat.go.jp/stat-search?page=1&toukei=00200521",
-    "note": "2025年人口の確定値が出れば PER 計算が大幅改善 (現在は2015年組替値を使用)",
+    "note": "2025年 人口速報集計は統合済み (2026-05-29公表)。確定値(2027年頃)公表後、"
+            "年齢別・就業状態別が加わり PER・住宅需要推計をさらに精緻化できる。",
 }
 
 

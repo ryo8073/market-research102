@@ -17,6 +17,7 @@ from data.data_versions import (
     ECONOMIC_CENSUS_CURRENT,
     ECONOMIC_CENSUS_PREVIOUS,
     POPULATION_CENSUS_CURRENT,
+    POPULATION_CENSUS_PREVIOUS,
     HISTORICAL_VERSIONS,
 )
 from data.census_cache import (
@@ -78,14 +79,22 @@ def test_csv_names_contain_previous_year():
 
 
 def test_population_pop_key_is_consistent():
-    """国勢調査 2020 テーブルの人口キー名が想定通りであること。
+    """現行(2025速報)の人口キー名が想定通りで、map_data と一致すること。
 
-    CLAUDE.md と data_versions.py の両方でハードコードされており、
-    どちらかだけ変更されると PER 計算が壊れる。
+    data_versions.py と map_data._POP_KEY の両方でハードコードされており、
+    どちらかだけ変更されると PER・小売ギャップ需要推計が壊れる。
+    2025年 人口速報集計では実測人口キーは "人口"（2015組替値は廃止）。
     """
     expected_key = POPULATION_CENSUS_CURRENT.pop_key
-    assert "2015" in expected_key, "国勢調査2020は2015年組替値を含む必要"
-    assert "組替" in expected_key
+    assert expected_key == "人口", "2025速報の人口キーは '人口'"
+    # map_data 側のキーと必ず一致していること（二重管理の同期チェック）
+    import map_data
+    assert map_data._POP_KEY == expected_key, (
+        "data_versions と map_data._POP_KEY の人口キーが不一致"
+    )
+    # 前回版(2020=2015組替)のキーは組替値であることを保持
+    assert "2015" in POPULATION_CENSUS_PREVIOUS.pop_key
+    assert "組替" in POPULATION_CENSUS_PREVIOUS.pop_key
 
 
 def test_publication_year_after_survey_year():

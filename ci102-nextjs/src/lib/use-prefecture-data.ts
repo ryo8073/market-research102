@@ -44,6 +44,14 @@ export interface PrefectureData {
   pop_projection?: Record<string, number>;
   pop_change_pct?: number;     // 20-year projection (2020→2040, NLNI推計)
   pop_change_10y_pct?: number; // 10-year projection (2020→2030, NLNI推計)
+  // 過去6回分の国勢調査（2000-2025）人口・世帯時系列
+  pop_timeseries?: Array<{
+    year: number;
+    population: number;
+    households?: number;
+    pop_under15?: number;
+    pop_over65?: number;
+  }>;
   // 2025年国勢調査 人口速報集計 (2026-05公表): 直近5年の「実測」モメンタム
   census2025?: {
     population: number;

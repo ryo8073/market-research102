@@ -3,9 +3,8 @@
 全国CSVキャッシュから47都道府県分のLQ/シフトシェア/ギャップ等を
 一括計算し、plotly choropleth 用の DataFrame を返す。
 
-注: 人口データは国勢調査2020テーブルの「2015年の人口（組替）」を使用。
-    これは2020年の市区町村境界に組替えた2015年時点の人口であり、
-    2020年時点の人口ではない。次回国勢調査（2025年）結果の公表後に更新予定。
+注: 人口データは2025年国勢調査 人口速報集計 (2026-05-29公表) を使用。
+    "人口"=2025年実測、"5年間の人口増減率"=2020→2025の実測モメンタム。
 """
 from __future__ import annotations
 
@@ -36,8 +35,11 @@ from data.census_cache import (
 from data.codes import PREFECTURES
 from data_sources import MarketDataAccessor
 
-# 人口キー（国勢調査2020テーブル）
-_POP_KEY = "2015年（平成27年）の人口（組替）"
+# 人口キー（2025年国勢調査 人口速報集計。category_name と一致）
+_POP_KEY = "人口"
+_POP_HH_KEY = "世帯数"
+_POP_CHANGE_KEY = "5年間の人口増減率"
+_HH_CHANGE_KEY = "5年間の世帯増減率"
 
 
 def _load_datasets(cache_dir: Path) -> dict[str, pd.DataFrame | None]:
@@ -335,6 +337,7 @@ def compute_prefecture_comparison(cache_dir_str: str | None = None) -> pd.DataFr
         basic_total = total_basic_employment(df_lq)
         total_emp = float(df_lq["local_emp"].sum())
         population = pop_data.get(_POP_KEY, 0)
+        pop_change_pct = pop_data.get(_POP_CHANGE_KEY, 0)
 
         if total_emp <= 0 or population <= 0:
             continue
@@ -346,6 +349,7 @@ def compute_prefecture_comparison(cache_dir_str: str | None = None) -> pd.DataFr
             "pref_code": pc,
             "pref_name": PREFECTURES.get(pc, ""),
             "population": int(population),
+            "pop_change_pct": round(float(pop_change_pct), 2),
             "total_emp": int(total_emp),
             "basic_emp": int(basic_total),
             "ebm": round(ebm, 2),

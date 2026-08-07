@@ -14,8 +14,17 @@ def _scorecard_to_dict(sc: ScorecardData) -> dict:
     """Convert ScorecardData to a JSON-serializable dict for the prompt."""
     return {
         "area_name": sc.area_name,
-        "population_2015_reclassified": sc.population,
-        "households": sc.households,
+        "population_2025": sc.population,
+        "households_2025": sc.households,
+        "population_momentum_2020_2025": {
+            "pop_change_pct": sc.pop_change_pct,
+            "household_change_pct": sc.hh_change_pct,
+            "national_pop_change_pct": sc.pop_change_pct_national,
+            "vs_national_gap_pt": sc.pop_momentum_gap,
+            "class": sc.pop_momentum_class,
+            "note": ("2020→2025の実測増減（総務省 令和7年国勢調査 人口速報集計, "
+                     "2026年5月公表）。需要側の直近実測トレンドであり予測ではない。"),
+        },
         "total_employment_2021": sc.total_employment,
         "ebm": round(sc.ebm, 2),
         "per": round(sc.per, 2),
@@ -64,6 +73,11 @@ SYSTEM_PROMPT = """\
 ### 実績トレンド（2016→2021）
 - 雇用の実際の増減とその意味
 
+### 人口モメンタム（2020→2025 実測）
+- population_momentum_2020_2025 を用い、需要側でこの市場が伸びているか縮んでいるかを断定的に述べる
+- 全国平均（national_pop_change_pct）と比較し相対的な強弱を示す
+- 人口と世帯の乖離（単身化・世帯細分化）があれば賃貸/住戸タイプへの含意を述べる
+
 ### 機会（Opportunities）
 - 箇条書きで具体的な投資機会を3つ以内
 
@@ -77,11 +91,12 @@ SYSTEM_PROMPT = """\
 - 具体的な次のステップを2-3個
 
 ## データの制約（必ず言及すること）
-- 人口データは「2015年の人口を2020年境界に組替えた値」であり、2020年人口ではない
-- 経済センサス: 2021年6月時点（次回2026年）
+- 人口・世帯数は2025年国勢調査 人口速報集計（2026年5月公表）の直近実測値
+- population_momentum_2020_2025 は2020→2025の実測増減率（予測ではなく確定的な直近トレンド）
+- 経済センサス（雇用・LQ・EBM・シフトシェア）: 2021年6月時点（次回2026年実施）
+- 供給側指標(EBM/PER/LQ=2021)と需要側指標(人口モメンタム=2025)には時点差がある。
+  両者を突き合わせ、「雇用構造は強いが人口は縮小」等の不整合があれば明示すること
 - MLIT取引価格: 特定四半期の実績
-- すべて過去のスナップショットであり、現在の市場と乖離している可能性がある
-- 人口は2015年以降減少している可能性がある（特に地方都市）
 
 ## 用語
 - LQ > 1.0: 基盤産業（域外から資金を呼ぶ）
