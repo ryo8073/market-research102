@@ -123,6 +123,13 @@ function computeZone(
 
 export const dynamic = "force-dynamic";
 
+/** 成功レスポンスにキャッシュヘッダーを付与（同じクエリは1時間キャッシュ） */
+function cachedJson(data: unknown) {
+  return NextResponse.json(data, {
+    headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+  });
+}
+
 export async function GET(request: NextRequest) {
   const center = request.nextUrl.searchParams.get("center");
   const thresholdStr = request.nextUrl.searchParams.get("threshold") ?? "10";
@@ -148,7 +155,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ center: centerCode, zone: [centerCode], stats: { n_members: 1, note: "Louvainゾーン未所属" }, method: "louvain_fallback" });
     }
     const zone = resData.zones[zoneId] ?? [centerCode];
-    return NextResponse.json({
+    return cachedJson({
       center: centerCode,
       resolution: Number(resolutionStr),
       zone,
@@ -188,7 +195,7 @@ export async function GET(request: NextRequest) {
 
   const zone = computeZone(centerCode, threshold, mergedOD, mergedEmployed);
 
-  return NextResponse.json({
+  return cachedJson({
     center: centerCode,
     threshold,
     zone,
