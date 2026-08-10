@@ -62,6 +62,7 @@ const PUBLIC_PATHS = [
   "/login",
   "/api/auth/login",
   "/api/auth/logout",
+  "/api/auth/external",  // Proformer連携トークン認証
   // 静的アセット (_next, favicon等) は matcher で除外済み
 ];
 
@@ -75,6 +76,22 @@ function isPublicPath(pathname: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ========== 0. Proformer連携: ?token= パラメータによる外部認証 ==========
+  const externalToken = request.nextUrl.searchParams.get("token");
+  if (externalToken && !pathname.startsWith("/api/auth/")) {
+    // トークン付きURLは /api/auth/external へリダイレクトし認証処理を委任
+    const authUrl = new URL("/api/auth/external", request.url);
+    authUrl.searchParams.set("token", externalToken);
+    // token以外のパラメータ（center, pref等）を保持してリダイレクト先に渡す
+    const redirectParams = new URLSearchParams();
+    request.nextUrl.searchParams.forEach((v, k) => {
+      if (k !== "token") redirectParams.set(k, v);
+    });
+    const redirectTarget = pathname + (redirectParams.toString() ? `?${redirectParams.toString()}` : "");
+    authUrl.searchParams.set("redirect", redirectTarget);
+    return NextResponse.redirect(authUrl);
+  }
 
   // ========== 1. 認証チェック (APP_PASSWORD 設定時のみ) ==========
   if (isAuthEnabled() && !isPublicPath(pathname)) {
