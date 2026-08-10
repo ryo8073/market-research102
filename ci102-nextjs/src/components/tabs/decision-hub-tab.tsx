@@ -552,6 +552,37 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
               </div>
             )}
 
+            {/* 閾値カスタム（通勤OD行列ベース） */}
+            {selectedCity && (
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:bg-indigo-950/20 p-2.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">通勤率で経済圏を動的生成:</span>
+                  {[5, 10, 15, 25].map((t) => (
+                    <button
+                      key={t}
+                      onClick={async () => {
+                        const code = selectedCity.area_code;
+                        try {
+                          const res = await fetch(`/api/commute-zone?center=${code}&threshold=${t}`);
+                          if (res.ok) {
+                            const data = await res.json();
+                            setEconZoneCodes(new Set(data.zone));
+                          }
+                        } catch (e) {
+                          console.error("[commute-zone]", e);
+                        }
+                      }}
+                      className="rounded border px-2.5 py-1 text-xs font-bold hover:bg-indigo-100 transition-colors"
+                    >{t}%</button>
+                  ))}
+                  <span className="text-[10px] text-muted-foreground">低い=広い経済圏 / 高い=狭い核心部</span>
+                </div>
+                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1">
+                  {selectedCity.area_name}の住民のうち、指定%以上が通勤先とする市区町村を再帰的に追加（2020年国勢調査 通勤OD行列）。
+                </p>
+              </div>
+            )}
+
             {/* プリセット（選択中の都道府県に関連するもののみ表示） */}
             <div className="flex flex-wrap gap-1.5">
               {ZONE_PRESETS.filter((p) => p.prefCodes.includes(prefCode ?? pref.pref_code)).length === 0 && (

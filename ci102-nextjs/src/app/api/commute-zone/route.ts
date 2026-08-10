@@ -1,0 +1,153 @@
+/**
+ * 通勤経済圏 動的生成API
+ *
+ * GET /api/commute-zone?center=13120&threshold=10
+ *
+ * 1. center（常住地）の都道府県 + 隣接県のOD行列を読み込み
+ * 2. centerから通勤率がthreshold%以上の市区町村を抽出
+ * 3. 再帰的に2次・3次の郊外を追加（UEA方式）
+ * 4. ゾーンメンバーと統計を返す
+ *
+ * レスポンス:
+ * {
+ *   center: "13120",
+ *   threshold: 10,
+ *   zone: ["13101", "13102", ...],
+ *   stats: { n_members: 147, n_centers: 8 },
+ *   method: "commute_od_10pct"
+ * }
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+
+// 隣接都道府県マップ（通勤流動が県境をまたぐ場合に対応）
+const ADJACENT_PREFS: Record<number, number[]> = {
+  1: [2], 2: [1,3,5], 3: [2,4,5], 4: [3,5,6,7], 5: [2,3,4,6],
+  6: [4,5,7,15], 7: [4,6,8,9,10,15], 8: [7,9,11,12], 9: [7,8,10,11,12],
+  10: [7,9,11,15,20], 11: [8,9,10,12,13,19,20], 12: [8,9,11,13],
+  13: [11,12,14,19], 14: [13,22], 15: [6,7,10,16,20],
+  16: [15,17,20,21], 17: [16,18,21], 18: [17,21,25,26],
+  19: [11,13,14,20,22], 20: [10,11,15,16,19,21,22,23],
+  21: [16,17,18,20,23,24,25], 22: [14,19,20,23], 23: [20,21,22,24],
+  24: [21,23,25,26,29,30], 25: [18,21,24,26], 26: [18,24,25,27,28,29],
+  27: [26,28,29,30], 28: [26,27,29,30,31,33], 29: [24,26,27,30],
+  30: [24,27,28,29], 31: [28,32,33], 32: [31,33,34,35],
+  33: [28,31,34,37], 34: [32,33,35,37], 35: [32,34,40,44],
+  36: [37,38,39], 37: [33,34,36,38], 38: [36,37,39,44],
+  39: [36,38], 40: [35,41,42,43,44], 41: [40,42,43],
+  42: [40,41,43], 43: [40,41,44,45,46], 44: [35,38,40,43,45],
+  45: [43,44,46], 46: [43,45,47], 47: [46],
+};
+
+interface ODData {
+  od: Record<string, Record<string, number>>;
+  total_employed: Record<string, number>;
+}
+
+// OD行列キャッシュ（サーバーレス関数内のメモリキャッシュ）
+const _odCache: Record<string, ODData> = {};
+
+async function loadOD(prefCode: number, baseUrl: string): Promise<ODData | null> {
+  const key = String(prefCode).padStart(2, "0");
+  if (_odCache[key]) return _odCache[key];
+
+  try {
+    const url = `${baseUrl}/data/commute_od/${key}.json`;
+    const res = await fetch(url, { next: { revalidate: 86400 } }); // 24h cache
+    if (!res.ok) return null;
+    const data: ODData = await res.json();
+    _odCache[key] = data;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function computeZone(
+  center: string,
+  threshold: number,
+  odMap: Record<string, Record<string, number>>,
+  totalEmployed: Record<string, number>,
+  maxTiers: number = 3,
+): string[] {
+  const zone = new Set<string>();
+  const queue = [center];
+  zone.add(center);
+
+  for (let tier = 0; tier < maxTiers; tier++) {
+    const nextQueue: string[] = [];
+    for (const target of queue) {
+      // targetに通勤している人が多い市区町村を探す
+      // = 各originについて、targetへの通勤者数 / originの総就業者数 >= threshold
+      for (const [origin, dests] of Object.entries(odMap)) {
+        if (zone.has(origin)) continue;
+        const commutersToTarget = dests[target] ?? 0;
+        const totalEmp = totalEmployed[origin] ?? 0;
+        if (totalEmp > 0 && commutersToTarget / totalEmp >= threshold / 100) {
+          zone.add(origin);
+          nextQueue.push(origin);
+        }
+      }
+    }
+    if (nextQueue.length === 0) break;
+    queue.length = 0;
+    queue.push(...nextQueue);
+  }
+
+  return Array.from(zone).sort();
+}
+
+export async function GET(request: NextRequest) {
+  const center = request.nextUrl.searchParams.get("center");
+  const thresholdStr = request.nextUrl.searchParams.get("threshold") ?? "10";
+  const threshold = Number(thresholdStr);
+
+  if (!center || center.length < 4) {
+    return NextResponse.json({ error: "center パラメータが必要です（市区町村コード5桁）" }, { status: 400 });
+  }
+  if (![5, 10, 15, 20, 25].includes(threshold)) {
+    return NextResponse.json({ error: "threshold は 5, 10, 15, 20, 25 のいずれか" }, { status: 400 });
+  }
+
+  const centerCode = center.padStart(5, "0");
+  const prefCode = parseInt(centerCode.slice(0, 2), 10);
+  const baseUrl = request.nextUrl.origin;
+
+  // 自県 + 隣接県のODデータをロード
+  const prefsToLoad = [prefCode, ...(ADJACENT_PREFS[prefCode] ?? [])];
+  const mergedOD: Record<string, Record<string, number>> = {};
+  const mergedEmployed: Record<string, number> = {};
+
+  await Promise.all(
+    prefsToLoad.map(async (pc) => {
+      const data = await loadOD(pc, baseUrl);
+      if (data) {
+        Object.assign(mergedOD, data.od);
+        Object.assign(mergedEmployed, data.total_employed);
+      }
+    })
+  );
+
+  if (Object.keys(mergedOD).length === 0) {
+    return NextResponse.json({
+      center: centerCode,
+      threshold,
+      zone: [centerCode],
+      stats: { n_members: 1, note: "OD行列データが未取得です" },
+      method: "fallback_single",
+    });
+  }
+
+  const zone = computeZone(centerCode, threshold, mergedOD, mergedEmployed);
+
+  return NextResponse.json({
+    center: centerCode,
+    threshold,
+    zone,
+    stats: {
+      n_members: zone.length,
+      prefs_loaded: prefsToLoad.length,
+    },
+    method: `commute_od_${threshold}pct`,
+  });
+}
