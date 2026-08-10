@@ -824,9 +824,10 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
   const allPrefs = allData ? Object.values(allData) : [];
 
   // 分類粒度トグル（major: 大分類17 / mid: 中分類95 / extended: +農林業補完）
+  // デフォルトは中分類（大野氏指摘: 大分類ではEBMが過大）
   type Granularity = "major" | "mid" | "extended";
-  const [granularity, setGranularity] = useState<Granularity>("major");
   const hasMid = pref.ebm_mid != null && pref.basic_ratio_mid != null;
+  const [granularity, setGranularity] = useState<Granularity>(hasMid ? "mid" : "major");
   const hasExtended = pref.ebm_mid_extended != null && pref.basic_ratio_mid_extended != null;
 
   // 選択された粒度に応じてアクティブな指標を切り替え
