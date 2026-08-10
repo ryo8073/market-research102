@@ -4,6 +4,93 @@ import { useState, useMemo } from "react";
 import { useMuniIndustryMatrix, useMuniIndustryMatrixMid, computeCustomMetro } from "@/lib/use-muni-industry";
 import { PREFECTURES } from "@/lib/codes";
 
+/* ── 推奨経済圏プリセット ── */
+interface EconZonePreset {
+  name: string;
+  description: string;
+  codes: string[];
+}
+
+const PRESETS: Record<string, EconZonePreset[]> = {
+  "首都圏": [
+    {
+      name: "都心5区",
+      description: "千代田・中央・港・新宿・渋谷 — オフィス・商業の核",
+      codes: ["13101", "13102", "13103", "13104", "13113"],
+    },
+    {
+      name: "都心8区",
+      description: "都心5区 + 文京・台東・豊島 — 業務集積エリア",
+      codes: ["13101", "13102", "13103", "13104", "13113", "13105", "13106", "13116"],
+    },
+    {
+      name: "城南エリア",
+      description: "品川・目黒・大田・世田谷 — 住工混在の職住近接圏",
+      codes: ["13109", "13110", "13111", "13112"],
+    },
+    {
+      name: "城北エリア",
+      description: "北・板橋・練馬・豊島 — 住宅主体の通勤圏",
+      codes: ["13117", "13119", "13120", "13116"],
+    },
+    {
+      name: "城東エリア",
+      description: "墨田・江東・台東・荒川・足立・葛飾・江戸川 — 下町産業圏",
+      codes: ["13107", "13108", "13106", "13118", "13121", "13122", "13123"],
+    },
+    {
+      name: "東京23区全域",
+      description: "特別区全23区 — 都区部の完全な経済圏",
+      codes: Array.from({ length: 23 }, (_, i) => `13${(101 + i).toString()}`),
+    },
+    {
+      name: "横浜・川崎圏",
+      description: "横浜市+川崎市 — 京浜工業地帯の核",
+      codes: [
+        "14101", "14102", "14103", "14104", "14105", "14106", "14107", "14108",
+        "14109", "14110", "14111", "14112", "14113", "14114", "14115", "14116",
+        "14117", "14118",
+        "14131", "14132", "14133", "14134", "14135", "14136", "14137",
+      ],
+    },
+  ],
+  "関西圏": [
+    {
+      name: "大阪市全域",
+      description: "大阪市24区 — 関西経済の中心",
+      codes: [
+        "27102", "27103", "27104", "27106", "27107", "27108", "27109", "27111",
+        "27113", "27114", "27115", "27116", "27117", "27118", "27119", "27120",
+        "27121", "27122", "27123", "27124", "27125", "27126", "27127", "27128",
+      ],
+    },
+  ],
+  "中部圏": [
+    {
+      name: "名古屋市全域",
+      description: "名古屋市16区 — 中京圏の中心",
+      codes: [
+        "23101", "23102", "23103", "23104", "23105", "23106", "23107", "23108",
+        "23109", "23110", "23111", "23112", "23113", "23114", "23115", "23116",
+      ],
+    },
+  ],
+  "九州": [
+    {
+      name: "福岡市全域",
+      description: "福岡市7区 — 九州経済の中心",
+      codes: ["40131", "40132", "40133", "40134", "40135", "40136", "40137"],
+    },
+  ],
+  "北海道": [
+    {
+      name: "札幌市全域",
+      description: "札幌市10区 — 北海道経済の中心",
+      codes: ["01101", "01102", "01103", "01104", "01105", "01106", "01107", "01108", "01109", "01110"],
+    },
+  ],
+};
+
 export default function CustomMetroTab() {
   const { matrix, loading, error } = useMuniIndustryMatrix();
   const { matrix: matrixMid, loading: loadingMid } = useMuniIndustryMatrixMid();
@@ -90,8 +177,36 @@ export default function CustomMetroTab() {
 
       <div className="rounded-lg border-l-4 border-l-blue-500 bg-blue-50 p-3 text-sm">
         <strong>💡 使い方</strong>:
-        左側で県を選んで市区町村にチェックを入れると、右側に合算結果（<strong>{granLabel}</strong>）が即座に表示されます。
-        都道府県をまたいで選択することも可能（例: 神奈川県と東京都を組み合わせて湘南＋多摩エリア）。
+        下の<strong>推奨経済圏</strong>をワンクリックで選択するか、左側で県を選んで市区町村にチェックを入れると、右側に合算結果（<strong>{granLabel}</strong>）が即座に表示されます。
+        都道府県をまたいで選択することも可能です。
+      </div>
+
+      {/* 推奨経済圏プリセット */}
+      <div className="rounded-xl border bg-white dark:bg-slate-900 p-4">
+        <p className="text-sm font-bold mb-2">推奨経済圏（ワンクリックで選択）</p>
+        <p className="text-xs text-muted-foreground mb-3">
+          経済基盤分析では、行政区ではなく<strong>一体的な経済圏</strong>を設定することが重要です。
+          以下は通勤・商業の結びつきに基づく代表的な経済圏です。選択後に追加・除外も可能です。
+        </p>
+        <div className="flex flex-wrap gap-4">
+          {Object.entries(PRESETS).map(([region, presets]) => (
+            <div key={region}>
+              <p className="text-[10px] font-bold text-muted-foreground mb-1">{region}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {presets.map((p) => (
+                  <button
+                    key={p.name}
+                    onClick={() => setSelectedAreas(new Set(p.codes))}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-bold hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                    title={p.description}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_1.3fr] gap-4">
