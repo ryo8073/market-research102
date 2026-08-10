@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CI102 不動産市場分析",
-  description: "CCIM CI102 Market Analysis for Japanese Real Estate Investment",
+  title: "不動産市場分析 | 投資エリア分析",
+  description: "不動産投資のための市場分析ダッシュボード — CCIM CI102手法に基づくエリア診断・経済基盤分析・経済圏評価",
 };
 
 export default function RootLayout({
