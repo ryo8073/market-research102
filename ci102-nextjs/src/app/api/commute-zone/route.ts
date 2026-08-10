@@ -1,26 +1,18 @@
 /**
- * 通勤経済圏 動的生成API
+ * 通勤経済圏 動的生成API（バンドル版）
+ *
+ * ODデータ・Louvainデータをサーバーレス関数内に直接バンドル。
+ * 自サイトへのfetchを排除し、認証問題・レイテンシを解消。
  *
  * GET /api/commute-zone?center=13120&threshold=10
- *
- * 1. center（常住地）の都道府県 + 隣接県のOD行列を読み込み
- * 2. centerから通勤率がthreshold%以上の市区町村を抽出
- * 3. 再帰的に2次・3次の郊外を追加（UEA方式）
- * 4. ゾーンメンバーと統計を返す
- *
- * レスポンス:
- * {
- *   center: "13120",
- *   threshold: 10,
- *   zone: ["13101", "13102", ...],
- *   stats: { n_members: 147, n_centers: 8 },
- *   method: "commute_od_10pct"
- * }
+ * GET /api/commute-zone?center=13120&method=louvain&resolution=1.0
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
-// 隣接都道府県マップ（通勤流動が県境をまたぐ場合に対応）
+// 隣接都道府県マップ
 const ADJACENT_PREFS: Record<number, number[]> = {
   1: [2], 2: [1,3,5], 3: [2,4,5], 4: [3,5,6,7], 5: [2,3,4,6],
   6: [4,5,7,15], 7: [4,6,8,9,10,15], 8: [7,9,11,12], 9: [7,8,10,11,12],
@@ -44,25 +36,57 @@ interface ODData {
   total_employed: Record<string, number>;
 }
 
-// OD行列キャッシュ（サーバーレス関数内のメモリキャッシュ）
+// メモリキャッシュ
 const _odCache: Record<string, ODData> = {};
+let _louvainCache: Record<string, { zones: Record<string, string[]>; muni_to_zone: Record<string, string> }> | null = null;
 
-async function loadOD(prefCode: number, baseUrl: string, cookieHeader?: string | null): Promise<ODData | null> {
+function loadODFromDisk(prefCode: number): ODData | null {
   const key = String(prefCode).padStart(2, "0");
   if (_odCache[key]) return _odCache[key];
 
-  try {
-    const url = `${baseUrl}/data/commute_od/${key}.json`;
-    const headers: Record<string, string> = {};
-    if (cookieHeader) headers["cookie"] = cookieHeader;
-    const res = await fetch(url, { headers, next: { revalidate: 86400 } });
-    if (!res.ok) return null;
-    const data: ODData = await res.json();
-    _odCache[key] = data;
-    return data;
-  } catch {
-    return null;
+  // public/data/commute_od/ はビルド時に .next/static/ にコピーされないため
+  // process.cwd() + public/ から読む（Vercel Node.js Runtime対応）
+  const candidates = [
+    join(process.cwd(), "public", "data", "commute_od", `${key}.json`),
+    join(process.cwd(), ".next", "server", "data", "commute_od", `${key}.json`),
+  ];
+
+  for (const path of candidates) {
+    try {
+      if (existsSync(path)) {
+        const raw = readFileSync(path, "utf-8");
+        const data: ODData = JSON.parse(raw);
+        _odCache[key] = data;
+        return data;
+      }
+    } catch {
+      continue;
+    }
   }
+  return null;
+}
+
+function loadLouvainFromDisk(): typeof _louvainCache {
+  if (_louvainCache) return _louvainCache;
+
+  const candidates = [
+    join(process.cwd(), "public", "data", "commute_louvain.json"),
+    join(process.cwd(), ".next", "server", "data", "commute_louvain.json"),
+  ];
+
+  for (const path of candidates) {
+    try {
+      if (existsSync(path)) {
+        const raw = readFileSync(path, "utf-8");
+        const data = JSON.parse(raw);
+        _louvainCache = data.resolutions;
+        return _louvainCache;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 function computeZone(
@@ -79,8 +103,6 @@ function computeZone(
   for (let tier = 0; tier < maxTiers; tier++) {
     const nextQueue: string[] = [];
     for (const target of queue) {
-      // targetに通勤している人が多い市区町村を探す
-      // = 各originについて、targetへの通勤者数 / originの総就業者数 >= threshold
       for (const [origin, dests] of Object.entries(odMap)) {
         if (zone.has(origin)) continue;
         const commutersToTarget = dests[target] ?? 0;
@@ -99,45 +121,28 @@ function computeZone(
   return Array.from(zone).sort();
 }
 
-// Louvainデータキャッシュ
-let _louvainCache: Record<string, { zones: Record<string, string[]>; muni_to_zone: Record<string, string> }> | null = null;
-
-async function loadLouvain(baseUrl: string, cookieHeader?: string | null): Promise<typeof _louvainCache> {
-  if (_louvainCache) return _louvainCache;
-  try {
-    const headers: Record<string, string> = {};
-    if (cookieHeader) headers["cookie"] = cookieHeader;
-    const res = await fetch(`${baseUrl}/data/commute_louvain.json`, { headers, next: { revalidate: 86400 } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    _louvainCache = data.resolutions;
-    return _louvainCache;
-  } catch {
-    return null;
-  }
-}
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const center = request.nextUrl.searchParams.get("center");
   const thresholdStr = request.nextUrl.searchParams.get("threshold") ?? "10";
   const threshold = Number(thresholdStr);
-  const method = request.nextUrl.searchParams.get("method") ?? "od"; // "od" or "louvain"
+  const method = request.nextUrl.searchParams.get("method") ?? "od";
   const resolutionStr = request.nextUrl.searchParams.get("resolution") ?? "1.0";
 
   if (!center || center.length < 4) {
     return NextResponse.json({ error: "center パラメータが必要です（市区町村コード5桁）" }, { status: 400 });
   }
 
+  const centerCode = center.padStart(5, "0");
+
   // Louvainモード
   if (method === "louvain") {
-    const baseUrl = request.nextUrl.origin;
-    const cookieHdr = request.headers.get("cookie");
-    const louvain = await loadLouvain(baseUrl, cookieHdr);
+    const louvain = loadLouvainFromDisk();
     if (!louvain || !louvain[resolutionStr]) {
       return NextResponse.json({ error: `Louvainデータが見つかりません（resolution=${resolutionStr}）` }, { status: 404 });
     }
     const resData = louvain[resolutionStr];
-    const centerCode = center.padStart(5, "0");
     const zoneId = resData.muni_to_zone[centerCode];
     if (!zoneId) {
       return NextResponse.json({ center: centerCode, zone: [centerCode], stats: { n_members: 1, note: "Louvainゾーン未所属" }, method: "louvain_fallback" });
@@ -153,30 +158,23 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // ODモード（既存）
+  // ODモード
   if (![5, 10, 15, 20, 25].includes(threshold)) {
     return NextResponse.json({ error: "threshold は 5, 10, 15, 20, 25 のいずれか" }, { status: 400 });
   }
 
-  const centerCode = center.padStart(5, "0");
   const prefCode = parseInt(centerCode.slice(0, 2), 10);
-  const baseUrl = request.nextUrl.origin;
-  const cookieHeader = request.headers.get("cookie");
-
-  // 自県 + 隣接県のODデータをロード
   const prefsToLoad = [prefCode, ...(ADJACENT_PREFS[prefCode] ?? [])];
   const mergedOD: Record<string, Record<string, number>> = {};
   const mergedEmployed: Record<string, number> = {};
 
-  await Promise.all(
-    prefsToLoad.map(async (pc) => {
-      const data = await loadOD(pc, baseUrl, cookieHeader);
-      if (data) {
-        Object.assign(mergedOD, data.od);
-        Object.assign(mergedEmployed, data.total_employed);
-      }
-    })
-  );
+  for (const pc of prefsToLoad) {
+    const data = loadODFromDisk(pc);
+    if (data) {
+      Object.assign(mergedOD, data.od);
+      Object.assign(mergedEmployed, data.total_employed);
+    }
+  }
 
   if (Object.keys(mergedOD).length === 0) {
     return NextResponse.json({
@@ -194,10 +192,7 @@ export async function GET(request: NextRequest) {
     center: centerCode,
     threshold,
     zone,
-    stats: {
-      n_members: zone.length,
-      prefs_loaded: prefsToLoad.length,
-    },
+    stats: { n_members: zone.length, prefs_loaded: prefsToLoad.length },
     method: `commute_od_${threshold}pct`,
   });
 }
