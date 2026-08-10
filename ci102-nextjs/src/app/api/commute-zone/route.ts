@@ -1,14 +1,82 @@
 /**
  * 通勤経済圏 動的生成API
  *
- * ODデータ・Louvainデータは public/data/ からfetchで読み込み。
- * サーバー側メモリキャッシュで2回目以降は即応答。
+ * ODデータ・Louvainデータは static import で直接バンドル。
+ * fetchもfsも不要 — 認証問題・NFTトレース問題を完全解消。
  *
  * GET /api/commute-zone?center=13120&threshold=10
  * GET /api/commute-zone?center=13120&method=louvain&resolution=1.0
  */
 
 import { NextRequest, NextResponse } from "next/server";
+
+// OD行列とLouvainデータをstatic importでバンドル
+import od01 from "@/../public/data/commute_od/01.json";
+import od02 from "@/../public/data/commute_od/02.json";
+import od03 from "@/../public/data/commute_od/03.json";
+import od04 from "@/../public/data/commute_od/04.json";
+import od05 from "@/../public/data/commute_od/05.json";
+import od06 from "@/../public/data/commute_od/06.json";
+import od07 from "@/../public/data/commute_od/07.json";
+import od08 from "@/../public/data/commute_od/08.json";
+import od09 from "@/../public/data/commute_od/09.json";
+import od10 from "@/../public/data/commute_od/10.json";
+import od11 from "@/../public/data/commute_od/11.json";
+import od12 from "@/../public/data/commute_od/12.json";
+import od13 from "@/../public/data/commute_od/13.json";
+import od14 from "@/../public/data/commute_od/14.json";
+import od15 from "@/../public/data/commute_od/15.json";
+import od16 from "@/../public/data/commute_od/16.json";
+import od17 from "@/../public/data/commute_od/17.json";
+import od18 from "@/../public/data/commute_od/18.json";
+import od19 from "@/../public/data/commute_od/19.json";
+import od20 from "@/../public/data/commute_od/20.json";
+import od21 from "@/../public/data/commute_od/21.json";
+import od22 from "@/../public/data/commute_od/22.json";
+import od23 from "@/../public/data/commute_od/23.json";
+import od24 from "@/../public/data/commute_od/24.json";
+import od25 from "@/../public/data/commute_od/25.json";
+import od26 from "@/../public/data/commute_od/26.json";
+import od27 from "@/../public/data/commute_od/27.json";
+import od28 from "@/../public/data/commute_od/28.json";
+import od29 from "@/../public/data/commute_od/29.json";
+import od30 from "@/../public/data/commute_od/30.json";
+import od31 from "@/../public/data/commute_od/31.json";
+import od32 from "@/../public/data/commute_od/32.json";
+import od33 from "@/../public/data/commute_od/33.json";
+import od34 from "@/../public/data/commute_od/34.json";
+import od35 from "@/../public/data/commute_od/35.json";
+import od36 from "@/../public/data/commute_od/36.json";
+import od37 from "@/../public/data/commute_od/37.json";
+import od38 from "@/../public/data/commute_od/38.json";
+import od39 from "@/../public/data/commute_od/39.json";
+import od40 from "@/../public/data/commute_od/40.json";
+import od41 from "@/../public/data/commute_od/41.json";
+import od42 from "@/../public/data/commute_od/42.json";
+import od43 from "@/../public/data/commute_od/43.json";
+import od44 from "@/../public/data/commute_od/44.json";
+import od45 from "@/../public/data/commute_od/45.json";
+import od46 from "@/../public/data/commute_od/46.json";
+import od47 from "@/../public/data/commute_od/47.json";
+import louvainData from "@/../public/data/commute_louvain.json";
+
+interface ODData {
+  od: Record<string, Record<string, number>>;
+  total_employed: Record<string, number>;
+}
+
+const OD_MAP: Record<number, ODData> = {
+  1: od01, 2: od02, 3: od03, 4: od04, 5: od05, 6: od06, 7: od07,
+  8: od08, 9: od09, 10: od10, 11: od11, 12: od12, 13: od13, 14: od14,
+  15: od15, 16: od16, 17: od17, 18: od18, 19: od19, 20: od20, 21: od21,
+  22: od22, 23: od23, 24: od24, 25: od25, 26: od26, 27: od27, 28: od28,
+  29: od29, 30: od30, 31: od31, 32: od32, 33: od33, 34: od34, 35: od35,
+  36: od36, 37: od37, 38: od38, 39: od39, 40: od40, 41: od41, 42: od42,
+  43: od43, 44: od44, 45: od45, 46: od46, 47: od47,
+};
+
+const LOUVAIN: Record<string, { zones: Record<string, string[]>; muni_to_zone: Record<string, string> }> =
+  (louvainData as { resolutions: typeof LOUVAIN }).resolutions;
 
 // 隣接都道府県マップ
 const ADJACENT_PREFS: Record<number, number[]> = {
@@ -28,51 +96,6 @@ const ADJACENT_PREFS: Record<number, number[]> = {
   42: [40,41,43], 43: [40,41,44,45,46], 44: [35,38,40,43,45],
   45: [43,44,46], 46: [43,45,47], 47: [46],
 };
-
-interface ODData {
-  od: Record<string, Record<string, number>>;
-  total_employed: Record<string, number>;
-}
-
-// メモリキャッシュ
-const _odCache: Record<string, ODData> = {};
-let _louvainCache: Record<string, { zones: Record<string, string[]>; muni_to_zone: Record<string, string> }> | null = null;
-
-/**
- * ODデータをfetchで読み込み（内部URL）。
- * Vercelではpublic/はCDN配信されるため、自サイトURLでfetchする。
- * API RouteからのfetchはサーバーサイドなのでCookieは不要（internal request）。
- */
-async function loadOD(prefCode: number, baseUrl: string): Promise<ODData | null> {
-  const key = String(prefCode).padStart(2, "0");
-  if (_odCache[key]) return _odCache[key];
-  try {
-    // Vercel内部ではpublic/のファイルはCDN経由でアクセス可能
-    // 認証はproxyのmiddlewareで処理されるが、サーバーサイドfetchはmiddlewareを通らない場合がある
-    // そのため直接URLでfetchする
-    const url = `${baseUrl}/data/commute_od/${key}.json`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data: ODData = await res.json();
-    _odCache[key] = data;
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-async function loadLouvain(baseUrl: string): Promise<typeof _louvainCache> {
-  if (_louvainCache) return _louvainCache;
-  try {
-    const res = await fetch(`${baseUrl}/data/commute_louvain.json`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    _louvainCache = data.resolutions;
-    return _louvainCache;
-  } catch {
-    return null;
-  }
-}
 
 function computeZone(
   center: string,
@@ -106,8 +129,6 @@ function computeZone(
   return Array.from(zone).sort();
 }
 
-export const dynamic = "force-dynamic";
-
 /** 成功レスポンスにキャッシュヘッダーを付与 */
 function cachedJson(data: unknown) {
   return NextResponse.json(data, {
@@ -127,18 +148,16 @@ export async function GET(request: NextRequest) {
   }
 
   const centerCode = center.padStart(5, "0");
-  const baseUrl = request.nextUrl.origin;
 
   // Louvainモード
   if (method === "louvain") {
-    const louvain = await loadLouvain(baseUrl);
-    if (!louvain || !louvain[resolutionStr]) {
+    const resData = LOUVAIN[resolutionStr];
+    if (!resData) {
       return NextResponse.json({ error: `Louvainデータが見つかりません（resolution=${resolutionStr}）` }, { status: 404 });
     }
-    const resData = louvain[resolutionStr];
     const zoneId = resData.muni_to_zone[centerCode];
     if (!zoneId) {
-      return NextResponse.json({ center: centerCode, zone: [centerCode], stats: { n_members: 1, note: "Louvainゾーン未所属" }, method: "louvain_fallback" });
+      return cachedJson({ center: centerCode, zone: [centerCode], stats: { n_members: 1, note: "Louvainゾーン未所属" }, method: "louvain_fallback" });
     }
     const zone = resData.zones[zoneId] ?? [centerCode];
     return cachedJson({
@@ -161,22 +180,20 @@ export async function GET(request: NextRequest) {
   const mergedOD: Record<string, Record<string, number>> = {};
   const mergedEmployed: Record<string, number> = {};
 
-  await Promise.all(
-    prefsToLoad.map(async (pc) => {
-      const data = await loadOD(pc, baseUrl);
-      if (data) {
-        Object.assign(mergedOD, data.od);
-        Object.assign(mergedEmployed, data.total_employed);
-      }
-    })
-  );
+  for (const pc of prefsToLoad) {
+    const data = OD_MAP[pc];
+    if (data) {
+      Object.assign(mergedOD, data.od);
+      Object.assign(mergedEmployed, data.total_employed);
+    }
+  }
 
   if (Object.keys(mergedOD).length === 0) {
     return NextResponse.json({
       center: centerCode,
       threshold,
       zone: [centerCode],
-      stats: { n_members: 1, note: "OD行列データが未取得です" },
+      stats: { n_members: 1, note: "OD行列データが見つかりません" },
       method: "fallback_single",
     });
   }

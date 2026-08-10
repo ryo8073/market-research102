@@ -637,9 +637,10 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                   </p>
                 )}
 
-                <p className="text-[9px] text-muted-foreground">
-                  通勤率: OD行列から指定%以上の通勤先を再帰追加 ｜ AI検出: Louvainアルゴリズムで通勤ネットワークの最適分割を自動検出
-                </p>
+                <div className="text-[9px] text-muted-foreground space-y-0.5">
+                  <p><strong>通勤率</strong> = この物件の影響範囲。選んだ地域を中心に「住民の○%以上が通勤する先」を放射的に追加。</p>
+                  <p><strong>AI検出</strong> = この街の経済的な仲間。全国の通勤ネットワークから「互いに行き来が多いグループ」を自動検出。</p>
+                </div>
               </div>
               );
             })()}
