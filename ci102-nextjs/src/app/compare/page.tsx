@@ -769,7 +769,7 @@ function PercentileSection({ prefs, allPrefs }: { prefs: PrefectureData[]; allPr
                   className="absolute top-0.5 w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
                   style={{ left: `calc(${pp.pct}% - 10px)`, backgroundColor: COMPARE_COLORS[i] }}
                 >
-                  <span className="text-[7px] text-white font-bold">{i + 1}</span>
+                  <span className="text-[11px] text-white font-bold">{i + 1}</span>
                 </div>
               ))}
             </div>

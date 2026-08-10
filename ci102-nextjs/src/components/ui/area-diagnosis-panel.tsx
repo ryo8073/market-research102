@@ -487,9 +487,9 @@ export function AreaDiagnosisPanel({
         <div className="rounded-xl border bg-slate-50 dark:bg-slate-900/40 px-4 py-3 mb-4">
           <p className="text-[11px] font-bold text-muted-foreground mb-2">この分析で答える3つの問い</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <div className="text-[11.5px] leading-snug"><span className="font-bold">1. 借り手・買い手はいるか？</span><span className="text-muted-foreground"> → 需要スコア</span></div>
-            <div className="text-[11.5px] leading-snug"><span className="font-bold">2. 地域経済は自立しているか？</span><span className="text-muted-foreground"> → 供給スコア</span></div>
-            <div className="text-[11.5px] leading-snug"><span className="font-bold">3. 10年後も需要は続くか？</span><span className="text-muted-foreground"> → 将来性スコア</span></div>
+            <div className="text-[12px] leading-snug"><span className="font-bold">1. 借り手・買い手はいるか？</span><span className="text-muted-foreground"> → 需要スコア</span></div>
+            <div className="text-[12px] leading-snug"><span className="font-bold">2. 地域経済は自立しているか？</span><span className="text-muted-foreground"> → 供給スコア</span></div>
+            <div className="text-[12px] leading-snug"><span className="font-bold">3. 10年後も需要は続くか？</span><span className="text-muted-foreground"> → 将来性スコア</span></div>
           </div>
         </div>
 
@@ -815,7 +815,7 @@ export function AreaDiagnosisPanel({
               const trendColor = accel > 0.5 ? "#16A34A" : accel < -0.5 ? "#DC2626" : "#CA8A04";
               return (
                 <div className="mt-2 rounded-lg border bg-muted/30 px-3 py-2">
-                  <p className="text-[11.5px] leading-relaxed">
+                  <p className="text-[12px] leading-relaxed">
                     <span className="font-bold" style={{ color: trendColor }}>トレンド: {trend}</span>
                     <span className="text-slate-600 dark:text-slate-300 ml-1">
                       — 直近5年の変化率 {latest > 0 ? "+" : ""}{latest.toFixed(2)}%（前期比 {accel > 0 ? "+" : ""}{accel.toFixed(2)}pt）。
@@ -846,7 +846,7 @@ export function AreaDiagnosisPanel({
             <p className="text-[11px] text-muted-foreground mt-1.5 mb-2">
               雇用の増減を「①日本全体の変化 ②この街に多い業種の変化 ③それ以外の差（＝この街の競争力）」に分解。③がプラスなら、全国平均を上回るこの街固有の強みがあります。
             </p>
-            <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200">
+            <p className="text-[12px] leading-relaxed text-slate-700 dark:text-slate-200">
               実際の変化 <strong>{fmtNum(ssActual)} 人</strong> ＝ 日本全体 {fmtNum(ssNat)} ＋ 多い業種 {fmtNum(ssMix)} ＋ <strong>この街の競争力 {fmtNum(rs)}</strong>
             </p>
             <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2.5">
@@ -900,13 +900,13 @@ export function AreaDiagnosisPanel({
             {strengthsTop.length ? (
               strengthsTop.map((e, i) => (
                 <div key={i} className="mb-2 last:mb-0">
-                  <p className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100">{e.fact}</p>
+                  <p className="text-[12px] font-bold text-slate-800 dark:text-slate-100">{e.fact}</p>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">{e.implication}</p>
                   <p className="text-[11px] text-muted-foreground">{e.source}</p>
                 </div>
               ))
             ) : (
-              <p className="text-[11.5px] text-muted-foreground">際立った強みは限定的。</p>
+              <p className="text-[12px] text-muted-foreground">際立った強みは限定的。</p>
             )}
           </div>
           <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/20 px-4 py-3">
@@ -914,13 +914,13 @@ export function AreaDiagnosisPanel({
             {risksTop.length ? (
               risksTop.map((e, i) => (
                 <div key={i} className="mb-2 last:mb-0">
-                  <p className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100">{e.fact}</p>
+                  <p className="text-[12px] font-bold text-slate-800 dark:text-slate-100">{e.fact}</p>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">{e.implication}</p>
                   <p className="text-[11px] text-muted-foreground">{e.source}</p>
                 </div>
               ))
             ) : (
-              <p className="text-[11.5px] text-muted-foreground">重大なリスクは検出されず。</p>
+              <p className="text-[12px] text-muted-foreground">重大なリスクは検出されず。</p>
             )}
           </div>
         </div>

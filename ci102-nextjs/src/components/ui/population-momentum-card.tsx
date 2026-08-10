@@ -179,7 +179,7 @@ export function PopulationMomentumCard({
                   style={{ width: 15, height: 15, left: `${mX(supplyScore)}%`, top: `${mY(gap)}%`, transform: "translate(-50%,-50%)", backgroundColor: st.color }}>
                   <span className="absolute left-[18px] -top-0.5 whitespace-nowrap rounded bg-white/85 dark:bg-slate-900/80 px-1 text-[11px] font-extrabold text-slate-900 dark:text-white">{short}</span>
                 </div>
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8.5px] font-semibold text-muted-foreground">供給スコア（雇用基盤）→</span>
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[11px] font-semibold text-muted-foreground">供給スコア（雇用基盤）→</span>
               </div>
               <p className="text-[11px] text-muted-foreground text-center mt-1.5">
                 縦=需要が全国平均より強い/弱い　横=供給(CI102スコア {Math.round(supplyScore)}/100)

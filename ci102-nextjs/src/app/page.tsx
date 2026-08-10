@@ -183,10 +183,10 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
           />
         </div>
         {/* Zone labels */}
-        <span className="absolute text-[8px] text-muted-foreground" style={{ left: 4, bottom: 0 }}>要注意</span>
-        <span className="absolute text-[8px] text-muted-foreground" style={{ left: 52, top: 8 }}>標準</span>
-        <span className="absolute text-[8px] text-muted-foreground" style={{ right: 52, top: 8 }}>良好</span>
-        <span className="absolute text-[8px] text-muted-foreground" style={{ right: 4, bottom: 0 }}>優良</span>
+        <span className="absolute text-[11px] text-muted-foreground" style={{ left: 4, bottom: 0 }}>要注意</span>
+        <span className="absolute text-[11px] text-muted-foreground" style={{ left: 52, top: 8 }}>標準</span>
+        <span className="absolute text-[11px] text-muted-foreground" style={{ right: 52, top: 8 }}>良好</span>
+        <span className="absolute text-[11px] text-muted-foreground" style={{ right: 4, bottom: 0 }}>優良</span>
         {/* Score number */}
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
           <span className="text-3xl font-bold" style={{ color }}>{Math.round(score)}</span>
