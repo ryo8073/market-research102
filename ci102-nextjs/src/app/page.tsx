@@ -183,14 +183,14 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
           />
         </div>
         {/* Zone labels */}
-        <span className="absolute text-[11px] text-muted-foreground" style={{ left: 4, bottom: 0 }}>要注意</span>
-        <span className="absolute text-[11px] text-muted-foreground" style={{ left: 52, top: 8 }}>標準</span>
-        <span className="absolute text-[11px] text-muted-foreground" style={{ right: 52, top: 8 }}>良好</span>
-        <span className="absolute text-[11px] text-muted-foreground" style={{ right: 4, bottom: 0 }}>優良</span>
+        <span className="absolute text-xs text-muted-foreground" style={{ left: 4, bottom: 0 }}>要注意</span>
+        <span className="absolute text-xs text-muted-foreground" style={{ left: 52, top: 8 }}>標準</span>
+        <span className="absolute text-xs text-muted-foreground" style={{ right: 52, top: 8 }}>良好</span>
+        <span className="absolute text-xs text-muted-foreground" style={{ right: 4, bottom: 0 }}>優良</span>
         {/* Score number */}
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
           <span className="text-3xl font-bold" style={{ color }}>{Math.round(score)}</span>
-          <span className="text-[11px] text-muted-foreground">/ 100</span>
+          <span className="text-xs text-muted-foreground">/ 100</span>
         </div>
       </div>
       <p className="text-sm font-semibold mt-1" style={{ color }}>{label}</p>
@@ -223,7 +223,7 @@ function BenchmarkBar({ value, min, max, median, label, unit, higherIsBetter = t
         {/* Median marker */}
         <div className="absolute top-0 w-0.5 h-2 bg-gray-500 dark:bg-gray-400" style={{ left: `${medPct}%` }} />
       </div>
-      <div className="flex justify-between text-[11px] text-muted-foreground">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>最低 {min.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
         <span>中央値 {median.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
         <span>最高 {max.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
@@ -377,7 +377,7 @@ function ScorecardRadar({ pref, allData }: { pref: PrefectureData; allData: Reco
           <Legend wrapperStyle={{ fontSize: 11 }} />
         </RadarChart>
       </ResponsiveContainer>
-      <p className="text-[11px] text-muted-foreground text-center">
+      <p className="text-xs text-muted-foreground text-center">
         各指標を全47都道府県のmin-maxで0-100にスケーリング。外側ほど高い値。
       </p>
     </div>
@@ -498,7 +498,7 @@ function PopulationProjectionPanel({ pref }: { pref: PrefectureData }) {
           <Line type="monotone" dataKey="指数" stroke="#1B2A4A" strokeWidth={2} dot />
         </LineChart>
       </ResponsiveContainer>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-xs text-slate-500">
         ※ 2020年=100 として指数化。グラフはコホート要因法による国立社会保障・人口問題研究所の地域別将来推計（H30推計）。
         物件耐用年数（RC造50年）の範囲で需要動態を把握する基礎データ。
       </p>
@@ -659,7 +659,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
               <div className="text-slate-500">浸水リスク面積率</div>
               <div className="font-semibold">{city.flood_risk_pct.toFixed(1)}%</div>
               {city.max_flood_depth != null && (
-                <div className="text-[11px] text-rose-700">
+                <div className="text-xs text-rose-700">
                   最大浸水深: {city.max_flood_depth === 11 ? "0.5m未満" :
                               city.max_flood_depth === 12 ? "0.5-3m" :
                               city.max_flood_depth === 13 ? "3-5m" :
@@ -675,7 +675,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
               <div className="text-slate-500">最寄り駅まで</div>
               <div className="font-semibold">車{city.nearest_station_min.toFixed(0)}分</div>
               {city.nearest_station_name && (
-                <div className="text-[11px] text-slate-500 truncate" title={city.nearest_station_name}>
+                <div className="text-xs text-slate-500 truncate" title={city.nearest_station_name}>
                   {city.nearest_station_name}駅
                 </div>
               )}
@@ -685,7 +685,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
             <div className="rounded border p-2">
               <div className="text-slate-500">車依存度スコア</div>
               <div className="font-semibold">{city.car_dependency_score.toFixed(0)}</div>
-              <div className="text-[11px] text-slate-500">
+              <div className="text-xs text-slate-500">
                 {city.car_dependency_score >= 70 ? "高（山間・離島型）" :
                  city.car_dependency_score >= 50 ? "中（地方郊外）" :
                  city.car_dependency_score >= 30 ? "低（都市型）" : "極低"}
@@ -707,7 +707,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
             <div className="rounded border p-2">
               <div className="text-slate-500">DID面積 / 人口</div>
               <div className="font-semibold">{city.did_area_ha.toFixed(0)} ha</div>
-              <div className="text-[11px] text-slate-500">
+              <div className="text-xs text-slate-500">
                 {city.did_population != null ? `${city.did_population.toLocaleString()}人` : ""}
               </div>
             </div>
@@ -716,7 +716,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
             <div className="rounded border p-2 bg-purple-50">
               <div className="text-slate-500">立地適正化計画</div>
               <div className="font-semibold text-purple-700">策定済み</div>
-              <div className="text-[11px] text-slate-500">コンパクトシティ施策対象</div>
+              <div className="text-xs text-slate-500">コンパクトシティ施策対象</div>
             </div>
           )}
         </div>
@@ -734,7 +734,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
             {activeTopLq.slice(0, 5).map((r) => (
               <div key={r.industry} className="rounded border p-2 text-xs">
                 <div className="font-medium truncate" title={r.industry}>{r.industry}</div>
-                <div className="text-[11px] text-slate-500">LQ {r.lq.toFixed(2)} / 基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</div>
+                <div className="text-xs text-slate-500">LQ {r.lq.toFixed(2)} / 基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</div>
               </div>
             ))}
           </div>
@@ -1353,7 +1353,7 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
               <h3 className="text-sm font-semibold">
                 基盤産業 TOP {Math.min(activeTopLq.length, 10)}
               </h3>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-xs text-slate-500">
                 {granularity === "major" ? "大分類17業種" : granularity === "mid" ? "中分類95業種" : "+農林業補完"}
                 {" "}({activeNBasicIndustries}業種が LQ&gt;1.0)
               </span>
@@ -1362,12 +1362,12 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
               {activeTopLq.slice(0, granularity === "major" ? 5 : 10).map((r, i) => (
                 <div key={r.industry} className="flex justify-between items-center rounded-lg border p-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#2A9D8F]/10 text-[#2A9D8F] text-[11px] font-bold">{i + 1}</span>
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#2A9D8F]/10 text-[#2A9D8F] text-xs font-bold">{i + 1}</span>
                     <span className="text-xs font-medium">{r.industry}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-bold text-[#2A9D8F]">LQ {r.lq.toFixed(2)}</span>
-                    <p className="text-[11px] text-muted-foreground">基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</p>
+                    <p className="text-xs text-muted-foreground">基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</p>
                   </div>
                 </div>
               ))}
@@ -1676,7 +1676,7 @@ function DashboardContent() {
               </TabsTrigger>
 
               {/* ── セパレーター ── */}
-              <span className="hidden md:inline self-center px-1 text-[11px] text-slate-400 select-none">|</span>
+              <span className="hidden md:inline self-center px-1 text-xs text-slate-400 select-none">|</span>
 
               {/* ── 詳細深掘り ── */}
               <TabsTrigger value="scorecard" className="text-xs md:text-sm">

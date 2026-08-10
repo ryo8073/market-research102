@@ -106,7 +106,7 @@ function AdminInner() {
                 .sort((a, b) => b[1] - a[1])
                 .map(([action, count]) => (
                   <div key={action} className="rounded border p-2">
-                    <div className="text-[11px] text-slate-500">{action}</div>
+                    <div className="text-xs text-slate-500">{action}</div>
                     <div className="text-xl font-bold">{count.toLocaleString()}</div>
                   </div>
                 ))}
@@ -171,10 +171,10 @@ function AdminInner() {
                         {new Date(e.ts).toLocaleString("ja-JP", { hour12: false })}
                       </td>
                       <td className="p-1 font-medium">{e.action}</td>
-                      <td className="p-1 font-mono text-[11px]">{e.sid?.substring(0, 8) ?? "-"}</td>
+                      <td className="p-1 font-mono text-xs">{e.sid?.substring(0, 8) ?? "-"}</td>
                       <td className="text-right p-1">{e.status ?? "-"}</td>
                       <td className="text-right p-1">{e.ms ?? "-"}</td>
-                      <td className="p-1 text-[11px] text-slate-600 max-w-md truncate">
+                      <td className="p-1 text-xs text-slate-600 max-w-md truncate">
                         {e.meta ? JSON.stringify(e.meta) : ""}
                       </td>
                     </tr>
@@ -183,7 +183,7 @@ function AdminInner() {
               </table>
             </div>
             {data.fetched_at && (
-              <p className="text-[11px] text-slate-400 mt-2">
+              <p className="text-xs text-slate-400 mt-2">
                 取得時刻: {new Date(data.fetched_at).toLocaleString("ja-JP")}
               </p>
             )}

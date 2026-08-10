@@ -191,7 +191,7 @@ export default function CustomMetroTab() {
         <div className="flex flex-wrap gap-4">
           {Object.entries(PRESETS).map(([region, presets]) => (
             <div key={region}>
-              <p className="text-[11px] font-bold text-muted-foreground mb-1">{region}</p>
+              <p className="text-xs font-bold text-muted-foreground mb-1">{region}</p>
               <div className="flex flex-wrap gap-1.5">
                 {presets.map((p) => (
                   <button
@@ -381,7 +381,7 @@ function KpiBox({ label, value, sub }: { label: string; value: string; sub?: str
     <div className="rounded-lg border bg-white p-3">
       <div className="text-xs text-slate-500">{label}</div>
       <div className="text-xl font-semibold mt-1">{value}</div>
-      {sub && <div className="text-[11px] text-slate-400 mt-0.5">{sub}</div>}
+      {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
     </div>
   );
 }

@@ -229,7 +229,7 @@ export default function GapTab({ sectors, selectedCity }: Props) {
             </ResponsiveContainer>
           );
         })()}
-        <div className="flex justify-center gap-6 mt-2 text-[11px] text-muted-foreground">
+        <div className="flex justify-center gap-6 mt-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#E76F51]/70" />← 供給（年間販売額）</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#2A9D8F]/70" />需要（推定購買力）→</span>
         </div>

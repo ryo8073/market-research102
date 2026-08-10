@@ -779,12 +779,12 @@ export default function LearnPage() {
                   <thead>
                     <tr>
                       <th className="text-left border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">地域</th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">総合<br/><span className="text-[11px] font-normal text-muted-foreground">/100</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">EBM<br/><span className="text-[11px] font-normal text-muted-foreground">/20</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">基盤比率<br/><span className="text-[11px] font-normal text-muted-foreground">/20</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">RS<br/><span className="text-[11px] font-normal text-muted-foreground">/25</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">ギャップ<br/><span className="text-[11px] font-normal text-muted-foreground">/20</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">規模<br/><span className="text-[11px] font-normal text-muted-foreground">/15</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">総合<br/><span className="text-xs font-normal text-muted-foreground">/100</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">EBM<br/><span className="text-xs font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">基盤比率<br/><span className="text-xs font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">RS<br/><span className="text-xs font-normal text-muted-foreground">/25</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">ギャップ<br/><span className="text-xs font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">規模<br/><span className="text-xs font-normal text-muted-foreground">/15</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1207,7 +1207,7 @@ export default function LearnPage() {
                   <tr><td className="py-1">大阪圏2府2県<strong>合算</strong></td><td className="text-right text-rose-700">28.98</td><td className="text-right">3.5%</td><td className="pl-2 text-rose-700">合算でさらに悪化</td></tr>
                 </tbody>
               </table>
-              <p className="text-[11px] mt-2 text-slate-700">
+              <p className="text-xs mt-2 text-slate-700">
                 合算で EBM が上がる理由: 周辺県を加えると地域シェアが全国平均に近づき LQ&gt;1業種の優位性が薄まる。
                 教科書の MSA は中心都市+一体的な通勤圏を指すが、日本の1都3県 (3,613万人) は規模が大きすぎる可能性。
               </p>

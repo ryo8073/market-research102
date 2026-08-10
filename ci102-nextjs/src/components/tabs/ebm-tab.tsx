@@ -278,7 +278,7 @@ export default function EbmTab({ localEmp, nationalEmp, localEmpMid, nationalEmp
                     {/* Arrow with multiplier (before each step except first) */}
                     {i > 0 && (
                       <div className="flex flex-col items-center mx-1 w-16">
-                        <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: step.color }}>
+                        <span className="text-xs font-bold whitespace-nowrap" style={{ color: step.color }}>
                           {step.multiplier}
                         </span>
                         <div className="flex items-center w-full">
@@ -292,7 +292,7 @@ export default function EbmTab({ localEmp, nationalEmp, localEmpMid, nationalEmp
                       className="rounded-xl border-2 text-center px-4 py-3 min-w-[110px]"
                       style={{ borderColor: step.color + "50", backgroundColor: step.color + "08" }}
                     >
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{step.label}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{step.label}</p>
                       <p className="text-xl font-bold mt-0.5" style={{ color: step.color }}>{step.value}</p>
                     </div>
                   </div>
@@ -348,7 +348,7 @@ export default function EbmTab({ localEmp, nationalEmp, localEmpMid, nationalEmp
                               opacity: 0.75,
                             }}
                           />
-                          <span className="absolute inset-0 flex items-center justify-end pr-2 text-[11px] font-bold" style={{ color: r.color }}>
+                          <span className="absolute inset-0 flex items-center justify-end pr-2 text-xs font-bold" style={{ color: r.color }}>
                             ×{r.ratio.toFixed(1)}
                           </span>
                         </div>
@@ -356,7 +356,7 @@ export default function EbmTab({ localEmp, nationalEmp, localEmpMid, nationalEmp
                     ));
                   })()}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   人数ベースの波及効果を基盤雇用を1.0とした倍率で表示。延床面積・棟数は単位が異なるため除外。
                 </p>
               </div>

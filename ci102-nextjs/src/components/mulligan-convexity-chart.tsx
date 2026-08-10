@@ -198,11 +198,11 @@ export function MulliganConvexityChart({ prefCode }: Props) {
         <div className="mt-2 grid md:grid-cols-2 gap-3">
           {/* L0 → L1 で新規追加 */}
           <div>
-            <p className="font-medium text-indigo-700 text-[11px] mb-1">
+            <p className="font-medium text-indigo-700 text-xs mb-1">
               L0 → L1 で新規 (大分類では見えなかった中分類の特化業種)
             </p>
             {data.levels[1].newly_added && data.levels[1].newly_added.length > 0 ? (
-              <table className="w-full text-[11px]">
+              <table className="w-full text-xs">
                 <thead className="bg-indigo-50">
                   <tr>
                     <th className="text-left p-1">業種</th>
@@ -219,17 +219,17 @@ export function MulliganConvexityChart({ prefCode }: Props) {
                 </tbody>
               </table>
             ) : (
-              <p className="text-slate-400 text-[11px]">新規追加なし</p>
+              <p className="text-slate-400 text-xs">新規追加なし</p>
             )}
           </div>
 
           {/* L1 → L2 で新規追加 */}
           <div>
-            <p className="font-medium text-indigo-700 text-[11px] mb-1">
+            <p className="font-medium text-indigo-700 text-xs mb-1">
               L1 → L2 で新規 (細分類化で初めて見えた特化業種)
             </p>
             {data.levels[2].newly_added && data.levels[2].newly_added.length > 0 ? (
-              <table className="w-full text-[11px]">
+              <table className="w-full text-xs">
                 <thead className="bg-indigo-50">
                   <tr>
                     <th className="text-left p-1">業種</th>
@@ -246,11 +246,11 @@ export function MulliganConvexityChart({ prefCode }: Props) {
                 </tbody>
               </table>
             ) : (
-              <p className="text-slate-400 text-[11px]">新規追加なし</p>
+              <p className="text-slate-400 text-xs">新規追加なし</p>
             )}
           </div>
         </div>
-        <p className="text-[11px] text-slate-500 mt-2">
+        <p className="text-xs text-slate-500 mt-2">
           ※ 「新規追加」=この粒度で初めて LQ&gt;1 になった業種。L1 で消えた業種もあり得ますが (大分類で過大評価された業種)、ここでは表示していません。
         </p>
       </details>
@@ -292,7 +292,7 @@ export function MulliganConvexityChart({ prefCode }: Props) {
             意思決定で「大分類だけで判断すると経済基盤を過小評価する」リスクがある。
           </li>
         </ul>
-        <p className="text-[11px] text-slate-500 mt-1.5">
+        <p className="text-xs text-slate-500 mt-1.5">
           ※ L2 は卸売・小売業のみ細分類化 (156業種)。製造業・サービス業など他大分類も細分類化すれば、さらに EBM が下がると予想される。
           全業種完全細分類は e-Stat 個別テーブル取得が必要 (将来課題)。
         </p>

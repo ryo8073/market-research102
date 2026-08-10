@@ -70,19 +70,19 @@ export function PricePredictionSection({ pref }: Props) {
           <p className="text-sm font-semibold">{pref.pref_name} の地価予測</p>
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="rounded bg-slate-50 p-2">
-              <p className="text-[11px] text-slate-500">マクロ予測</p>
+              <p className="text-xs text-slate-500">マクロ予測</p>
               <p className="text-lg font-bold">¥{Math.round(prefPrediction.predicted).toLocaleString()}</p>
-              <p className="text-[11px] text-slate-400">/m²</p>
+              <p className="text-xs text-slate-400">/m²</p>
             </div>
             {prefPrediction.actual != null ? (
               <>
                 <div className="rounded bg-slate-50 p-2">
-                  <p className="text-[11px] text-slate-500">実取引価格 (MLIT中央値)</p>
+                  <p className="text-xs text-slate-500">実取引価格 (MLIT中央値)</p>
                   <p className="text-lg font-bold">¥{prefPrediction.actual.toLocaleString()}</p>
-                  <p className="text-[11px] text-slate-400">/m²</p>
+                  <p className="text-xs text-slate-400">/m²</p>
                 </div>
                 <div className="rounded bg-amber-50 border border-amber-200 p-2">
-                  <p className="text-[11px] text-slate-500">残差 (実 − 予測)</p>
+                  <p className="text-xs text-slate-500">残差 (実 − 予測)</p>
                   <p
                     className="text-lg font-bold"
                     style={{ color: (prefPrediction.actual - prefPrediction.predicted) > 0 ? "#047857" : "#b91c1c" }}
@@ -90,7 +90,7 @@ export function PricePredictionSection({ pref }: Props) {
                     {(prefPrediction.actual - prefPrediction.predicted) > 0 ? "+" : ""}
                     ¥{Math.round(prefPrediction.actual - prefPrediction.predicted).toLocaleString()}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-500">
                     {(prefPrediction.actual - prefPrediction.predicted) > 0
                       ? "経済以外のプレミアム"
                       : "経済データほどの地価がない"}
@@ -152,7 +152,7 @@ export function PricePredictionSection({ pref }: Props) {
       {/* 教育的注釈 */}
       <div className="rounded bg-amber-50 border border-amber-200 p-2 text-xs text-amber-900 space-y-1">
         <p className="font-semibold">💡 教育的解釈</p>
-        <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+        <ul className="list-disc list-inside space-y-0.5 text-xs">
           <li>
             <strong>残差 +</strong> = 経済データで説明される以上に地価が高い (観光地・首都圏通勤プレミアム等)
           </li>
@@ -234,7 +234,7 @@ function PredictionScatter({ model, highlightedPref }: { model: PriceModel; high
           </Scatter>
         </ScatterChart>
       </ResponsiveContainer>
-      <p className="text-[11px] text-slate-500 mt-1">
+      <p className="text-xs text-slate-500 mt-1">
         45°線上 = 完全予測。上にズレるほど「マクロ予測より高い実地価」(プラスプレミアム)、下にズレるほど逆。
         {highlightedPref && (
           <span className="text-rose-600"> 赤=選択中の {highlightedPref}</span>

@@ -211,7 +211,7 @@ export default function TradeAreaTab() {
                   {geocoding ? "検索中..." : "検索"}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">国土地理院の住所検索API（無料）を利用</p>
+              <p className="text-xs text-slate-500 mt-1">国土地理院の住所検索API（無料）を利用</p>
             </div>
 
             {/* 検索結果 */}
@@ -287,7 +287,7 @@ export default function TradeAreaTab() {
                   🚗 走行時間 (分)
                 </button>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 {mode === "haversine"
                   ? "直線距離(haversine)。即時計算だが川・山・島の分断を考慮しない"
                   : "OSRM Table API。実際の道路経由。1-3秒程度の計算時間"}
@@ -335,7 +335,7 @@ export default function TradeAreaTab() {
               <div className="text-xs bg-emerald-50 border border-emerald-200 rounded p-2 mt-2">
                 <strong>中心地点:</strong> {center.title}
                 <br />
-                <span className="text-[11px] text-slate-500">
+                <span className="text-xs text-slate-500">
                   ({center.lat.toFixed(4)}, {center.lon.toFixed(4)})
                 </span>
               </div>
@@ -349,7 +349,7 @@ export default function TradeAreaTab() {
                 <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
                 <span>OSRM で走行時間を計算中...</span>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 公開OSRMサーバーへのリクエスト中 (通常1-3秒)
               </p>
             </div>
@@ -368,7 +368,7 @@ export default function TradeAreaTab() {
               <p className="font-semibold text-sm mb-2">
                 📍 商圏内の市区町村: <strong>{munisInArea.length}件</strong>
                 {mode === "drive_time" && driveMeta && (
-                  <span className="text-[11px] text-slate-500 font-normal ml-1">
+                  <span className="text-xs text-slate-500 font-normal ml-1">
                     (候補{driveMeta.candidatesQueried}件中、{driveMeta.apiLatencyMs}ms)
                   </span>
                 )}
@@ -383,7 +383,7 @@ export default function TradeAreaTab() {
                       {mode === "drive_time" && driveMin != null ? (
                         <span className="text-slate-500">
                           🚗 {driveMin.toFixed(0)}分
-                          {driveKm != null && <span className="text-[11px] ml-1">({driveKm.toFixed(1)}km)</span>}
+                          {driveKm != null && <span className="text-xs ml-1">({driveKm.toFixed(1)}km)</span>}
                         </span>
                       ) : (
                         <span className="text-slate-500">{m.distance_km.toFixed(1)} km</span>
@@ -420,7 +420,7 @@ export default function TradeAreaTab() {
                 />
               </div>
               {mode === "drive_time" && (
-                <p className="text-[11px] text-slate-500 -mt-2">
+                <p className="text-xs text-slate-500 -mt-2">
                   ※ 地図の円は商圏内市区町村の最大直線距離を表示。実際の到達範囲は道路網に沿うため形状は不規則。
                 </p>
               )}
@@ -485,7 +485,7 @@ export default function TradeAreaTab() {
                         <li>EBM {aggregate.ebm.toFixed(2)} = 過剰特化（観光地や工業中心地の可能性）</li>
                       )}
                       <li>テナント・商業出店の需給判断には、この商圏内の購買力（雇用×給与水準）を参考に</li>
-                      <li className="text-[11px] text-slate-500 mt-1">
+                      <li className="text-xs text-slate-500 mt-1">
                         ※ {mode === "haversine"
                           ? "直線距離(haversine) ベース。実際の車・徒歩アクセスは地形・道路網で変動"
                           : "OSRM 走行時間ベース。山・川・島の分断や高速道路を考慮した実態的な商圏。テナント想定の信頼性が高い"}
@@ -511,7 +511,7 @@ function KpiBox({ label, value, sub }: { label: string; value: string; sub?: str
     <div className="rounded-lg border bg-white p-3">
       <div className="text-xs text-slate-500">{label}</div>
       <div className="text-xl font-semibold mt-1">{value}</div>
-      {sub && <div className="text-[11px] text-slate-400 mt-0.5">{sub}</div>}
+      {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -562,12 +562,12 @@ function AccessibilitySummary({
         <div className="rounded border p-2">
           <div className="text-slate-500">平均車依存度</div>
           <div className="text-lg font-semibold">{avgCarDep.toFixed(0)}</div>
-          <div className={`text-[11px] ${carDepRank.color}`}>{carDepRank.label}</div>
+          <div className={`text-xs ${carDepRank.color}`}>{carDepRank.label}</div>
         </div>
         <div className="rounded border p-2">
           <div className="text-slate-500">最寄り駅まで(車)</div>
           <div className="text-lg font-semibold">{avgStationMin.toFixed(0)}分</div>
-          <div className="text-[11px] text-slate-400">{avgStationKm.toFixed(1)}km</div>
+          <div className="text-xs text-slate-400">{avgStationKm.toFixed(1)}km</div>
         </div>
         <div className="rounded border p-2">
           <div className="text-slate-500">最寄り医療施設まで</div>
@@ -578,7 +578,7 @@ function AccessibilitySummary({
           <div className="text-lg font-semibold">{avgCommercialMin.toFixed(0)}分</div>
         </div>
       </div>
-      <p className="text-[11px] text-slate-500 mt-2">
+      <p className="text-xs text-slate-500 mt-2">
         ※ 各市区町村セントロイドから最寄り施設への走行時間(OSRM)。
         商圏中心点からではないため、商圏内の典型的なアクセス性として参照。
       </p>

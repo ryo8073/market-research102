@@ -72,7 +72,7 @@ export default function TradeAreaMap({ centerLon, centerLat, radiusKm, munisInRa
       {munisInRadius.map((m) => (
         <Marker key={m.code} longitude={m.centroid.lon} latitude={m.centroid.lat} anchor="center">
           <div
-            className="rounded-full border-2 border-emerald-600 bg-white text-[11px] font-semibold px-1 py-0.5 whitespace-nowrap"
+            className="rounded-full border-2 border-emerald-600 bg-white text-xs font-semibold px-1 py-0.5 whitespace-nowrap"
             title={`${m.centroid.name} (${m.distance_km.toFixed(1)}km)`}
           >
             {m.centroid.name}

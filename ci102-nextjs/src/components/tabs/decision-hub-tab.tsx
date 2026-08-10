@@ -527,7 +527,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
         <p className="text-sm mt-1">対象エリア: <strong>{target}</strong></p>
         <p className="text-xs mt-1">生成日: {new Date().toLocaleString("ja-JP")}</p>
         <p className="text-xs mt-1">分析基準: CCIM CI102 不動産投資のための市場分析（経済基盤分析・シフトシェア・小売ギャップ・空間データ統合）</p>
-        <p className="text-[11px] mt-1 text-gray-700">
+        <p className="text-xs mt-1 text-gray-700">
           データ出典: e-Stat {ECONOMIC_CENSUS_CURRENT.labelFull} / {POPULATION_CENSUS_CURRENT.labelFull} / MLIT不動産情報ライブラリ / 国土数値情報NLNI / 社人研人口予測
         </p>
       </div>
@@ -587,7 +587,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                     {autoZone.zone.name}（{autoZone.zone.type}・{autoZone.zone.all.length}市区町村）
                   </button>
                 </div>
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
                   東大CSIS 都市雇用圏（2020年国勢調査ベース）。通勤者の10%以上が中心市に通勤する市区町村で構成。
                 </p>
               </div>
@@ -616,7 +616,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                       className={`rounded border px-2.5 py-1 text-xs font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === `通勤率${t}%` ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
                     >{t}%</button>
                   ))}
-                  <span className="text-[11px] text-muted-foreground">低い=広い / 高い=狭い</span>
+                  <span className="text-xs text-muted-foreground">低い=広い / 高い=狭い</span>
                 </div>
 
                 {/* Louvain */}
@@ -630,7 +630,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                         key={res}
                         disabled={zoneLoading}
                         onClick={() => fetchZone(`/api/commute-zone?center=${apiCenter}&method=louvain&resolution=${res}`, methodLabel)}
-                        className={`rounded border px-2 py-1 text-[11px] font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === methodLabel ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
+                        className={`rounded border px-2 py-1 text-xs font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === methodLabel ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
                       >{label}</button>
                     );
                   })}
@@ -649,7 +649,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                   </p>
                 )}
 
-                <div className="text-[11px] text-muted-foreground space-y-0.5">
+                <div className="text-xs text-muted-foreground space-y-0.5">
                   <p><strong>通勤率</strong> = この物件の影響範囲。選んだ地域を中心に「住民の○%以上が通勤する先」を放射的に追加。</p>
                   <p><strong>AI検出</strong> = この街の経済的な仲間。全国の通勤ネットワークから「互いに行き来が多いグループ」を自動検出。</p>
                 </div>
@@ -715,10 +715,10 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
             {/* 経済圏の分析結果サマリー */}
             {econZoneResult && (
               <div className="rounded-lg border bg-white dark:bg-slate-900 p-3 grid grid-cols-2 md:grid-cols-4 gap-2">
-                <div><div className="text-[11px] text-muted-foreground">EBM</div><div className="text-lg font-black">{econZoneResult.ebm.toFixed(2)}</div></div>
-                <div><div className="text-[11px] text-muted-foreground">外から稼ぐ割合</div><div className="text-lg font-black">{econZoneResult.basic_ratio.toFixed(1)}%</div></div>
-                <div><div className="text-[11px] text-muted-foreground">基盤雇用</div><div className="text-lg font-black">{Math.round(econZoneResult.basic_employment).toLocaleString()}</div></div>
-                <div><div className="text-[11px] text-muted-foreground">基盤産業数</div><div className="text-lg font-black">{econZoneResult.n_basic_industries}</div></div>
+                <div><div className="text-xs text-muted-foreground">EBM</div><div className="text-lg font-black">{econZoneResult.ebm.toFixed(2)}</div></div>
+                <div><div className="text-xs text-muted-foreground">外から稼ぐ割合</div><div className="text-lg font-black">{econZoneResult.basic_ratio.toFixed(1)}%</div></div>
+                <div><div className="text-xs text-muted-foreground">基盤雇用</div><div className="text-lg font-black">{Math.round(econZoneResult.basic_employment).toLocaleString()}</div></div>
+                <div><div className="text-xs text-muted-foreground">基盤産業数</div><div className="text-lg font-black">{econZoneResult.n_basic_industries}</div></div>
               </div>
             )}
           </div>
@@ -806,7 +806,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <p className="text-sm font-semibold">🤖 AI 投資判断レポート</p>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-600 text-white">AI 生成</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">AI 生成</span>
           </div>
           <div className="flex gap-2 no-print">
             {aiResult && (
@@ -835,7 +835,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
         </div>
 
         {/* 重要な免責事項 - 常時表示 */}
-        <div className="rounded border-l-4 border-amber-500 bg-amber-50 p-2 text-[11px] text-slate-800">
+        <div className="rounded border-l-4 border-amber-500 bg-amber-50 p-2 text-xs text-slate-800">
           <strong>⚠ 重要な免責事項</strong>:
           本レポートは <strong>Claude AI による自動分析</strong>であり、不動産投資の判断材料の1つに過ぎません。
           <strong>投資判断は必ずお客様の責任において</strong>、専門家の助言と複数情報源を参照の上で行ってください。
@@ -864,9 +864,9 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                   <div className="flex items-center gap-2">
                     <span
                       className={
-                        w.level === "high" ? "px-1.5 py-0.5 rounded text-[11px] bg-rose-600 text-white" :
-                        w.level === "medium" ? "px-1.5 py-0.5 rounded text-[11px] bg-amber-500 text-white" :
-                        "px-1.5 py-0.5 rounded text-[11px] bg-slate-400 text-white"
+                        w.level === "high" ? "px-1.5 py-0.5 rounded text-xs bg-rose-600 text-white" :
+                        w.level === "medium" ? "px-1.5 py-0.5 rounded text-xs bg-amber-500 text-white" :
+                        "px-1.5 py-0.5 rounded text-xs bg-slate-400 text-white"
                       }
                     >
                       {w.level.toUpperCase()}
@@ -874,12 +874,12 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                     <span className="font-semibold">{w.category}</span>
                     <span className="text-rose-700">「{w.pattern}」</span>
                   </div>
-                  <p className="text-[11px] text-slate-600 mt-1 ml-1">
+                  <p className="text-xs text-slate-600 mt-1 ml-1">
                     文脈: ...{w.context}...
                   </p>
                 </div>
               ))}
-              <p className="text-[11px] text-slate-600 mt-2">
+              <p className="text-xs text-slate-600 mt-2">
                 ※ 断定的助言・過度な楽観/悲観・保証的表現等が検出されました。
                 お客様への提示前にこれらの表現を見直して修正することを推奨します。
               </p>
@@ -891,7 +891,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
           <>
             {/* AI 生成テキスト (編集可能) */}
             <div className="bg-white rounded border p-3">
-              <div className="flex items-center justify-between mb-2 text-[11px] text-slate-500">
+              <div className="flex items-center justify-between mb-2 text-xs text-slate-500">
                 <span>📝 編集可能 — 営業現場提示前にレビュー・修正してください</span>
                 {aiEdited != null && (
                   <button
@@ -913,7 +913,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
 
             {/* メタ情報 */}
             {aiMeta && (
-              <div className="text-[11px] text-slate-500 flex flex-wrap gap-3">
+              <div className="text-xs text-slate-500 flex flex-wrap gap-3">
                 <span>モデル: {aiMeta.model}</span>
                 <span>生成: {new Date(aiMeta.generated_at).toLocaleString()}</span>
                 <span>応答: {(aiMeta.latency_ms / 1000).toFixed(1)}秒</span>
@@ -1050,7 +1050,7 @@ function PropertyTypeCard({ score }: { score: PropertyScore }) {
               <span className="w-12 shrink-0 text-right">{f.score.toFixed(0)}点</span>
               <span className="w-12 shrink-0 text-right text-slate-400">×{(f.weight * 100).toFixed(0)}%</span>
             </div>
-            <div className="ml-26 text-[11px] text-slate-500 pl-26" style={{ paddingLeft: "104px" }}>
+            <div className="ml-26 text-xs text-slate-500 pl-26" style={{ paddingLeft: "104px" }}>
               {f.interpretation}
               {(() => {
                 const link = SOURCE_TO_TAB[f.source];

@@ -161,7 +161,7 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
                     ? `${((pref.total_daily_riders / pref.population) * 100).toFixed(0)}%`
                     : "—"}
                 </p>
-                <p className="text-[11px] text-muted-foreground">乗降客数/人口比</p>
+                <p className="text-xs text-muted-foreground">乗降客数/人口比</p>
               </CardContent>
             </Card>
             <Card>
@@ -172,7 +172,7 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
                     ? `${Math.round(pref.total_daily_riders / pref.num_stations).toLocaleString()}`
                     : "—"}
                 </p>
-                <p className="text-[11px] text-muted-foreground">人/日/駅</p>
+                <p className="text-xs text-muted-foreground">人/日/駅</p>
               </CardContent>
             </Card>
             <Card>
@@ -183,7 +183,7 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
                     ? `${Math.round(municipalities.filter((m) => (m.num_stations ?? 0) > 0 || (m.num_bus_stops ?? 0) > 3).length / municipalities.length * 100)}%`
                     : "—"}
                 </p>
-                <p className="text-[11px] text-muted-foreground">駅orバス3+の自治体比率</p>
+                <p className="text-xs text-muted-foreground">駅orバス3+の自治体比率</p>
               </CardContent>
             </Card>
             <Card>
@@ -194,7 +194,7 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
                     ? (pref.num_commercial / pref.population * 10000).toFixed(1)
                     : "—"}
                 </p>
-                <p className="text-[11px] text-muted-foreground">施設/万人</p>
+                <p className="text-xs text-muted-foreground">施設/万人</p>
               </CardContent>
             </Card>
           </div>
@@ -354,7 +354,7 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
                                 <span className={`${(m.nearest_station_min ?? 0) > 30 ? "text-red-600" : ""}`}>
                                   {m.nearest_station_min?.toFixed(0) ?? "—"}分
                                 </span>
-                                <span className="text-muted-foreground ml-1 text-[11px]">
+                                <span className="text-muted-foreground ml-1 text-xs">
                                   {m.nearest_station_name ? `(${m.nearest_station_name})` : ""}
                                 </span>
                               </td>
@@ -374,10 +374,10 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
                               </td>
                               <td className="text-center py-1.5 px-1">
                                 {dep >= 70
-                                  ? <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[11px]">車必須</span>
+                                  ? <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs">車必須</span>
                                   : dep >= 40
-                                  ? <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[11px]">車優位</span>
-                                  : <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[11px]">公共交通可</span>
+                                  ? <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">車優位</span>
+                                  : <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs">公共交通可</span>
                                 }
                               </td>
                             </tr>
@@ -386,7 +386,7 @@ export default function AccessibilityTab({ prefCode, prefName, pref, allData }: 
                       </tbody>
                     </table>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     ルーティング: OSRM (Open Source Routing Machine) 車プロファイル。
                     市区町村の地理的重心から各施設までの最短実走行ルート。
                   </p>

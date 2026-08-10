@@ -235,7 +235,7 @@ function PresetSelector({ activePreset, onSelect }: { activePreset: string; onSe
           }`}
         >
           <p className={`text-sm font-semibold ${activePreset === p.id ? "text-[#2A9D8F]" : ""}`}>{p.label}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
         </button>
       ))}
     </div>
@@ -287,7 +287,7 @@ function InvestmentScorecard({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-lg font-bold" style={{ color }}>{pref.pref_name}</p>
-          <p className="text-[11px] text-muted-foreground">{preset.label}向け評価</p>
+          <p className="text-xs text-muted-foreground">{preset.label}向け評価</p>
         </div>
         <div className="text-center">
           <p className={`text-3xl font-black ${grade.color}`}>{grade.letter}</p>
@@ -301,11 +301,11 @@ function InvestmentScorecard({
           const g = gradeLetter(cat.value);
           return (
             <div key={cat.label} className="flex items-center gap-2">
-              <span className="text-[11px] w-12 text-right text-muted-foreground">{cat.label}</span>
+              <span className="text-xs w-12 text-right text-muted-foreground">{cat.label}</span>
               <div className="flex-1 h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all" style={{ width: `${Math.max(3, cat.value)}%`, backgroundColor: color, opacity: 0.7 }} />
               </div>
-              <span className={`text-[11px] font-bold w-5 ${g.color}`}>{g.letter}</span>
+              <span className={`text-xs font-bold w-5 ${g.color}`}>{g.letter}</span>
             </div>
           );
         })}
@@ -317,7 +317,7 @@ function InvestmentScorecard({
       </div>
 
       {/* Key stats */}
-      <div className="grid grid-cols-3 gap-1 text-center text-[11px]">
+      <div className="grid grid-cols-3 gap-1 text-center text-xs">
         <div>
           <p className="text-muted-foreground">人口Top%</p>
           <p className="font-bold">{popRank}%</p>
@@ -395,7 +395,7 @@ function KpiTable({ prefs, allPrefs, highlightLabels }: { prefs: PrefectureData[
                   <tr key={row.label} className={`border-b last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isHighlighted ? "bg-blue-50/50 dark:bg-blue-900/10" : ""}`}>
                     <td className={`py-2 px-2 font-medium ${isHighlighted ? "text-blue-700 dark:text-blue-300" : ""}`}>
                       {row.label}
-                      {isHighlighted && <span className="ml-1 text-[11px] text-blue-500">*</span>}
+                      {isHighlighted && <span className="ml-1 text-xs text-blue-500">*</span>}
                     </td>
                     {prefs.map((p, i) => {
                       const val = values[i];
@@ -406,7 +406,7 @@ function KpiTable({ prefs, allPrefs, highlightLabels }: { prefs: PrefectureData[
                         <td key={p.pref_code} className={`text-right py-2 px-2 font-mono tabular-nums ${cellColor(values, i, row.direction)}`}>
                           <span>{row.format(val)}</span>
                           {rank != null && (
-                            <span className="text-[11px] text-muted-foreground ml-1">({rank}位)</span>
+                            <span className="text-xs text-muted-foreground ml-1">({rank}位)</span>
                           )}
                         </td>
                       );
@@ -514,7 +514,7 @@ function FourAxisScatter({ prefs, allPrefs }: { prefs: PrefectureData[]; allPref
   return (
     <div className="col-span-1 md:col-span-2">
       <p className="text-xs font-semibold text-center mb-1">🎯 4軸統合クロス: 基盤雇用比率 × 地価 × 人口 × 洪水リスク</p>
-      <p className="text-[11px] text-center text-slate-500 mb-2">
+      <p className="text-xs text-center text-slate-500 mb-2">
         X=基盤雇用比率 / Y=地価 / バブルサイズ=人口規模 / 色=洪水リスク（緑〜赤）/
         選択地域は黒枠
       </p>
@@ -538,7 +538,7 @@ function FourAxisScatter({ prefs, allPrefs }: { prefs: PrefectureData[]; allPref
                 <p>地価中央値: <strong>{d.price}千円/m²</strong></p>
                 <p>人口: {d.population.toLocaleString()}人</p>
                 <p>浸水リスク: <span style={{ color: d.color, fontWeight: "bold" }}>{d.flood.toFixed(1)}%</span></p>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   {/* 簡易判断 */}
                   {d.basicRatio >= 15 && d.basicRatio <= 30 && d.flood < 5
                     ? "✅ 投資適格圏(健全経済+低リスク)"
@@ -579,7 +579,7 @@ function FourAxisScatter({ prefs, allPrefs }: { prefs: PrefectureData[]; allPref
           <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: "#DC2626" }} /> 15%以上
         </span>
       </div>
-      <p className="text-[11px] text-slate-500 text-center mt-2">
+      <p className="text-xs text-slate-500 text-center mt-2">
         <strong>緑色エリア（基盤率15-30%・洪水&lt;5%）</strong>が CI102 教科書 + 防災視点で『投資適格圏』。
         バブルが大きい = 人口規模が大きい = 市場流動性が高い。
       </p>
@@ -742,7 +742,7 @@ function PercentileSection({ prefs, allPrefs }: { prefs: PrefectureData[]; allPr
           <div key={m.label} className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium">{m.label}</span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {m.min.toFixed(1)} ~ {m.max.toFixed(1)}
               </span>
             </div>
@@ -769,13 +769,13 @@ function PercentileSection({ prefs, allPrefs }: { prefs: PrefectureData[]; allPr
                   className="absolute top-0.5 w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
                   style={{ left: `calc(${pp.pct}% - 10px)`, backgroundColor: COMPARE_COLORS[i] }}
                 >
-                  <span className="text-[11px] text-white font-bold">{i + 1}</span>
+                  <span className="text-xs text-white font-bold">{i + 1}</span>
                 </div>
               ))}
             </div>
           </div>
         ))}
-        <div className="flex gap-3 text-[11px] text-muted-foreground mt-2">
+        <div className="flex gap-3 text-xs text-muted-foreground mt-2">
           {prefs.map((p, i) => (
             <span key={p.pref_code} className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: COMPARE_COLORS[i] }} />
