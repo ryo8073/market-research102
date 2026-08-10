@@ -580,6 +580,33 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                 <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1">
                   {selectedCity.area_name}の住民のうち、指定%以上が通勤先とする市区町村を再帰的に追加（2020年国勢調査 通勤OD行列）。
                 </p>
+                {/* Louvain グラフクラスタリング */}
+                <div className="mt-2 pt-2 border-t border-indigo-200">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">AI経済圏（Louvain）:</span>
+                    {["0.5", "1.0", "2.0", "3.0"].map((res) => (
+                      <button
+                        key={res}
+                        onClick={async () => {
+                          const code = selectedCity.area_code;
+                          try {
+                            const r = await fetch(`/api/commute-zone?center=${code}&method=louvain&resolution=${res}`);
+                            if (r.ok) {
+                              const data = await r.json();
+                              setEconZoneCodes(new Set(data.zone));
+                            }
+                          } catch (e) {
+                            console.error("[louvain]", e);
+                          }
+                        }}
+                        className="rounded border px-2 py-0.5 text-[10px] font-bold hover:bg-indigo-100 transition-colors"
+                      >{res === "0.5" ? "細かい" : res === "1.0" ? "標準" : res === "2.0" ? "広域" : "超広域"}</button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                    通勤流動グラフからAIが自動検出した経済圏。閾値ではなくネットワーク構造から最適な分割を算出。
+                  </p>
+                </div>
               </div>
             )}
 
@@ -655,14 +682,45 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
         area={target}
         pref={pref}
         city={selectedCity}
-        econZone={analysisMode === "econ_zone" && econZoneResult ? {
-          ebm: econZoneResult.ebm,
-          basic_ratio: econZoneResult.basic_ratio,
-          basic_employment: econZoneResult.basic_employment,
-          total_employment: econZoneResult.total_employment,
-          n_basic_industries: econZoneResult.n_basic_industries,
-          top_lq_industries: econZoneResult.top_lq_industries,
-        } : null}
+        econZone={analysisMode === "econ_zone" && econZoneResult ? (() => {
+          // 経済圏メンバーの人口・世帯を集約（municipalitiesデータから）
+          let ezPop = 0, ezPop2020 = 0, ezHH = 0, ezRentedTotal = 0, ezRentedPrivate = 0, ezHTTotal = 0;
+          const codes = Array.from(econZoneCodes);
+          const muniMap = new Map((municipalities ?? []).map(m => [m.area_code, m]));
+          for (const code of codes) {
+            const m = muniMap.get(code);
+            if (m?.census2025) {
+              ezPop += m.census2025.population;
+              ezPop2020 += m.census2025.population_2020;
+              ezHH += m.census2025.households;
+            }
+            if (m?.housing_tenure) {
+              ezHTTotal += m.housing_tenure.total;
+              ezRentedTotal += Math.round(m.housing_tenure.total * m.housing_tenure.rented_pct / 100);
+              ezRentedPrivate += Math.round(m.housing_tenure.total * m.housing_tenure.rented_private_pct / 100);
+            }
+          }
+          const ezPopPct = ezPop2020 > 0 ? ((ezPop - ezPop2020) / ezPop2020) * 100 : 0;
+          const ezHH2020 = ezPop2020 > 0 && ezPop > 0 ? Math.round(ezHH / (1 + ezPopPct / 100 * 0.5)) : 0;
+          const ezHhPct = ezHH2020 > 0 ? ((ezHH - ezHH2020) / ezHH2020) * 100 : 0;
+          return {
+            ebm: econZoneResult.ebm,
+            basic_ratio: econZoneResult.basic_ratio,
+            basic_employment: econZoneResult.basic_employment,
+            total_employment: econZoneResult.total_employment,
+            n_basic_industries: econZoneResult.n_basic_industries,
+            top_lq_industries: econZoneResult.top_lq_industries,
+            ...(ezPop > 0 ? {
+              population: ezPop,
+              population_2020: ezPop2020,
+              households: ezHH,
+              pop_change_pct: ezPopPct,
+              hh_change_pct: ezHhPct,
+              rented_pct: ezHTTotal > 0 ? Math.round(ezRentedTotal / ezHTTotal * 1000) / 10 : undefined,
+              rented_private_pct: ezHTTotal > 0 ? Math.round(ezRentedPrivate / ezHTTotal * 1000) / 10 : undefined,
+            } : {}),
+          };
+        })() : null}
       />
 
       <div className="rounded-lg border-2 bg-gradient-to-br from-emerald-50 to-blue-50 p-4">

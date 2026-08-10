@@ -97,14 +97,58 @@ function computeZone(
   return Array.from(zone).sort();
 }
 
+// Louvainデータキャッシュ
+let _louvainCache: Record<string, { zones: Record<string, string[]>; muni_to_zone: Record<string, string> }> | null = null;
+
+async function loadLouvain(baseUrl: string): Promise<typeof _louvainCache> {
+  if (_louvainCache) return _louvainCache;
+  try {
+    const res = await fetch(`${baseUrl}/data/commute_louvain.json`, { next: { revalidate: 86400 } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    _louvainCache = data.resolutions;
+    return _louvainCache;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const center = request.nextUrl.searchParams.get("center");
   const thresholdStr = request.nextUrl.searchParams.get("threshold") ?? "10";
   const threshold = Number(thresholdStr);
+  const method = request.nextUrl.searchParams.get("method") ?? "od"; // "od" or "louvain"
+  const resolutionStr = request.nextUrl.searchParams.get("resolution") ?? "1.0";
 
   if (!center || center.length < 4) {
     return NextResponse.json({ error: "center パラメータが必要です（市区町村コード5桁）" }, { status: 400 });
   }
+
+  // Louvainモード
+  if (method === "louvain") {
+    const baseUrl = request.nextUrl.origin;
+    const louvain = await loadLouvain(baseUrl);
+    if (!louvain || !louvain[resolutionStr]) {
+      return NextResponse.json({ error: `Louvainデータが見つかりません（resolution=${resolutionStr}）` }, { status: 404 });
+    }
+    const resData = louvain[resolutionStr];
+    const centerCode = center.padStart(5, "0");
+    const zoneId = resData.muni_to_zone[centerCode];
+    if (!zoneId) {
+      return NextResponse.json({ center: centerCode, zone: [centerCode], stats: { n_members: 1, note: "Louvainゾーン未所属" }, method: "louvain_fallback" });
+    }
+    const zone = resData.zones[zoneId] ?? [centerCode];
+    return NextResponse.json({
+      center: centerCode,
+      resolution: Number(resolutionStr),
+      zone,
+      zone_id: zoneId,
+      stats: { n_members: zone.length },
+      method: `louvain_${resolutionStr}`,
+    });
+  }
+
+  // ODモード（既存）
   if (![5, 10, 15, 20, 25].includes(threshold)) {
     return NextResponse.json({ error: "threshold は 5, 10, 15, 20, 25 のいずれか" }, { status: 400 });
   }

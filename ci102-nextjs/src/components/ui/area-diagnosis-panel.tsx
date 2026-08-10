@@ -97,6 +97,14 @@ interface EconZoneOverride {
   total_employment: number;
   n_basic_industries: number;
   top_lq_industries: Array<{ industry: string; lq: number; basic_emp: number }>;
+  // 複数県集約の人口・世帯データ（Phase2 Pre-mortem#3対応）
+  population?: number;
+  population_2020?: number;
+  households?: number;
+  pop_change_pct?: number;
+  hh_change_pct?: number;
+  rented_pct?: number;
+  rented_private_pct?: number;
 }
 
 export function AreaDiagnosisPanel({
@@ -114,13 +122,24 @@ export function AreaDiagnosisPanel({
   const c = city?.census2025 ?? pref.census2025;
   if (!c) return null;
   const momoFine = !!city?.census2025;
-  const pop2020 = c.population_2020;
-  const popDelta = c.population - pop2020;
-  const hh2020 = Math.round(c.households / (1 + (c.hh_change_pct || 0) / 100));
-  const hhDelta = c.households - hh2020;
 
-  // 借家世帯比率（2020年確報）
-  const ht = (city?.housing_tenure ?? pref.housing_tenure) ?? null;
+  // 経済圏モード時は集約データを優先
+  const useEzPop = !!(econZone?.population);
+  const resolvedPopulation = useEzPop ? econZone!.population! : c.population;
+  const resolvedPop2020 = useEzPop ? (econZone!.population_2020 ?? c.population_2020) : c.population_2020;
+  const resolvedHouseholds = useEzPop ? (econZone!.households ?? c.households) : c.households;
+  const resolvedPopChangePct = useEzPop ? (econZone!.pop_change_pct ?? c.pop_change_pct) : c.pop_change_pct;
+  const resolvedHhChangePct = useEzPop ? (econZone!.hh_change_pct ?? c.hh_change_pct) : c.hh_change_pct;
+
+  const pop2020 = resolvedPop2020;
+  const popDelta = resolvedPopulation - pop2020;
+  const hh2020 = Math.round(resolvedHouseholds / (1 + (resolvedHhChangePct || 0) / 100));
+  const hhDelta = resolvedHouseholds - hh2020;
+
+  // 借家世帯比率（経済圏集約 or 市区町村 or 都道府県）
+  const ht = useEzPop && econZone?.rented_pct != null
+    ? { total: 0, owned_pct: 100 - econZone.rented_pct, rented_pct: econZone.rented_pct, rented_private_pct: econZone.rented_private_pct ?? 0, source: "経済圏集約（2020年国勢調査）" }
+    : (city?.housing_tenure ?? pref.housing_tenure) ?? null;
 
   // 時系列データ（2000-2025）
   const ts = (city?.pop_timeseries ?? pref.pop_timeseries ?? []).filter(
@@ -170,7 +189,7 @@ export function AreaDiagnosisPanel({
     : ((useCity ? city!.top_lq_industries_mid : pref.top_lq_industries_mid) ?? pref.top_lq_industries ?? []).slice(0, 5);
   const basicPct = totalEmp > 0 ? (basicMid / totalEmp) * 100 : basicRatioMid;
   const nonBasic = Math.max(0, totalEmp - basicMid);
-  const resolvedPop = c.population;
+  const resolvedPop = resolvedPopulation;
   const perLocal = totalEmp > 0 ? resolvedPop / totalEmp : (pref.per ?? 0);
 
   // 将来需要予測（社人研 2025→2050・都道府県）→ 世帯・住宅戸数へ換算
@@ -244,13 +263,15 @@ export function AreaDiagnosisPanel({
   const headline = (() => {
     const parts: string[] = [];
     // 人口トレンド
-    if (c.pop_change_pct >= 1) parts.push("人口が増えている");
-    else if (c.pop_change_pct >= -1) parts.push("人口はほぼ横ばい");
-    else if (c.pop_change_pct >= -5) parts.push("人口は緩やかに減少している");
+    const _pcp = resolvedPopChangePct;
+    const _hcp = resolvedHhChangePct;
+    if (_pcp >= 1) parts.push("人口が増えている");
+    else if (_pcp >= -1) parts.push("人口はほぼ横ばい");
+    else if (_pcp >= -5) parts.push("人口は緩やかに減少している");
     else parts.push("人口が大きく減少している");
     // 世帯トレンド
-    if (c.hh_change_pct > 0 && c.pop_change_pct < 0) parts.push("一方で世帯数は増えており、単身化・小世帯化が進んでいる");
-    else if (c.hh_change_pct > 0) parts.push("世帯数も増加している");
+    if (_hcp > 0 && _pcp < 0) parts.push("一方で世帯数は増えており、単身化・小世帯化が進んでいる");
+    else if (_hcp > 0) parts.push("世帯数も増加している");
     else parts.push("世帯数も減少している");
     // 経済基盤の特徴
     const topInd = baseInd[0];
