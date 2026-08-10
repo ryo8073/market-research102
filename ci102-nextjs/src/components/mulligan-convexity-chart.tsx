@@ -219,7 +219,7 @@ export function MulliganConvexityChart({ prefCode }: Props) {
                 </tbody>
               </table>
             ) : (
-              <p className="text-slate-400 text-[10px]">新規追加なし</p>
+              <p className="text-slate-400 text-[11px]">新規追加なし</p>
             )}
           </div>
 
@@ -246,11 +246,11 @@ export function MulliganConvexityChart({ prefCode }: Props) {
                 </tbody>
               </table>
             ) : (
-              <p className="text-slate-400 text-[10px]">新規追加なし</p>
+              <p className="text-slate-400 text-[11px]">新規追加なし</p>
             )}
           </div>
         </div>
-        <p className="text-[10px] text-slate-500 mt-2">
+        <p className="text-[11px] text-slate-500 mt-2">
           ※ 「新規追加」=この粒度で初めて LQ&gt;1 になった業種。L1 で消えた業種もあり得ますが (大分類で過大評価された業種)、ここでは表示していません。
         </p>
       </details>
@@ -292,7 +292,7 @@ export function MulliganConvexityChart({ prefCode }: Props) {
             意思決定で「大分類だけで判断すると経済基盤を過小評価する」リスクがある。
           </li>
         </ul>
-        <p className="text-[10px] text-slate-500 mt-1.5">
+        <p className="text-[11px] text-slate-500 mt-1.5">
           ※ L2 は卸売・小売業のみ細分類化 (156業種)。製造業・サービス業など他大分類も細分類化すれば、さらに EBM が下がると予想される。
           全業種完全細分類は e-Stat 個別テーブル取得が必要 (将来課題)。
         </p>

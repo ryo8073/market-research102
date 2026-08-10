@@ -312,21 +312,21 @@ export default function MuniMapInner({ geojson, center, fillColor, overlays, act
               <>
                 <p className="font-bold text-blue-700">💧 洪水浸水想定区域</p>
                 <p>想定浸水深: <span className="font-bold">{describeFloodDepth(hover.depthRank)}</span></p>
-                <p className="text-[10px] text-slate-500 mt-1">想定最大規模降雨での計算値</p>
+                <p className="text-[11px] text-slate-500 mt-1">想定最大規模降雨での計算値</p>
               </>
             )}
             {hover.type === "did" && (
               <>
                 <p className="font-bold text-emerald-700">🏙 人口集中地区（DID）</p>
                 {hover.name && <p>市区町村: {hover.name}</p>}
-                <p className="text-[10px] text-slate-500 mt-1">人口密度 4,000人/km²以上の連続区域</p>
+                <p className="text-[11px] text-slate-500 mt-1">人口密度 4,000人/km²以上の連続区域</p>
               </>
             )}
             {hover.type === "zoning" && (
               <>
                 <p className="font-bold text-amber-700">📍 用途地域</p>
                 <p className="font-bold">{describeZoneCode(hover.zoneCode)}</p>
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[11px] text-slate-500 mt-1">
                   {hover.zoneCode <= 7 ? "住居系用途" : hover.zoneCode === 8 || hover.zoneCode === 9 ? "商業系用途" : hover.zoneCode <= 12 ? "工業系用途" : "その他"}
                 </p>
               </>
@@ -336,7 +336,7 @@ export default function MuniMapInner({ geojson, center, fillColor, overlays, act
                 <p className="font-bold text-purple-700">🎯 立地適正化計画区域</p>
                 {hover.muniCode && <p>市区町村コード: {hover.muniCode}</p>}
                 {hover.planName && <p>{hover.planName}</p>}
-                <p className="text-[10px] text-slate-500 mt-1">居住誘導区域 or 都市機能誘導区域</p>
+                <p className="text-[11px] text-slate-500 mt-1">居住誘導区域 or 都市機能誘導区域</p>
               </>
             )}
             {hover.type === "muni" && (

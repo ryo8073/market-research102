@@ -233,7 +233,7 @@ export default function MapTab({ prefCode, prefName, allData, onPrefClick, onCit
         </CardHeader>
         <CardContent>
           <MapLayerControls activeLayers={activeLayers} onToggle={toggleLayer} />
-          <p className="text-[10px] text-muted-foreground mt-2">
+          <p className="text-[11px] text-muted-foreground mt-2">
             レイヤーを選択すると県内マップ上に重ねて表示されます。<strong>すべてのレイヤーでホバー時に詳細情報を表示</strong>（金額・浸水深・用途名・施設名等）。
             複数レイヤー重ね合わせ時は『ポイント &gt; 用途地域 &gt; 洪水 &gt; DID &gt; 立地適正 &gt; 市区町村』の優先順位で表示。
           </p>
@@ -245,21 +245,21 @@ export default function MapTab({ prefCode, prefName, allData, onPrefClick, onCit
                 <details open className="rounded border bg-white dark:bg-slate-900 p-2 text-xs">
                   <summary className="font-semibold cursor-pointer">💰 地価公示の凡例</summary>
                   <div className="mt-2 space-y-1">
-                    <div className="flex items-center gap-1 text-[10px]">
+                    <div className="flex items-center gap-1 text-[11px]">
                       <span className="inline-block w-2 h-2 rounded-full bg-[#fef3c7] border" />
                       <span className="inline-block w-3 h-3 rounded-full bg-[#fb923c]" />
                       <span className="inline-block w-4 h-4 rounded-full bg-[#dc2626]" />
                       <span className="inline-block w-5 h-5 rounded-full bg-[#7f1d1d]" />
                       <span className="ml-2">3万円/m² → 10万 → 30万 → 100万円/m²</span>
                     </div>
-                    <p className="text-[10px] text-slate-500">サイズ・色ともに価格に比例。ホバーで詳細表示。ズームインで大きく表示。</p>
+                    <p className="text-[11px] text-slate-500">サイズ・色ともに価格に比例。ホバーで詳細表示。ズームインで大きく表示。</p>
                   </div>
                 </details>
               )}
               {activeLayers.has("flood") && (
                 <details open className="rounded border bg-white dark:bg-slate-900 p-2 text-xs">
                   <summary className="font-semibold cursor-pointer">💧 洪水浸水想定区域の凡例</summary>
-                  <div className="mt-2 flex items-center flex-wrap gap-1 text-[10px]">
+                  <div className="mt-2 flex items-center flex-wrap gap-1 text-[11px]">
                     {[
                       { c: "#bfdbfe", l: "0.5m未満" },
                       { c: "#60a5fa", l: "0.5-3m" },
@@ -279,7 +279,7 @@ export default function MapTab({ prefCode, prefName, allData, onPrefClick, onCit
               {activeLayers.has("zoning") && (
                 <details open className="rounded border bg-white dark:bg-slate-900 p-2 text-xs">
                   <summary className="font-semibold cursor-pointer">📍 用途地域の凡例</summary>
-                  <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-0.5 text-[10px]">
+                  <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-0.5 text-[11px]">
                     {[
                       { c: "#86efac", l: "低層住居専用" },
                       { c: "#bbf7d0", l: "中高層住居" },
@@ -482,7 +482,7 @@ export default function MapTab({ prefCode, prefName, allData, onPrefClick, onCit
 function MapLegend({ metric }: { metric: MapMetric }) {
   if (metric === "basic_ratio") {
     return (
-      <div className="mt-3 flex items-center gap-1 text-[10px] text-muted-foreground">
+      <div className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground">
         <span>低 0%</span>
         <div className="flex h-3 flex-1 max-w-[200px] rounded-sm overflow-hidden">
           {["#f7fbff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"].map((c) => (
@@ -497,7 +497,7 @@ function MapLegend({ metric }: { metric: MapMetric }) {
 
   // RS / Suitability → segment colors
   return (
-    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
       {SEGMENTS.map((seg) => (
         <span key={seg.key} className="inline-flex items-center gap-1">
           <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: seg.color }} />

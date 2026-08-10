@@ -152,7 +152,7 @@ export function PopulationMomentumCard({
 
         {/* 購入スタンス（意思決定の答えを最上部に） */}
         <div className="rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: `${st.color}12`, borderLeft: `5px solid ${st.color}` }}>
-          <p className="text-[10px] font-bold tracking-widest text-muted-foreground">購入スタンス</p>
+          <p className="text-[11px] font-bold tracking-widest text-muted-foreground">購入スタンス</p>
           <p className="text-[22px] font-black leading-tight" style={{ color: st.color }}>{st.label}</p>
           <p className="text-[12.5px] leading-relaxed text-slate-700 dark:text-slate-200 mt-0.5">{st.text}</p>
         </div>
@@ -169,10 +169,10 @@ export function PopulationMomentumCard({
                 <div className="absolute right-0 top-0 w-1/2 h-1/2" style={{ background: "#F59E0B10" }} />
                 <div className="absolute left-0 bottom-0 w-1/2 h-1/2" style={{ background: "#0D948810" }} />
                 <div className="absolute right-0 bottom-0 w-1/2 h-1/2" style={{ background: "#16A34A14" }} />
-                <span className="absolute left-1.5 top-1 text-[9.5px] font-bold" style={{ color: "#DC2626" }}>取得回避</span>
-                <span className="absolute right-1.5 top-1 text-[9.5px] font-bold" style={{ color: "#D97706" }}>出口前提で条件付</span>
-                <span className="absolute left-1.5 bottom-1 text-[9.5px] font-bold" style={{ color: "#0D9488" }}>需要先行・供給精査</span>
-                <span className="absolute right-1.5 bottom-1 text-[9.5px] font-bold" style={{ color: "#16A34A" }}>積極取得</span>
+                <span className="absolute left-1.5 top-1 text-[11px] font-bold" style={{ color: "#DC2626" }}>取得回避</span>
+                <span className="absolute right-1.5 top-1 text-[11px] font-bold" style={{ color: "#D97706" }}>出口前提で条件付</span>
+                <span className="absolute left-1.5 bottom-1 text-[11px] font-bold" style={{ color: "#0D9488" }}>需要先行・供給精査</span>
+                <span className="absolute right-1.5 bottom-1 text-[11px] font-bold" style={{ color: "#16A34A" }}>積極取得</span>
                 <div className="absolute left-0 right-0 top-1/2 h-px bg-slate-300" />
                 <div className="absolute top-0 bottom-0 left-1/2 w-px bg-slate-300" />
                 <div className="absolute rounded-full border-[3px] border-white shadow-md z-10"
@@ -181,7 +181,7 @@ export function PopulationMomentumCard({
                 </div>
                 <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8.5px] font-semibold text-muted-foreground">供給スコア（雇用基盤）→</span>
               </div>
-              <p className="text-[9px] text-muted-foreground text-center mt-1.5">
+              <p className="text-[11px] text-muted-foreground text-center mt-1.5">
                 縦=需要が全国平均より強い/弱い　横=供給(CI102スコア {Math.round(supplyScore)}/100)
               </p>
             </div>
@@ -193,33 +193,33 @@ export function PopulationMomentumCard({
               </div>
               <div className="relative h-4 rounded-lg mt-4" style={{ background: "linear-gradient(90deg,#EF4444 0%,#F59E0B 33%,#FDE047 55%,#86EFAC 73%,#16A34A 100%)" }}>
                 <div className="absolute -top-1.5 -bottom-1.5 w-0.5 bg-slate-900 dark:bg-white" style={{ left: `${sPos(c.national_pop_change_pct)}%`, transform: "translateX(-1px)" }}>
-                  <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-white/90 dark:bg-slate-900/90 px-1 text-[10px] font-bold">全国 {fmtPct(c.national_pop_change_pct)}</span>
+                  <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-white/90 dark:bg-slate-900/90 px-1 text-[11px] font-bold">全国 {fmtPct(c.national_pop_change_pct)}</span>
                 </div>
                 <div className="absolute top-1/2 h-4 w-4 rounded-full border-[3px] border-white shadow-md z-10" style={{ left: `${sPos(c.pop_change_pct)}%`, transform: "translate(-50%,-50%)", backgroundColor: d.color }} />
               </div>
-              <div className="mt-6 flex justify-between text-[9px] font-semibold text-muted-foreground"><span>-10%</span><span>-5%</span><span>0%</span><span>+5%</span></div>
+              <div className="mt-6 flex justify-between text-[11px] font-semibold text-muted-foreground"><span>-10%</span><span>-5%</span><span>0%</span><span>+5%</span></div>
             </div>
           )}
 
           {/* metrics */}
           <div className="grid grid-cols-2 gap-2.5">
             <div className="col-span-2 rounded-xl border bg-muted/40 px-3 py-2 text-center">
-              <p className="text-[10px] font-semibold text-muted-foreground">人口 (2025)</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">人口 (2025)</p>
               <p className="text-xl font-extrabold">{c.population.toLocaleString()}</p>
               <p className="text-xs font-extrabold" style={{ color: tone(c.pop_change_pct) }}>{upDown(c.pop_change_pct)} {fmtPct(c.pop_change_pct)}（{popDelta.toLocaleString()}人）</p>
             </div>
             <div className="rounded-xl border bg-muted/40 px-3 py-2 text-center">
-              <p className="text-[10px] font-semibold text-muted-foreground">世帯 (2025)</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">世帯 (2025)</p>
               <p className="text-lg font-extrabold">{c.households.toLocaleString()}</p>
               <p className="text-xs font-extrabold" style={{ color: tone(c.hh_change_pct) }}>{upDown(c.hh_change_pct)} {fmtPct(c.hh_change_pct)}</p>
             </div>
             <div className="rounded-xl border bg-muted/40 px-3 py-2 text-center">
-              <p className="text-[10px] font-semibold text-muted-foreground">人口密度</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">人口密度</p>
               <p className="text-lg font-extrabold">{c.density.toLocaleString()}</p>
-              <p className="text-[10px] text-muted-foreground">人/km²</p>
+              <p className="text-[11px] text-muted-foreground">人/km²</p>
             </div>
             <div className="col-span-2 flex items-center justify-between rounded-xl border bg-muted/30 px-3 py-1.5">
-              <span className="text-[10px] font-semibold text-muted-foreground">需要 全国比</span>
+              <span className="text-[11px] font-semibold text-muted-foreground">需要 全国比</span>
               <span className="text-xs font-extrabold" style={{ color: above ? "#16A34A" : "#DC2626" }}>{above ? "+" : ""}{gap.toFixed(1)}pt {above ? "上回る" : "下回る"}</span>
             </div>
           </div>
@@ -243,7 +243,7 @@ export function PopulationMomentumCard({
           ))}
         </div>
 
-        <p className="mt-3 border-t pt-2 text-[10px] text-muted-foreground">
+        <p className="mt-3 border-t pt-2 text-[11px] text-muted-foreground">
           出典: {c.source}　│　需要=直近実測（本指標）× 供給=CI102経済分析(2021)。両輪で購入可否を判断します。
         </p>
       </CardContent>

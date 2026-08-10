@@ -83,23 +83,23 @@ export function GranularityRanking() {
       {/* ハイライト3つ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded bg-emerald-50 border border-emerald-200 p-2">
-          <p className="text-[10px] text-emerald-700">教科書範囲内 (L2 ≤ 5.5) の県数</p>
+          <p className="text-[11px] text-emerald-700">教科書範囲内 (L2 ≤ 5.5) の県数</p>
           <p className="text-2xl font-bold text-emerald-900">{inRangeCount} / 47</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-[11px] text-slate-500 mt-0.5">
             日本の {(inRangeCount / 47 * 100).toFixed(0)}% の県が、米国 Orlando MSA と同等以上の多角化を持つ
           </p>
         </div>
         <div className="rounded bg-blue-50 border border-blue-200 p-2">
-          <p className="text-[10px] text-blue-700">教科書値 (4.94) 最近接</p>
+          <p className="text-[11px] text-blue-700">教科書値 (4.94) 最近接</p>
           <p className="text-base font-bold text-blue-900">{closestToOrlando.pref_name}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-[11px] text-slate-500 mt-0.5">
             L2 EBM = {closestToOrlando.ebm_l2.toFixed(2)} (差: {(closestToOrlando.ebm_l2 - 4.94).toFixed(2)})
           </p>
         </div>
         <div className="rounded bg-purple-50 border border-purple-200 p-2">
-          <p className="text-[10px] text-purple-700">最も粒度効果大 (L0→L2 圧縮率)</p>
+          <p className="text-[11px] text-purple-700">最も粒度効果大 (L0→L2 圧縮率)</p>
           <p className="text-base font-bold text-purple-900">{mostCompressed.pref_name}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-[11px] text-slate-500 mt-0.5">
             {mostCompressed.compression.toFixed(0)}% に圧縮 (L0 {mostCompressed.ebm_l0.toFixed(2)} → L2 {mostCompressed.ebm_l2.toFixed(2)})
           </p>
         </div>
@@ -192,7 +192,7 @@ export function GranularityRanking() {
         </ul>
       </div>
 
-      <p className="text-[10px] text-slate-500">
+      <p className="text-[11px] text-slate-500">
         ※ L2 は卸売・小売業 (G大分類、12中分類) を 156細分類に展開。他大分類 (製造業/サービス業等) は中分類維持。
         全業種完全細分類は e-Stat 個別テーブル取得が必要 (将来課題)。
       </p>

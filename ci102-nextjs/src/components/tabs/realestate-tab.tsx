@@ -211,7 +211,7 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">出典: 国交省 不動産情報ライブラリ（MLIT XIT001）。中央値は全物件種別の㎡単価。</p>
+              <p className="text-[11px] text-muted-foreground mt-1">出典: 国交省 不動産情報ライブラリ（MLIT XIT001）。中央値は全物件種別の㎡単価。</p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">トレンドデータがありません。</p>

@@ -190,7 +190,7 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
         {/* Score number */}
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
           <span className="text-3xl font-bold" style={{ color }}>{Math.round(score)}</span>
-          <span className="text-[10px] text-muted-foreground">/ 100</span>
+          <span className="text-[11px] text-muted-foreground">/ 100</span>
         </div>
       </div>
       <p className="text-sm font-semibold mt-1" style={{ color }}>{label}</p>
@@ -223,7 +223,7 @@ function BenchmarkBar({ value, min, max, median, label, unit, higherIsBetter = t
         {/* Median marker */}
         <div className="absolute top-0 w-0.5 h-2 bg-gray-500 dark:bg-gray-400" style={{ left: `${medPct}%` }} />
       </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground">
+      <div className="flex justify-between text-[11px] text-muted-foreground">
         <span>最低 {min.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
         <span>中央値 {median.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
         <span>最高 {max.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
@@ -377,7 +377,7 @@ function ScorecardRadar({ pref, allData }: { pref: PrefectureData; allData: Reco
           <Legend wrapperStyle={{ fontSize: 11 }} />
         </RadarChart>
       </ResponsiveContainer>
-      <p className="text-[10px] text-muted-foreground text-center">
+      <p className="text-[11px] text-muted-foreground text-center">
         各指標を全47都道府県のmin-maxで0-100にスケーリング。外側ほど高い値。
       </p>
     </div>
@@ -498,7 +498,7 @@ function PopulationProjectionPanel({ pref }: { pref: PrefectureData }) {
           <Line type="monotone" dataKey="指数" stroke="#1B2A4A" strokeWidth={2} dot />
         </LineChart>
       </ResponsiveContainer>
-      <p className="text-[10px] text-slate-500">
+      <p className="text-[11px] text-slate-500">
         ※ 2020年=100 として指数化。グラフはコホート要因法による国立社会保障・人口問題研究所の地域別将来推計（H30推計）。
         物件耐用年数（RC造50年）の範囲で需要動態を把握する基礎データ。
       </p>
@@ -659,7 +659,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
               <div className="text-slate-500">浸水リスク面積率</div>
               <div className="font-semibold">{city.flood_risk_pct.toFixed(1)}%</div>
               {city.max_flood_depth != null && (
-                <div className="text-[10px] text-rose-700">
+                <div className="text-[11px] text-rose-700">
                   最大浸水深: {city.max_flood_depth === 11 ? "0.5m未満" :
                               city.max_flood_depth === 12 ? "0.5-3m" :
                               city.max_flood_depth === 13 ? "3-5m" :
@@ -675,7 +675,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
               <div className="text-slate-500">最寄り駅まで</div>
               <div className="font-semibold">車{city.nearest_station_min.toFixed(0)}分</div>
               {city.nearest_station_name && (
-                <div className="text-[10px] text-slate-500 truncate" title={city.nearest_station_name}>
+                <div className="text-[11px] text-slate-500 truncate" title={city.nearest_station_name}>
                   {city.nearest_station_name}駅
                 </div>
               )}
@@ -685,7 +685,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
             <div className="rounded border p-2">
               <div className="text-slate-500">車依存度スコア</div>
               <div className="font-semibold">{city.car_dependency_score.toFixed(0)}</div>
-              <div className="text-[10px] text-slate-500">
+              <div className="text-[11px] text-slate-500">
                 {city.car_dependency_score >= 70 ? "高（山間・離島型）" :
                  city.car_dependency_score >= 50 ? "中（地方郊外）" :
                  city.car_dependency_score >= 30 ? "低（都市型）" : "極低"}
@@ -707,7 +707,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
             <div className="rounded border p-2">
               <div className="text-slate-500">DID面積 / 人口</div>
               <div className="font-semibold">{city.did_area_ha.toFixed(0)} ha</div>
-              <div className="text-[10px] text-slate-500">
+              <div className="text-[11px] text-slate-500">
                 {city.did_population != null ? `${city.did_population.toLocaleString()}人` : ""}
               </div>
             </div>
@@ -716,7 +716,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
             <div className="rounded border p-2 bg-purple-50">
               <div className="text-slate-500">立地適正化計画</div>
               <div className="font-semibold text-purple-700">策定済み</div>
-              <div className="text-[10px] text-slate-500">コンパクトシティ施策対象</div>
+              <div className="text-[11px] text-slate-500">コンパクトシティ施策対象</div>
             </div>
           )}
         </div>
@@ -734,7 +734,7 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
             {activeTopLq.slice(0, 5).map((r) => (
               <div key={r.industry} className="rounded border p-2 text-xs">
                 <div className="font-medium truncate" title={r.industry}>{r.industry}</div>
-                <div className="text-[10px] text-slate-500">LQ {r.lq.toFixed(2)} / 基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</div>
+                <div className="text-[11px] text-slate-500">LQ {r.lq.toFixed(2)} / 基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</div>
               </div>
             ))}
           </div>
@@ -1353,7 +1353,7 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
               <h3 className="text-sm font-semibold">
                 基盤産業 TOP {Math.min(activeTopLq.length, 10)}
               </h3>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[11px] text-slate-500">
                 {granularity === "major" ? "大分類17業種" : granularity === "mid" ? "中分類95業種" : "+農林業補完"}
                 {" "}({activeNBasicIndustries}業種が LQ&gt;1.0)
               </span>
@@ -1362,12 +1362,12 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
               {activeTopLq.slice(0, granularity === "major" ? 5 : 10).map((r, i) => (
                 <div key={r.industry} className="flex justify-between items-center rounded-lg border p-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#2A9D8F]/10 text-[#2A9D8F] text-[10px] font-bold">{i + 1}</span>
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#2A9D8F]/10 text-[#2A9D8F] text-[11px] font-bold">{i + 1}</span>
                     <span className="text-xs font-medium">{r.industry}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-bold text-[#2A9D8F]">LQ {r.lq.toFixed(2)}</span>
-                    <p className="text-[10px] text-muted-foreground">基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</p>
+                    <p className="text-[11px] text-muted-foreground">基盤 {Math.round(r.basic_emp_estimate).toLocaleString()}人</p>
                   </div>
                 </div>
               ))}
@@ -1507,14 +1507,14 @@ function DashboardContent() {
   const [pageEconZoneCodes, setPageEconZoneCodes] = useState<string[]>(initialZone);
 
   // Sync state -> URL (replaceState, no history entry)
-  // 注: zoneパラメータはdecision-hub-tab側で管理（ここではinitialZoneを渡すのみ）
   useEffect(() => {
     const params = new URLSearchParams();
     params.set("pref", String(prefCode));
     if (cityCode) params.set("city", cityCode);
     if (activeTab !== "decision_hub") params.set("tab", activeTab);
+    if (pageEconZoneCodes.length > 0) params.set("zone", pageEconZoneCodes.join(","));
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [prefCode, cityCode, activeTab, router]);
+  }, [prefCode, cityCode, activeTab, pageEconZoneCodes, router]);
   const { data: pref, allData, loading, error: prefError } = usePrefectureData(prefCode);
   const { detail: prefDetailMid } = usePrefDetailMid(prefCode);
   const lqTableMid = prefDetailMid?.lq_table_mid ?? pref?.lq_table_mid;
@@ -1630,6 +1630,20 @@ function DashboardContent() {
         </div>
       </header>
 
+      {/* 初訪問バナー */}
+      {typeof window !== "undefined" && !localStorage.getItem("ci102_visited") && (
+        <div className="bg-blue-600 text-white px-4 py-3 text-sm">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div>
+              <strong>CI102 エリア分析</strong> — 政府統計から不動産投資の需要・供給・将来性を定量評価するツールです。
+              まず「🎯 投資判断」タブで全体像を把握し、気になる指標は各タブで深掘りしてください。
+              <a href="/learn" className="underline ml-1">分析手法を学ぶ →</a>
+            </div>
+            <button onClick={() => { localStorage.setItem("ci102_visited", "1"); window.location.reload(); }} className="shrink-0 rounded bg-white/20 px-3 py-1 text-xs font-bold hover:bg-white/30">閉じる</button>
+          </div>
+        </div>
+      )}
+
       {/* Main */}
       <main id="main-content" className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6">
         {(prefError || muniError) && (
@@ -1662,7 +1676,7 @@ function DashboardContent() {
               </TabsTrigger>
 
               {/* ── セパレーター ── */}
-              <span className="hidden md:inline self-center px-1 text-[10px] text-slate-400 select-none">|</span>
+              <span className="hidden md:inline self-center px-1 text-[11px] text-slate-400 select-none">|</span>
 
               {/* ── 詳細深掘り ── */}
               <TabsTrigger value="scorecard" className="text-xs md:text-sm">
@@ -1677,44 +1691,56 @@ function DashboardContent() {
                 <span className="md:hidden">📐</span>
                 <span className="hidden md:inline">📐 需要予測</span>
               </TabsTrigger>
-              <TabsTrigger value="shift" className="text-xs md:text-sm">
-                <span className="md:hidden">📊</span>
+              {/* モバイル: 残りのタブはselectで切替 */}
+              <div className="md:hidden">
+                <select
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value as TabValue)}
+                  className="rounded border px-2 py-1.5 text-xs font-bold bg-white"
+                >
+                  <optgroup label="詳細分析">
+                    <option value="shift">📊 競争力</option>
+                    <option value="gap">🛒 小売市場</option>
+                    <option value="demographics">👥 人口動態</option>
+                    <option value="realestate">🏠 不動産取引</option>
+                    <option value="map">🗺️ 地図</option>
+                    <option value="risk">⚠️ 災害</option>
+                    <option value="access">🚃 交通</option>
+                    <option value="cross">📈 クロス</option>
+                    <option value="metro">🏙️ 都市圏</option>
+                    <option value="trade_area">📍 商圏</option>
+                  </optgroup>
+                </select>
+              </div>
+              {/* デスクトップ: 全タブ表示 */}
+              <TabsTrigger value="shift" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">📊 競争力</span>
               </TabsTrigger>
-              <TabsTrigger value="gap" className="text-xs md:text-sm">
-                <span className="md:hidden">🛒</span>
+              <TabsTrigger value="gap" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">🛒 小売市場</span>
               </TabsTrigger>
-              <TabsTrigger value="demographics" className="text-xs md:text-sm">
-                <span className="md:hidden">👥</span>
+              <TabsTrigger value="demographics" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">👥 人口動態</span>
               </TabsTrigger>
-              <TabsTrigger value="realestate" className="text-xs md:text-sm">
-                <span className="md:hidden">🏠</span>
+              <TabsTrigger value="realestate" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">🏠 不動産取引</span>
               </TabsTrigger>
-              <TabsTrigger value="map" className="text-xs md:text-sm">
-                <span className="md:hidden">🗺️</span>
+              <TabsTrigger value="map" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">🗺️ 地図</span>
               </TabsTrigger>
-              <TabsTrigger value="risk" className="text-xs md:text-sm">
-                <span className="md:hidden">⚠️</span>
+              <TabsTrigger value="risk" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">⚠️ 災害</span>
               </TabsTrigger>
-              <TabsTrigger value="access" className="text-xs md:text-sm">
-                <span className="md:hidden">🚃</span>
+              <TabsTrigger value="access" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">🚃 交通</span>
               </TabsTrigger>
-              <TabsTrigger value="cross" className="text-xs md:text-sm">
-                <span className="md:hidden">📈</span>
+              <TabsTrigger value="cross" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">📈 クロス</span>
               </TabsTrigger>
-              <TabsTrigger value="metro" className="text-xs md:text-sm">
-                <span className="md:hidden">🏙️</span>
+              <TabsTrigger value="metro" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">🏙️ 都市圏</span>
               </TabsTrigger>
-              <TabsTrigger value="trade_area" className="text-xs md:text-sm">
-                <span className="md:hidden">📍</span>
+              <TabsTrigger value="trade_area" className="text-xs md:text-sm hidden md:inline-flex">
                 <span className="hidden md:inline">📍 商圏</span>
               </TabsTrigger>
             </TabsList>

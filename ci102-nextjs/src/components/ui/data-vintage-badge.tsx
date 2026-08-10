@@ -45,7 +45,7 @@ export function DataVintageBadge({ variant = "compact", className = "" }: Props)
   if (variant === "compact") {
     return (
       <span
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border ${colorClass} ${className}`}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border ${colorClass} ${className}`}
         title={`経済センサス ${ECONOMIC_CENSUS_CURRENT.labelShort} (${age}年前のデータ) / 国勢調査 ${POPULATION_CENSUS_CURRENT.labelShort}\n次回経済センサス結果公表予定: ${nextYear}年頃`}
       >
         {icon} データ時点: 経済センサス {ECONOMIC_CENSUS_CURRENT.labelShort}
@@ -58,7 +58,7 @@ export function DataVintageBadge({ variant = "compact", className = "" }: Props)
       <summary className="cursor-pointer flex items-center gap-2">
         <span>{icon}</span>
         <strong>データ鮮度: {statusLabel}</strong>
-        <span className="text-[10px]">(経済センサス{ECONOMIC_CENSUS_CURRENT.labelShort}・{age}年経過)</span>
+        <span className="text-[11px]">(経済センサス{ECONOMIC_CENSUS_CURRENT.labelShort}・{age}年経過)</span>
       </summary>
       <div className="mt-2 space-y-1">
         <p>

@@ -128,7 +128,7 @@ function MuellerTooltip({ active, payload }: any) {
         />
         <span className="font-bold text-sm">{d.period}</span>
         {d.isLatest && (
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+          <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
             最新
           </span>
         )}
@@ -195,7 +195,7 @@ function IdealCycleDiagram({ currentPhase }: { currentPhase: PhaseName | null })
               />
               <text
                 x={px} y={py} textAnchor="middle" dominantBaseline="central"
-                className="fill-white text-[9px] font-bold"
+                className="fill-white text-[11px] font-bold"
               >
                 {phase.icon}
               </text>
@@ -205,7 +205,7 @@ function IdealCycleDiagram({ currentPhase }: { currentPhase: PhaseName | null })
                 y={cy + (r + 30) * Math.sin(rad)}
                 textAnchor="middle"
                 dominantBaseline="central"
-                className={`text-[10px] ${isCurrent ? "font-bold fill-foreground" : "fill-muted-foreground"}`}
+                className={`text-[11px] ${isCurrent ? "font-bold fill-foreground" : "fill-muted-foreground"}`}
               >
                 {phase.ja}
               </text>
@@ -214,8 +214,8 @@ function IdealCycleDiagram({ currentPhase }: { currentPhase: PhaseName | null })
         })}
 
         {/* Center label */}
-        <text x={cx} y={cy - 6} textAnchor="middle" className="fill-muted-foreground text-[9px]">不動産</text>
-        <text x={cx} y={cy + 8} textAnchor="middle" className="fill-muted-foreground text-[9px]">市場サイクル</text>
+        <text x={cx} y={cy - 6} textAnchor="middle" className="fill-muted-foreground text-[11px]">不動産</text>
+        <text x={cx} y={cy + 8} textAnchor="middle" className="fill-muted-foreground text-[11px]">市場サイクル</text>
       </svg>
     </div>
   );
@@ -596,16 +596,16 @@ export default function MuellerCycle({ prefCode, cityCode }: Props) {
             <div className="flex items-center justify-center gap-4">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full" style={{ background: "linear-gradient(135deg, rgb(68,1,84), rgb(253,231,37))" }} />
-                <span className="text-[10px] text-muted-foreground">過去</span>
+                <span className="text-[11px] text-muted-foreground">過去</span>
                 <div className="w-16 h-0.5 bg-gradient-to-r from-purple-800 to-yellow-400 rounded" />
-                <span className="text-[10px] text-muted-foreground">現在</span>
+                <span className="text-[11px] text-muted-foreground">現在</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="relative flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600" />
                 </span>
-                <span className="text-[10px] text-muted-foreground">最新四半期</span>
+                <span className="text-[11px] text-muted-foreground">最新四半期</span>
               </div>
             </div>
 
@@ -616,7 +616,7 @@ export default function MuellerCycle({ prefCode, cityCode }: Props) {
                 return (
                   <span
                     key={d.period}
-                    className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border"
+                    className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border"
                     style={{
                       borderColor: d.isLatest ? "#DC2626" : phaseColor + "40",
                       backgroundColor: d.isLatest ? "#DC262610" : phaseColor + "08",

@@ -197,7 +197,7 @@ export default function LqTab({ localEmp, nationalEmp, localT0, localT1, nationa
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
-        <div className="flex justify-center gap-4 mt-2 text-[10px] text-muted-foreground">
+        <div className="flex justify-center gap-4 mt-2 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#2A9D8F]" />LQ≥1.25（強い基盤産業）</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#D4A843]" />LQ 1.0-1.25（弱い基盤産業）</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#9CA3AF]" />LQ&lt;1.0（非基盤産業）</span>
@@ -368,7 +368,7 @@ function MinorRetailLqSection({ prefCode }: { prefCode: number }) {
                   <td className="p-2 text-amber-900 font-medium">{idx + 1}</td>
                   <td className="p-2">
                     {entry.name}
-                    <span className="ml-2 text-[10px] text-slate-400 font-mono">{entry.code}</span>
+                    <span className="ml-2 text-[11px] text-slate-400 font-mono">{entry.code}</span>
                   </td>
                   <td className="text-right p-2 font-mono font-semibold" style={{ color: entry.lq >= 2.0 ? "#92400e" : "#a16207" }}>
                     {entry.lq.toFixed(2)}
@@ -381,7 +381,7 @@ function MinorRetailLqSection({ prefCode }: { prefCode: number }) {
           </table>
         </div>
 
-        <div className="text-[10px] text-amber-700 space-y-1 mt-2">
+        <div className="text-[11px] text-amber-700 space-y-1 mt-2">
           <p>
             ※ <strong>都道府県レベルのみ</strong>: 市区町村別の細分類データは経済センサスに存在しないため、
             市区町村の評価には別途中分類 (95業種) を使用します。

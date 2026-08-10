@@ -112,7 +112,7 @@ export default function MetroTab() {
               </tr>
             </tbody>
           </table>
-          <p className="text-[10px] text-slate-500 mt-1.5 leading-snug">
+          <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">
             ※ 圏域合算で EBM が上がる理由: 周辺県を加えると地域シェアが全国平均に近づき、LQ&gt;1業種の優位性が薄まる。
             東京都単独 5.79 は教科書 Orlando 4.94 に近い「健全圏」、合算 11.41 はその数学的副産物。
             CCIM 教科書の MSA 定義 (中心都市 + 一体的な通勤圏) よりも、日本の1都3県は経済規模が大きすぎる可能性。
@@ -326,7 +326,7 @@ export default function MetroTab() {
                     <tr className="border-b">
                       <td className="py-1.5 px-2">
                         HHI（産業集中度）<br/>
-                        <span className="text-[10px] font-mono text-slate-500">Σ(シェア×100)²</span>
+                        <span className="text-[11px] font-mono text-slate-500">Σ(シェア×100)²</span>
                       </td>
                       <td className="text-right">{metro.hhi?.toFixed(0)}</td>
                       <td className="text-right text-slate-500">~1100</td>
@@ -335,7 +335,7 @@ export default function MetroTab() {
                     <tr className="border-b">
                       <td className="py-1.5 px-2">
                         有効業種数<br/>
-                        <span className="text-[10px] font-mono text-slate-500">1 / Σ シェア²</span>
+                        <span className="text-[11px] font-mono text-slate-500">1 / Σ シェア²</span>
                       </td>
                       <td className="text-right">{metro.effective_n_industries?.toFixed(1)}</td>
                       <td className="text-right text-slate-500">~9</td>
@@ -344,7 +344,7 @@ export default function MetroTab() {
                     <tr className="border-b">
                       <td className="py-1.5 px-2">
                         シャノンエントロピー H<br/>
-                        <span className="text-[10px] font-mono text-slate-500">-Σ シェア×ln(シェア)</span>
+                        <span className="text-[11px] font-mono text-slate-500">-Σ シェア×ln(シェア)</span>
                       </td>
                       <td className="text-right">{metro.shannon_entropy?.toFixed(3)}</td>
                       <td className="text-right text-slate-500">~2.43</td>
@@ -353,7 +353,7 @@ export default function MetroTab() {
                     <tr className="border-b">
                       <td className="py-1.5 px-2">
                         TOP5業種シェア CR<sub>5</sub><br/>
-                        <span className="text-[10px] font-mono text-slate-500">上位5業種の合計</span>
+                        <span className="text-[11px] font-mono text-slate-500">上位5業種の合計</span>
                       </td>
                       <td className="text-right">{metro.top5_share?.toFixed(1)}%</td>
                       <td className="text-right text-slate-500">~64%</td>

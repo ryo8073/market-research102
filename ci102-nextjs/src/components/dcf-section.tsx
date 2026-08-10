@@ -109,7 +109,7 @@ export function DcfSection({ macroScore, macroPropertyType }: Props) {
       {error && (
         <div className="rounded bg-rose-50 border border-rose-200 text-rose-900 text-xs p-2">
           {error}
-          <p className="text-[10px] mt-1">
+          <p className="text-[11px] mt-1">
             ※ PROFORMER_API_KEY 環境変数が未設定の場合、本機能は利用できません。
           </p>
         </div>
@@ -120,7 +120,7 @@ export function DcfSection({ macroScore, macroPropertyType }: Props) {
       )}
 
       {!data && !error && !loading && (
-        <p className="text-[10px] text-slate-500">
+        <p className="text-[11px] text-slate-500">
           Proformer の物件分析が登録済みの場合のみ機能します。物件IDは Proformer 側で発行された
           external_id を入力してください。
         </p>
@@ -156,7 +156,7 @@ function DcfResult({
       {/* 物件サマリ */}
       <div className="rounded bg-white border p-2.5">
         <p className="text-xs font-medium">{prop.name || "(物件名なし)"}</p>
-        <p className="text-[10px] text-slate-500">
+        <p className="text-[11px] text-slate-500">
           {prop.type} / {prop.location}
           {prop.acquisition_price ? ` / 取得価格 ¥${(prop.acquisition_price / 1e8).toFixed(2)}億` : ""}
         </p>
@@ -216,21 +216,21 @@ function DcfResult({
         <p className="text-xs font-semibold mb-2">🎯 マクロ×ミクロ統合評価 (CI102 教科書の本領)</p>
         <div className="grid md:grid-cols-3 gap-2 text-xs">
           <div className="rounded bg-blue-50 p-2">
-            <p className="text-[10px] text-slate-500">マクロ (地域経済)</p>
+            <p className="text-[11px] text-slate-500">マクロ (地域経済)</p>
             <p className="text-lg font-bold">{macroScore.toFixed(0)} / 100</p>
-            <p className="text-[10px] text-slate-600">最適: {macroPropertyType}</p>
+            <p className="text-[11px] text-slate-600">最適: {macroPropertyType}</p>
           </div>
           <div className="rounded bg-purple-50 p-2">
-            <p className="text-[10px] text-slate-500">ミクロ (物件収益)</p>
+            <p className="text-[11px] text-slate-500">ミクロ (物件収益)</p>
             <p className="text-lg font-bold">{microScore.toFixed(0)} / 100</p>
-            <p className="text-[10px] text-slate-600">Cap+DSCR+IRRから算出</p>
+            <p className="text-[11px] text-slate-600">Cap+DSCR+IRRから算出</p>
           </div>
           <div className="rounded p-2" style={{ backgroundColor: integratedVerdict.bg }}>
-            <p className="text-[10px] text-slate-500">統合判定</p>
+            <p className="text-[11px] text-slate-500">統合判定</p>
             <p className="text-lg font-bold" style={{ color: integratedVerdict.color }}>
               {integratedVerdict.label}
             </p>
-            <p className="text-[10px] text-slate-600">{integratedVerdict.note}</p>
+            <p className="text-[11px] text-slate-600">{integratedVerdict.note}</p>
           </div>
         </div>
       </div>
@@ -238,12 +238,12 @@ function DcfResult({
       {data.memo && (
         <details className="text-xs">
           <summary className="cursor-pointer text-slate-600">Proformer 物件メモ</summary>
-          <pre className="mt-1 p-2 bg-white border rounded whitespace-pre-wrap text-[10px]">{data.memo}</pre>
+          <pre className="mt-1 p-2 bg-white border rounded whitespace-pre-wrap text-[11px]">{data.memo}</pre>
         </details>
       )}
 
       {data.disclaimer && (
-        <p className="text-[9px] text-slate-500 italic">{data.disclaimer}</p>
+        <p className="text-[11px] text-slate-500 italic">{data.disclaimer}</p>
       )}
     </div>
   );
@@ -267,9 +267,9 @@ function KpiCard({
     "border-slate-200 bg-white";
   return (
     <div className={`rounded border p-2 ${color}`} title={hint}>
-      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="text-[11px] text-slate-500">{label}</div>
       <div className="text-base font-bold">{value}</div>
-      {hint && <div className="text-[9px] text-slate-400 mt-0.5">{hint}</div>}
+      {hint && <div className="text-[11px] text-slate-400 mt-0.5">{hint}</div>}
     </div>
   );
 }

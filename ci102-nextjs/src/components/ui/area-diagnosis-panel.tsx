@@ -25,8 +25,8 @@ function rating(score: number): { label: string; color: string } {
   return { label: "弱い", color: "#E11D48" };
 }
 
-const fmtPct = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`;
-const fmtNum = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v).toLocaleString()}`;
+const fmtPct = (v: number) => `${v > 0 ? "▲+" : v < 0 ? "▼" : ""}${v.toFixed(1)}%`;
+const fmtNum = (v: number) => `${v > 0 ? "▲+" : v < 0 ? "▼" : ""}${Math.round(v).toLocaleString()}`;
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 function stance(overall: number, demand: number, supply: number) {
@@ -66,7 +66,7 @@ const TAG_STYLE: Record<DataTag, { bg: string; text: string }> = {
 };
 function DataBadge({ tag }: { tag: DataTag }) {
   const s = TAG_STYLE[tag];
-  return <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-bold ${s.bg} ${s.text}`}>{tag}</span>;
+  return <span className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-bold ${s.bg} ${s.text}`}>{tag}</span>;
 }
 
 /* ── 指標カード（1指標＝数値＋投資家への意味） ── */
@@ -83,7 +83,7 @@ function MetricRow({ label, value, unit, meaning, tag }: {
         <div className="text-[14px] font-black leading-tight mt-0.5">
           {value}{unit && <span className="text-[11px] font-semibold text-muted-foreground ml-0.5">{unit}</span>}
         </div>
-        <p className="text-[10.5px] leading-snug text-slate-600 dark:text-slate-400 mt-0.5">{meaning}</p>
+        <p className="text-[11px] leading-snug text-slate-600 dark:text-slate-400 mt-0.5">{meaning}</p>
       </div>
     </div>
   );
@@ -450,7 +450,7 @@ export function AreaDiagnosisPanel({
         <div className="mt-1 h-[5px] rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
           <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: r.color }} />
         </div>
-        <p className="text-[9.5px] text-muted-foreground mt-1 leading-snug">{CHIP_DESC[label] ?? ""}</p>
+        <p className="text-[11px] text-muted-foreground mt-1 leading-snug">{CHIP_DESC[label] ?? ""}</p>
       </div>
     );
   };
@@ -466,11 +466,11 @@ export function AreaDiagnosisPanel({
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               不動産投資の根拠となる需要・供給・将来性を、政府統計から定量評価
-              <span className="ml-2 inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300">{scopeTag}（{ebScopeName}）</span>
+              <span className="ml-2 inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-bold text-slate-600 dark:text-slate-300">{scopeTag}（{ebScopeName}）</span>
             </p>
           </div>
           <div className="flex-none rounded-xl border-2 px-4 py-2 text-center" style={{ borderColor: st.color }}>
-            <div className="text-[9px] font-bold text-muted-foreground">エリア総合スコア</div>
+            <div className="text-[11px] font-bold text-muted-foreground">エリア総合スコア</div>
             <div className="text-[26px] font-black leading-none" style={{ color: st.color }}>
               {overall}<span className="text-xs text-muted-foreground">/100</span>
             </div>
@@ -479,7 +479,7 @@ export function AreaDiagnosisPanel({
 
         {/* ── この街をひとことで ── */}
         <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-4 py-3 mb-4">
-          <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-1">{area} の見方</p>
+          <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-1">{area} の見方</p>
           <p className="text-[14px] font-extrabold leading-relaxed text-slate-800 dark:text-slate-100">{headline}</p>
         </div>
 
@@ -502,19 +502,19 @@ export function AreaDiagnosisPanel({
 
         {/* ── 投資スタンス ── */}
         <div className="rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: `${st.color}12`, borderLeft: `5px solid ${st.color}` }}>
-          <p className="text-[10px] font-bold tracking-wider text-muted-foreground">エリア投資スタンス</p>
+          <p className="text-[11px] font-bold tracking-wider text-muted-foreground">エリア投資スタンス</p>
           <p className="text-[21px] font-black leading-tight" style={{ color: st.color }}>{st.label}</p>
           <p className="text-[12.5px] leading-relaxed text-slate-700 dark:text-slate-200 mt-0.5">{st.text}</p>
         </div>
 
         {/* ── 📈 需要（構造化指標カード） ── */}
-        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(22,163,74,0.2)", backgroundColor: "rgba(22,163,74,0.03)" }}>
-          <div className="flex items-center gap-2 mb-1">
+        <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(22,163,74,0.2)", backgroundColor: "rgba(22,163,74,0.03)" }}>
+          <summary className="flex items-center gap-2 mb-1 cursor-pointer select-none">
             <span className="text-base">📈</span>
             <span className="text-[13px] font-extrabold flex-1">需要 — 借り手・買い手はいるか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(demand).color }}>{rating(demand).label} {demand}</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mb-3">人口と世帯の増減が、入居率・賃料・売却価格に直結します</p>
+          </summary>
+          <p className="text-[11px] text-muted-foreground mb-3 mt-2">人口と世帯の増減が、入居率・賃料・売却価格に直結します</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <MetricRow
               label="人口の増減（直近5年）"
@@ -581,16 +581,16 @@ export function AreaDiagnosisPanel({
               />
             )}
           </div>
-        </div>
+        </details>
 
         {/* ── 🏭 供給（経済基盤の厚み） ── */}
-        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>
-          <div className="flex items-center gap-2 mb-1">
+        <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>
+          <summary className="flex items-center gap-2 cursor-pointer select-none">
             <span className="text-base">🏭</span>
             <span className="text-[13px] font-extrabold flex-1">供給 — 地域経済は自立しているか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(supply).color }}>{rating(supply).label} {supply}</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mb-3">域外から所得を稼ぐ「基盤産業」の厚みが、雇用と賃料の安定性を左右します</p>
+          </summary>
+          <p className="text-[11px] text-muted-foreground mb-3 mt-2">域外から所得を稼ぐ「基盤産業」の厚みが、雇用と賃料の安定性を左右します</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
             <MetricRow
@@ -616,7 +616,7 @@ export function AreaDiagnosisPanel({
 
           {/* 基盤/非基盤バー */}
           <div>
-            <div className="flex justify-between text-[10px] font-semibold mb-1">
+            <div className="flex justify-between text-[11px] font-semibold mb-1">
               <span className="text-emerald-700 dark:text-emerald-400">基盤雇用 {basicMid.toLocaleString()}人（{basicPct.toFixed(1)}%）</span>
               <span className="text-slate-500">非基盤雇用 {nonBasic.toLocaleString()}人</span>
             </div>
@@ -641,32 +641,32 @@ export function AreaDiagnosisPanel({
             )}
           </div>
           <div className="mt-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 px-3 py-2">
-            <p className="text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">
+            <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
               <strong>注意:</strong> EBMは分析対象の地域の取り方で大きく変わります。
               {ebmMid > 6 && " 単一行政区の分析ではEBMが過大になりやすく、この値もその傾向がある可能性があります。"}
               より正確な分析には、通勤圏を含む<strong>経済圏（複数市区町村）</strong>での再計算が推奨されます。
             </p>
             {!useEconZone && (
-              <p className="text-[10px] mt-1">
+              <p className="text-[11px] mt-1">
                 <a href="?tab=decision_hub" className="text-blue-700 dark:text-blue-400 underline font-bold">
                   → 投資判断ハブの「経済圏モード」で複数市区町村を合算して分析する
                 </a>
               </p>
             )}
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1.5">
+          <p className="text-[11px] text-muted-foreground mt-1.5">
             ※ 中分類95業種で算出（大分類17業種はLQ&gt;1業種が少なく基盤を過小評価するため）。参考: 大分類EBM {(pref.ebm ?? 0).toFixed(1)}。
           </p>
-        </div>
+        </details>
 
         {/* ── 🔭 将来性 ── */}
-        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(13,148,136,0.2)", backgroundColor: "rgba(13,148,136,0.03)" }}>
-          <div className="flex items-center gap-2 mb-1">
+        <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(13,148,136,0.2)", backgroundColor: "rgba(13,148,136,0.03)" }}>
+          <summary className="flex items-center gap-2 cursor-pointer select-none">
             <span className="text-base">🔭</span>
             <span className="text-[13px] font-extrabold flex-1">将来性 — 10年後も需要は続くか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(future).color }}>{rating(future).label} {future}</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground mb-3">出口（売却）時の価値を左右する「将来の需要と競争力」を3つの指標で評価</p>
+          </summary>
+          <p className="text-[11px] text-muted-foreground mb-3 mt-2">出口（売却）時の価値を左右する「将来の需要と競争力」を3つの指標で評価</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
             <MetricRow
@@ -717,7 +717,7 @@ export function AreaDiagnosisPanel({
             }
             {fd && fd.dHH < 0 && basicRatioMid >= 12 ? " ただし輸出基盤の厚みが縮小を緩和する可能性あり。" : ""}
           </p>
-        </div>
+        </details>
 
         {/* ── 🔁 データ更新の変化 (以前2020 → 最新2025 実測) ── */}
         <div className="rounded-xl border px-4 py-3 mb-4 bg-card">
@@ -727,12 +727,12 @@ export function AreaDiagnosisPanel({
           </p>
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div className="rounded-lg border bg-muted/30 px-3 py-2">
-              <div className="text-[10px] font-bold text-muted-foreground">人口</div>
+              <div className="text-[11px] font-bold text-muted-foreground">人口</div>
               <div className="text-[13px] font-extrabold">{pop2020.toLocaleString()} <span className="text-muted-foreground">→</span> {c.population.toLocaleString()}</div>
               <div className="text-[11px] font-bold" style={{ color: c.pop_change_pct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(popDelta)} 人（{fmtPct(c.pop_change_pct)}）／ 全国 {fmtPct(c.national_pop_change_pct)}・差 {gap >= 0 ? "+" : ""}{gap.toFixed(1)}pt</div>
             </div>
             <div className="rounded-lg border bg-muted/30 px-3 py-2">
-              <div className="text-[10px] font-bold text-muted-foreground">世帯</div>
+              <div className="text-[11px] font-bold text-muted-foreground">世帯</div>
               <div className="text-[13px] font-extrabold">{hh2020.toLocaleString()} <span className="text-muted-foreground">→</span> {c.households.toLocaleString()}</div>
               <div className="text-[11px] font-bold" style={{ color: c.hh_change_pct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(hhDelta)} 世帯（{fmtPct(c.hh_change_pct)}）{c.pop_change_pct < 0 && c.hh_change_pct > 0 ? "／人口減でも世帯増=単身化" : ""}</div>
             </div>
@@ -826,7 +826,7 @@ export function AreaDiagnosisPanel({
                 </div>
               );
             })()}
-            <p className="text-[10px] text-muted-foreground mt-2">
+            <p className="text-[11px] text-muted-foreground mt-2">
               2000〜2025: <DataBadge tag="実測" /> 国勢調査確定値 ｜ 2030〜2050: <DataBadge tag="推計" /> 国立社会保障・人口問題研究所。
               {tsWithRate.some((d) => d.agingRate != null) && " 高齢化率 = 65歳以上人口 ÷ 総人口（2025年は速報のため年齢別未公表）。"}
             </p>
@@ -848,22 +848,22 @@ export function AreaDiagnosisPanel({
             </p>
             <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2.5">
               <div className="rounded-lg border bg-muted/30 px-3 py-2 text-center">
-                <div className="text-[10px] font-bold text-muted-foreground">RS 大分類17業種</div>
+                <div className="text-[11px] font-bold text-muted-foreground">RS 大分類17業種</div>
                 <div className="text-lg font-black" style={{ color: rs >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(rs)} 人</div>
-                <div className="text-[10px] text-muted-foreground">牽引: {pref.top_rs_industry ?? "—"}（{fmtNum(pref.top_rs_value ?? 0)}）</div>
+                <div className="text-[11px] text-muted-foreground">牽引: {pref.top_rs_industry ?? "—"}（{fmtNum(pref.top_rs_value ?? 0)}）</div>
               </div>
               <div className="rounded-lg border bg-muted/30 px-3 py-2 text-center">
-                <div className="text-[10px] font-bold text-muted-foreground">RS 中分類95業種</div>
+                <div className="text-[11px] font-bold text-muted-foreground">RS 中分類95業種</div>
                 <div className="text-lg font-black" style={{ color: (rsMid ?? 0) >= 0 ? "#16A34A" : "#DC2626" }}>{rsMid != null ? fmtNum(rsMid) : "—"} 人</div>
-                <div className="text-[10px] text-muted-foreground">牽引: {pref.top_rs_industry_mid ?? "—"}（{fmtNum(pref.top_rs_value_mid ?? 0)}）</div>
+                <div className="text-[11px] text-muted-foreground">牽引: {pref.top_rs_industry_mid ?? "—"}（{fmtNum(pref.top_rs_value_mid ?? 0)}）</div>
               </div>
               <div className="rounded-lg border bg-muted/30 px-3 py-2 text-center">
-                <div className="text-[10px] font-bold text-muted-foreground">競争力の評価</div>
+                <div className="text-[11px] font-bold text-muted-foreground">競争力の評価</div>
                 <div className="text-lg font-black" style={{ color: rs >= 0 ? "#16A34A" : "#DC2626" }}>{rs >= 0 ? "全国平均超" : "全国平均未満"}</div>
-                <div className="text-[10px] text-muted-foreground">雇用比 {rsShare >= 0 ? "+" : ""}{rsShare.toFixed(2)}%</div>
+                <div className="text-[11px] text-muted-foreground">雇用比 {rsShare >= 0 ? "+" : ""}{rsShare.toFixed(2)}%</div>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-2">
+            <p className="text-[11px] text-muted-foreground mt-2">
               ※ RSがプラス＝「全国平均を上回る地域固有の競争力で雇用が純増」。将来の基盤雇用の増減を示す先行シグナル。<strong>期間は2016→2021の1期間</strong>（経済センサス）。
             </p>
           </details>
@@ -898,8 +898,8 @@ export function AreaDiagnosisPanel({
               strengthsTop.map((e, i) => (
                 <div key={i} className="mb-2 last:mb-0">
                   <p className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100">{e.fact}</p>
-                  <p className="text-[10.5px] text-slate-600 dark:text-slate-300 leading-snug">{e.implication}</p>
-                  <p className="text-[9.5px] text-muted-foreground">{e.source}</p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">{e.implication}</p>
+                  <p className="text-[11px] text-muted-foreground">{e.source}</p>
                 </div>
               ))
             ) : (
@@ -912,8 +912,8 @@ export function AreaDiagnosisPanel({
               risksTop.map((e, i) => (
                 <div key={i} className="mb-2 last:mb-0">
                   <p className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100">{e.fact}</p>
-                  <p className="text-[10.5px] text-slate-600 dark:text-slate-300 leading-snug">{e.implication}</p>
-                  <p className="text-[9.5px] text-muted-foreground">{e.source}</p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">{e.implication}</p>
+                  <p className="text-[11px] text-muted-foreground">{e.source}</p>
                 </div>
               ))
             ) : (
@@ -944,21 +944,21 @@ export function AreaDiagnosisPanel({
               </div>
             ))}
           </div>
-          <p className="mt-2 text-[10px] text-muted-foreground">※ 乗数(EBM/PER)は現在の産業構造が続くと仮定した理論値。基盤雇用はLQ&gt;1産業の超過雇用の合計（中分類95業種で算出）。</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">※ 乗数(EBM/PER)は現在の産業構造が続くと仮定した理論値。基盤雇用はLQ&gt;1産業の超過雇用の合計（中分類95業種で算出）。</p>
         </details>
 
         {/* ── さらに深掘りする ── */}
         <div className="rounded-xl border bg-blue-50 dark:bg-blue-950/20 px-4 py-3 mb-3">
           <p className="text-[11px] font-bold text-blue-800 dark:text-blue-300 mb-1.5">さらに深掘りする</p>
           <div className="flex flex-wrap gap-2">
-            <a href="?tab=lq" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">🏭 産業の強みを詳しく</a>
-            <a href="?tab=ebm" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">📐 住宅需要をシミュレーション</a>
-            <a href="?tab=shift" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">📊 競争力の分解</a>
-            <a href="?tab=gap" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">🛒 小売の出店余地</a>
-            <a href="?tab=realestate" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">🏠 成約価格トレンド</a>
-            <a href="?tab=risk" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">⚠️ 災害リスク</a>
-            <a href="?tab=trade_area" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">📍 物件の商圏分析</a>
-            <a href="?tab=demographics" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">👥 人口の30年推計</a>
+            <a href="?tab=lq" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100 transition-colors">🏭 産業の強みを詳しく</a>
+            <a href="?tab=ebm" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100 transition-colors">📐 住宅需要をシミュレーション</a>
+            <a href="?tab=shift" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100 transition-colors">📊 競争力の分解</a>
+            <a href="?tab=gap" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100 transition-colors">🛒 小売の出店余地</a>
+            <a href="?tab=realestate" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100 transition-colors">🏠 成約価格トレンド</a>
+            <a href="?tab=risk" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100 transition-colors">⚠️ 災害リスク</a>
+            <a href="?tab=trade_area" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100 transition-colors">📍 物件の商圏分析</a>
+            <a href="?tab=demographics" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold hover:bg-blue-100 transition-colors">👥 人口の30年推計</a>
           </div>
         </div>
 
@@ -966,11 +966,11 @@ export function AreaDiagnosisPanel({
         <div className="rounded-xl border bg-slate-50 dark:bg-slate-900/30 px-4 py-3">
           <p className="text-[11px] font-bold text-muted-foreground mb-1.5">データの性質と鮮度</p>
           <div className="flex flex-wrap gap-3 mb-2">
-            <span className="flex items-center gap-1 text-[10px]"><DataBadge tag="実測" /> 政府統計の確定値（国勢調査・経済センサス）</span>
-            <span className="flex items-center gap-1 text-[10px]"><DataBadge tag="推計" /> 国立社会保障・人口問題研究所等の将来推計</span>
-            <span className="flex items-center gap-1 text-[10px]"><DataBadge tag="理論" /> CI102手法に基づく算出値（LQ・EBM・PER等）</span>
+            <span className="flex items-center gap-1 text-[11px]"><DataBadge tag="実測" /> 政府統計の確定値（国勢調査・経済センサス）</span>
+            <span className="flex items-center gap-1 text-[11px]"><DataBadge tag="推計" /> 国立社会保障・人口問題研究所等の将来推計</span>
+            <span className="flex items-center gap-1 text-[11px]"><DataBadge tag="理論" /> CI102手法に基づく算出値（LQ・EBM・PER等）</span>
           </div>
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
             人口・世帯: 2025年国勢調査速報（実測）｜ 産業・雇用: 2021年経済センサス活動調査 ｜ 将来推計: 社人研2025→2035 ｜ 経済基盤: {scopeTag}（中分類95業種）で算出
           </p>
         </div>

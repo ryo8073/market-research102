@@ -248,26 +248,26 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
                 <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 py-4">
                   {/* Step 1: Population */}
                   <div className="text-center px-4 py-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border">
-                    <p className="text-[10px] text-muted-foreground">人口変動</p>
-                    <p className="text-[10px] text-muted-foreground">({demandCascade.baseYear}→{demandCascade.targetYear})</p>
+                    <p className="text-[11px] text-muted-foreground">人口変動</p>
+                    <p className="text-[11px] text-muted-foreground">({demandCascade.baseYear}→{demandCascade.targetYear})</p>
                     <p className={`text-xl font-bold ${demandCascade.popChange < 0 ? "text-red-600" : "text-green-600"}`}>
                       {demandCascade.popChange > 0 ? "+" : ""}{(demandCascade.popChange / 10000).toFixed(1)}万人
                     </p>
-                    <p className="text-[10px]">({demandCascade.popChangePct}%)</p>
+                    <p className="text-[11px]">({demandCascade.popChangePct}%)</p>
                   </div>
                   <span className="text-2xl text-muted-foreground hidden md:block">→</span>
                   <span className="text-2xl text-muted-foreground md:hidden rotate-90">→</span>
                   {/* Step 2: Multiplier */}
                   <div className="text-center px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800 border">
-                    <p className="text-[10px] text-muted-foreground">÷ 世帯人員</p>
+                    <p className="text-[11px] text-muted-foreground">÷ 世帯人員</p>
                     <p className="text-xl font-bold">{demandCascade.personsPerHH.toFixed(2)}</p>
-                    <p className="text-[10px]">人/世帯</p>
+                    <p className="text-[11px]">人/世帯</p>
                   </div>
                   <span className="text-2xl text-muted-foreground hidden md:block">→</span>
                   <span className="text-2xl text-muted-foreground md:hidden rotate-90">→</span>
                   {/* Step 3: Household change */}
                   <div className="text-center px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border">
-                    <p className="text-[10px] text-muted-foreground">世帯数変動</p>
+                    <p className="text-[11px] text-muted-foreground">世帯数変動</p>
                     <p className={`text-xl font-bold ${demandCascade.hhChange < 0 ? "text-red-600" : "text-green-600"}`}>
                       {demandCascade.hhChange > 0 ? "+" : ""}{(demandCascade.hhChange / 10000).toFixed(2)}万世帯
                     </p>
@@ -276,14 +276,14 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
                   <span className="text-2xl text-muted-foreground md:hidden rotate-90">→</span>
                   {/* Step 4: Housing demand */}
                   <div className="text-center px-4 py-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200">
-                    <p className="text-[10px] text-muted-foreground">住宅需要変動</p>
-                    <p className="text-[10px] text-muted-foreground">(×1.05空室バッファ)</p>
+                    <p className="text-[11px] text-muted-foreground">住宅需要変動</p>
+                    <p className="text-[11px] text-muted-foreground">(×1.05空室バッファ)</p>
                     <p className={`text-xl font-bold ${demandCascade.unitDemandChange < 0 ? "text-red-600" : "text-green-600"}`}>
                       {demandCascade.unitDemandChange > 0 ? "+" : ""}{(demandCascade.unitDemandChange / 10000).toFixed(2)}万戸
                     </p>
                   </div>
                 </div>
-                <p className="text-[10px] text-center text-muted-foreground mt-2">
+                <p className="text-[11px] text-center text-muted-foreground mt-2">
                   ※ シミュレーション: 現トレンドが続いた場合の推計値。大規模開発・政策変更は未考慮。
                 </p>
               </CardContent>
@@ -314,7 +314,7 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
                     <Area yAxisId="hh" type="monotone" dataKey="households" stroke="#6366F1" fill="#6366F1" fillOpacity={0.1} strokeWidth={2} strokeDasharray="5 5" />
                   </AreaChart>
                 </ResponsiveContainer>
-                <p className="text-[10px] text-muted-foreground text-center mt-1">
+                <p className="text-[11px] text-muted-foreground text-center mt-1">
                   出典: 国土数値情報 1kmメッシュ別将来推計人口（H30国立社会保障・人口問題研究所推計）
                 </p>
               </CardContent>
@@ -379,7 +379,7 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
                       <p className="text-xs font-semibold text-green-700 mb-1">最優位エリア（計画あり×人口維持）</p>
                       <div className="flex flex-wrap gap-1">
                         {bestPositioned.slice(0, 8).map((m) => (
-                          <span key={m.name} className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[10px]">
+                          <span key={m.name} className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-[11px]">
                             {m.name} ({m.popChange > 0 ? "+" : ""}{m.popChange}%)
                           </span>
                         ))}
@@ -391,7 +391,7 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
                       <p className="text-xs font-semibold text-red-700 mb-1">脆弱エリア（計画なし×人口急減）</p>
                       <div className="flex flex-wrap gap-1">
                         {worstPositioned.slice(0, 8).map((m) => (
-                          <span key={m.name} className="px-1.5 py-0.5 bg-red-100 text-red-800 rounded text-[10px]">
+                          <span key={m.name} className="px-1.5 py-0.5 bg-red-100 text-red-800 rounded text-[11px]">
                             {m.name} ({m.popChange}%)
                           </span>
                         ))}
@@ -440,7 +440,7 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="flex gap-4 mt-2 text-[10px] text-muted-foreground">
+                <div className="flex gap-4 mt-2 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#6366F1] inline-block rounded" />立地適正化計画あり</span>
                   <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#94A3B8] inline-block rounded" />計画なし</span>
                 </div>

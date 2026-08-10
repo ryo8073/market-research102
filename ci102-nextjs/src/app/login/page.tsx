@@ -92,7 +92,7 @@ function LoginForm() {
             </button>
           </form>
 
-          <div className="text-[10px] text-slate-500 pt-3 border-t">
+          <div className="text-[11px] text-slate-500 pt-3 border-t">
             <p className="mb-1">
               <strong>免責</strong>: 本ツールは CCIM CI102 のメソドロジーを参考にした教育目的の分析ツールです。
               投資助言ではなく、投資判断はお客様の責任で行ってください。
@@ -103,7 +103,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <p className="text-center text-[10px] text-slate-400 mt-3">
+        <p className="text-center text-[11px] text-slate-400 mt-3">
           © CI102 Market Analysis — Educational use only
         </p>
       </div>

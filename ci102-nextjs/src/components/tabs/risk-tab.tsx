@@ -153,7 +153,7 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
                 <p className={`text-2xl font-bold ${(pref.flood_risk_avg_pct ?? 0) > 15 ? "text-red-600" : (pref.flood_risk_avg_pct ?? 0) > 5 ? "text-amber-600" : "text-green-600"}`}>
                   {pref.flood_risk_avg_pct != null ? `${pref.flood_risk_avg_pct}%` : "—"}
                 </p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground">
                   想定利回り調整: +{floodRiskPremiumBps(pref.flood_risk_avg_pct ?? 0)}bps
                 </p>
               </CardContent>
@@ -164,7 +164,7 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
                 <p className="text-2xl font-bold text-red-600">
                   {municipalities.filter((m) => (m.flood_risk_pct ?? 0) > 30).length}
                 </p>
-                <p className="text-[10px] text-muted-foreground">浸水率30%超</p>
+                <p className="text-[11px] text-muted-foreground">浸水率30%超</p>
               </CardContent>
             </Card>
             <Card>
@@ -175,7 +175,7 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
                     ? (pref.num_medical / pref.population * 10000).toFixed(1)
                     : "—"}
                 </p>
-                <p className="text-[10px] text-muted-foreground">施設/万人（回復力指標）</p>
+                <p className="text-[11px] text-muted-foreground">施設/万人（回復力指標）</p>
               </CardContent>
             </Card>
             <Card>
@@ -186,7 +186,7 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
                     ? `${nationalFloodData.findIndex((d) => d.isCurrent) + 1}/${nationalFloodData.length}`
                     : "—"}
                 </p>
-                <p className="text-[10px] text-muted-foreground">リスクが高い順</p>
+                <p className="text-[11px] text-muted-foreground">リスクが高い順</p>
               </CardContent>
             </Card>
           </div>
@@ -282,10 +282,10 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
                           </td>
                           <td className="text-center py-1.5 px-1">
                             {row.floodRisk > 30 && row.resilience < 30
-                              ? <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px]">回避推奨</span>
+                              ? <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[11px]">回避推奨</span>
                               : row.floodRisk > 15
-                              ? <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px]">要検討</span>
-                              : <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px]">許容</span>
+                              ? <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[11px]">要検討</span>
+                              : <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[11px]">許容</span>
                             }
                           </td>
                         </tr>
@@ -329,7 +329,7 @@ export default function RiskTab({ prefCode, prefName, pref, allData }: Props) {
                     <Bar dataKey="resilience" name="回復力スコア" fill="#22C55E" fillOpacity={0.5} stackId="b" />
                   </BarChart>
                 </ResponsiveContainer>
-                <div className="flex gap-4 mt-2 text-[10px] text-muted-foreground">
+                <div className="flex gap-4 mt-2 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-400 inline-block rounded" />浸水リスク(%)</span>
                   <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-400 inline-block rounded" />回復力スコア</span>
                 </div>

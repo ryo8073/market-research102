@@ -779,12 +779,12 @@ export default function LearnPage() {
                   <thead>
                     <tr>
                       <th className="text-left border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">地域</th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">総合<br/><span className="text-[10px] font-normal text-muted-foreground">/100</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">EBM<br/><span className="text-[10px] font-normal text-muted-foreground">/20</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">基盤比率<br/><span className="text-[10px] font-normal text-muted-foreground">/20</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">RS<br/><span className="text-[10px] font-normal text-muted-foreground">/25</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">ギャップ<br/><span className="text-[10px] font-normal text-muted-foreground">/20</span></th>
-                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">規模<br/><span className="text-[10px] font-normal text-muted-foreground">/15</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">総合<br/><span className="text-[11px] font-normal text-muted-foreground">/100</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">EBM<br/><span className="text-[11px] font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">基盤比率<br/><span className="text-[11px] font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">RS<br/><span className="text-[11px] font-normal text-muted-foreground">/25</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">ギャップ<br/><span className="text-[11px] font-normal text-muted-foreground">/20</span></th>
+                      <th className="text-right border-b-2 border-foreground/20 px-3 py-2 bg-muted/30">規模<br/><span className="text-[11px] font-normal text-muted-foreground">/15</span></th>
                     </tr>
                   </thead>
                   <tbody>
