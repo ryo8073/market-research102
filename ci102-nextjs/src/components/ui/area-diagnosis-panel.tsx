@@ -250,6 +250,31 @@ export function AreaDiagnosisPanel({
   const overall = Math.round(0.4 * demand + 0.3 * supply + 0.3 * future);
   const st = stance(overall, demand, supply);
 
+  // 各セクションの1文サマリー（アコーディオンのsummaryに表示）
+  const demandSummary = (() => {
+    const pcp = resolvedPopChangePct;
+    if (pcp >= 1) return "人口が増加中 — 入居需要は拡大傾向";
+    if (pcp >= -1 && resolvedHhChangePct > 0) return "人口横ばいだが世帯は増加 — 小型賃貸に実需あり";
+    if (gap >= 0) return "人口は減少しているが全国よりは良好 — 底堅い需要";
+    if (pcp >= -5) return "緩やかな需要縮小 — 立地を厳選すれば投資は成立";
+    return "需要が大幅に縮小中 — 出口戦略を先に設計すべき";
+  })();
+
+  const supplySummary = (() => {
+    if (ebmMid >= 3 && ebmMid <= 6 && basicRatioMid >= 15) return "基盤産業が厚く経済ショックに強い — 安定した雇用・賃料が期待";
+    if (ebmMid >= 3 && ebmMid <= 6) return "経済構造は健全 — 基盤産業のバランスが良好";
+    if (ebmMid > 6) return "基盤雇用が薄い or 通勤流入が多い — 経済圏での再評価を推奨";
+    if (basicRatioMid >= 15) return "輸出基盤は厚いが特定産業への依存に注意";
+    return "基盤産業が限定的 — 域外需要に頼れず景気に敏感";
+  })();
+
+  const futureSummary = (() => {
+    if (rs > 0 && (dPct == null || dPct >= -5)) return "産業競争力が全国を上回り、長期的にも需要が見込める";
+    if (rs > 0 && dPct != null && dPct < -5) return "競争力はあるが長期人口は縮小 — 短中期に勝機あり";
+    if (rs <= 0 && (dPct == null || dPct >= -5)) return "競争力は弱いが人口は維持 — 好立地に限定して検討";
+    return "競争力・人口とも下降傾向 — 投資は慎重に";
+  })();
+
   const lq = (pref.top_lq_industries ?? []).filter((i) => i.lq > 1).slice(0, 3);
   const rsWin = [...(pref.shift_share_table ?? [])]
     .sort((a, b) => b.regional_shift - a.regional_shift)
@@ -515,6 +540,7 @@ export function AreaDiagnosisPanel({
             <span className="text-sm font-semibold font-extrabold flex-1">需要 — 借り手・買い手はいるか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white" style={{ backgroundColor: rating(demand).color }}>{rating(demand).label} {demand}</span>
           </summary>
+          <p className="text-sm font-bold mt-1 mb-2" style={{ color: rating(demand).color }}>{demandSummary}</p>
           <p className="text-xs text-muted-foreground mb-3 mt-2">人口と世帯の増減が、入居率・賃料・売却価格に直結します</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <MetricRow
@@ -592,6 +618,7 @@ export function AreaDiagnosisPanel({
             <span className="text-sm font-semibold font-extrabold flex-1">供給 — 地域経済は自立しているか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white" style={{ backgroundColor: rating(supply).color }}>{rating(supply).label} {supply}</span>
           </summary>
+          <p className="text-sm font-bold mt-1 mb-2" style={{ color: rating(supply).color }}>{supplySummary}</p>
           <p className="text-xs text-muted-foreground mb-3 mt-2">域外から所得を稼ぐ「基盤産業」の厚みが、雇用と賃料の安定性を左右します</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
@@ -669,6 +696,7 @@ export function AreaDiagnosisPanel({
             <span className="text-sm font-semibold font-extrabold flex-1">将来性 — 10年後も需要は続くか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white" style={{ backgroundColor: rating(future).color }}>{rating(future).label} {future}</span>
           </summary>
+          <p className="text-sm font-bold mt-1 mb-2" style={{ color: rating(future).color }}>{futureSummary}</p>
           <p className="text-xs text-muted-foreground mb-3 mt-2">出口（売却）時の価値を左右する「将来の需要と競争力」を3つの指標で評価</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
