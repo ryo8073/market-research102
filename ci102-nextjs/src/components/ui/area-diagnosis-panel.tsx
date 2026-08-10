@@ -533,16 +533,15 @@ export function AreaDiagnosisPanel({
         </div>
 
         {/* ── 📈 需要（構造化指標カード） ── */}
-        <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(22,163,74,0.2)", backgroundColor: "rgba(22,163,74,0.03)" }}>
-          <summary className="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-black/5 dark:hover:bg-white/5 rounded-lg px-2 py-2 -mx-1 transition-colors">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">▶</span>
-              <span>📈</span>
-              <span className="text-sm font-extrabold flex-1">需要 — 借り手・買い手はいるか？</span>
-              <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(demand).color }}>{rating(demand).label} {demand}</span>
-            </div>
-            <div className="block text-sm mt-1 pl-7" style={{ color: rating(demand).color }}>{demandSummary}</div>
-          </summary>
+        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(22,163,74,0.2)", backgroundColor: "rgba(22,163,74,0.03)" }}>
+          <div className="flex items-center gap-2">
+            <span>📈</span>
+            <span className="text-sm font-extrabold flex-1">需要 — 借り手・買い手はいるか？</span>
+            <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(demand).color }}>{rating(demand).label} {demand}</span>
+          </div>
+          <p className="text-sm mt-1" style={{ color: rating(demand).color }}>{demandSummary}</p>
+          <details className="mt-2">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:underline">詳細を見る ▼</summary>
           <p className="text-xs text-muted-foreground mb-3 mt-2">人口と世帯の増減が、入居率・賃料・売却価格に直結します</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <MetricRow
@@ -611,18 +610,18 @@ export function AreaDiagnosisPanel({
             )}
           </div>
         </details>
+        </div>
 
         {/* ── 🏭 供給（経済基盤の厚み） ── */}
-        <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>
-          <summary className="flex items-center gap-2 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-black/5 dark:hover:bg-white/5 rounded-lg px-1 py-1 -mx-1 transition-colors">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">▶</span>
-              <span>🏭</span>
-              <span className="text-sm font-extrabold flex-1">供給 — 地域経済は自立しているか？</span>
-              <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(supply).color }}>{rating(supply).label} {supply}</span>
-            </div>
-            <div className="block text-sm mt-1 pl-7" style={{ color: rating(supply).color }}>{supplySummary}</div>
-          </summary>
+        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>
+          <div className="flex items-center gap-2">
+            <span>🏭</span>
+            <span className="text-sm font-extrabold flex-1">供給 — 地域経済は自立しているか？</span>
+            <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(supply).color }}>{rating(supply).label} {supply}</span>
+          </div>
+          <p className="text-sm mt-1" style={{ color: rating(supply).color }}>{supplySummary}</p>
+          <details className="mt-2">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:underline">詳細を見る ▼</summary>
           <p className="text-xs text-muted-foreground mb-3 mt-2">域外から所得を稼ぐ「基盤産業」の厚みが、雇用と賃料の安定性を左右します</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
@@ -691,18 +690,18 @@ export function AreaDiagnosisPanel({
             ※ 中分類95業種で算出（大分類17業種はLQ&gt;1業種が少なく基盤を過小評価するため）。参考: 大分類EBM {(pref.ebm ?? 0).toFixed(1)}。
           </p>
         </details>
+        </div>
 
         {/* ── 🔭 将来性 ── */}
-        <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(13,148,136,0.2)", backgroundColor: "rgba(13,148,136,0.03)" }}>
-          <summary className="flex items-center gap-2 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-black/5 dark:hover:bg-white/5 rounded-lg px-1 py-1 -mx-1 transition-colors">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">▶</span>
-              <span>🔭</span>
-              <span className="text-sm font-extrabold flex-1">将来性 — 10年後も需要は続くか？</span>
-              <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(future).color }}>{rating(future).label} {future}</span>
-            </div>
-            <div className="block text-sm mt-1 pl-7" style={{ color: rating(future).color }}>{futureSummary}</div>
-          </summary>
+        <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(13,148,136,0.2)", backgroundColor: "rgba(13,148,136,0.03)" }}>
+          <div className="flex items-center gap-2">
+            <span>🔭</span>
+            <span className="text-sm font-extrabold flex-1">将来性 — 10年後も需要は続くか？</span>
+            <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(future).color }}>{rating(future).label} {future}</span>
+          </div>
+          <p className="text-sm mt-1" style={{ color: rating(future).color }}>{futureSummary}</p>
+          <details className="mt-2">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:underline">詳細を見る ▼</summary>
           <p className="text-xs text-muted-foreground mb-3 mt-2">出口（売却）時の価値を左右する「将来の需要と競争力」を3つの指標で評価</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
@@ -755,6 +754,7 @@ export function AreaDiagnosisPanel({
             {fd && fd.dHH < 0 && basicRatioMid >= 12 ? " ただし輸出基盤の厚みが縮小を緩和する可能性あり。" : ""}
           </p>
         </details>
+        </div>
 
         {/* ── 🔁 データ更新の変化 (以前2020 → 最新2025 実測) ── */}
         <div className="rounded-xl border px-4 py-3 mb-4 bg-card">
