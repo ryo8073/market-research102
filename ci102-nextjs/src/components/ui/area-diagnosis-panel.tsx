@@ -521,7 +521,19 @@ export function AreaDiagnosisPanel({
               <span className="text-[11px] text-muted-foreground">LQが1を超える特化産業は乏しく、域外を稼ぐ基盤は限定的。</span>
             )}
           </div>
-          <p className="text-[10px] text-muted-foreground mt-2">
+          <div className="mt-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 px-3 py-2">
+            <p className="text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">
+              <strong>注意:</strong> EBMは分析対象の地域の取り方で大きく変わります。
+              {ebmMid > 6 && " 単一行政区の分析ではEBMが過大になりやすく、この値もその傾向がある可能性があります。"}
+              より正確な分析には、通勤圏を含む<strong>経済圏（複数市区町村）</strong>での再計算が推奨されます。
+            </p>
+            <p className="text-[10px] mt-1">
+              <a href="?tab=custom_metro" className="text-blue-700 dark:text-blue-400 underline font-bold">
+                → 経済圏を設定して分析する（カスタム都市圏タブ）
+              </a>
+            </p>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1.5">
             ※ 中分類95業種で算出（大分類17業種はLQ&gt;1業種が少なく基盤を過小評価するため）。参考: 大分類EBM {(pref.ebm ?? 0).toFixed(1)}。
           </p>
         </div>

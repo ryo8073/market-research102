@@ -90,12 +90,15 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
 
   return (
     <div className="space-y-6">
-      {/* 粒度ガイド */}
-      <div className="rounded-lg border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs">
-        <strong>📐 業種粒度: 大分類17業種</strong>。需要予測カスケード(基盤雇用→総雇用→人口→住宅)も大分類版で算出。
-        中分類版での比較は <strong>スコアカード(⓪)の粒度トグル</strong>のKPIで確認可能。
-        <strong>⚠️ EBM は『高いほど経済が強い』ではなく『多角化度の逆数』</strong>。EBM 3-6 が教科書 MSA 健全レンジ。
-        詳細解説は <a href="/learn#ch9-granularity" className="underline text-blue-700">学習第9章</a>。
+      {/* 粒度・経済圏ガイド */}
+      <div className="rounded-lg border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 text-xs space-y-1.5">
+        <p><strong>⚠️ このタブは大分類17業種で表示しています。</strong>大分類ではLQ&gt;1の業種が少なく、EBMが実際より過大に算出されます。</p>
+        <p><strong>推奨:</strong> 投資判断には<strong>中分類95業種</strong>のEBMを使用してください（投資判断ハブ・エリア診断は中分類で算出済み）。</p>
+        <p>
+          <strong>⚠️ EBM は『高いほど経済が強い』ではなく『多角化度の逆数』</strong>。EBM 3-6 が教科書 MSA 健全レンジ。
+          大都市（特に東京23区内など）では行政区単体の分析はEBMが過大になるため、<strong>経済圏（複数市区町村）での分析</strong>が必要です。
+        </p>
+        <p>→ <a href="?tab=custom_metro" className="underline text-blue-700 font-bold">カスタム都市圏タブで経済圏を設定して分析</a> ｜ 詳細解説は <a href="/learn#ch9-granularity" className="underline text-blue-700">学習第9章</a></p>
       </div>
 
       {/* EBM/PER KPIs */}

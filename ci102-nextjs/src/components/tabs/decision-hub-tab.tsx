@@ -43,10 +43,10 @@ const verdictColor = (score: number) =>
 
 /** 各物件タイプの統合スコアを計算 */
 function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | null): PropertyScore[] {
-  // ベース指標
-  const ebm = pref.ebm;
-  const basicRatio = pref.basic_ratio;
-  const rsTotal = pref.rs_total;
+  // ベース指標（中分類95業種を優先。大野氏指摘: 大分類では乗数が過大になる）
+  const ebm = pref.ebm_mid ?? pref.ebm;
+  const basicRatio = pref.basic_ratio_mid ?? pref.basic_ratio;
+  const rsTotal = pref.rs_total_mid ?? pref.rs_total;
   const gapFactor = pref.aggregate_gap_factor;
   const popChange20y = pref.pop_change_pct ?? 0;
   const popChange10y = pref.pop_change_10y_pct ?? 0;
