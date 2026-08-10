@@ -47,6 +47,46 @@ https://ci102-market-analysis.vercel.app/?pref={都道府県コード2桁}
 **注意:** `?pref=` の場合は経済圏の自動検出はされません。ユーザーが手動で選択します。
 市区町村コードが取得できる場合は必ず `?center=` を使ってください。
 
+### 認証連携: `?token=` でSSO（シングルサインオン）
+
+```
+https://ci102-market-analysis.vercel.app/?center={市区町村コード}&token={短期トークン}
+```
+
+**フロー:**
+1. Proformerでログイン済みのユーザーが「市場分析」をクリック
+2. Proformer(Cloud Run)が短期トークンを発行（有効期限5分推奨）
+3. `?center=13120&token=eyJhbG...` でCI102に遷移
+4. CI102がCloud Runのトークン検証APIに問い合わせ
+5. OK → セッションCookie発行（7日間有効）→ 経済圏分析画面を表示
+6. NG → パスワードログイン画面にフォールバック
+
+**ユーザー体験:**
+- Proformerにログイン済みなら**再ログイン不要**
+- トークンは1回使い切り（Cookie発行後はトークン不要）
+
+**CI102側の環境変数:**
+```
+PROFORMER_TOKEN_VERIFY_URL=https://proformer-api-xxxxx-an.a.run.app/api/v1/verify-ci102-token
+```
+
+**Cloud Run側で必要な実装:**
+1. **トークン発行API**: Proformerログイン済みユーザーに短期JWT（5分）を発行
+2. **トークン検証API**: CI102からPOSTで受け取り、有効なら200を返す
+
+```
+POST {PROFORMER_TOKEN_VERIFY_URL}
+Content-Type: application/json
+Body: { "token": "eyJhbG..." }
+
+成功: 200 OK
+失敗: 401 Unauthorized
+```
+
+**注意:**
+- `PROFORMER_TOKEN_VERIFY_URL`が未設定の場合、トークン認証は無効化され/loginにフォールバック
+- 共通パスワード認証（/login）は並列で維持。トークンが使えない場合のバックアップ
+
 ### 上級: 経済圏を明示指定
 
 ```
