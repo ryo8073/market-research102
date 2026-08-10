@@ -10,6 +10,7 @@ import { useGranularityProgression } from "@/lib/use-granularity-progression";
 import { PopulationMomentumCard } from "@/components/ui/population-momentum-card";
 import { AreaDiagnosisPanel } from "@/components/ui/area-diagnosis-panel";
 import { useMuniIndustryMatrixMid, computeCustomMetro, type CustomMetroResult } from "@/lib/use-muni-industry";
+import { useCommuteZones, getZoneForMunicipality } from "@/lib/use-commute-zones";
 import { PREFECTURES } from "@/lib/codes";
 
 interface Props {
@@ -274,6 +275,22 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
   const [econZoneCodes, setEconZoneCodes] = useState<Set<string>>(new Set(initialZoneCodes ?? []));
   const [ezFilterPref, setEzFilterPref] = useState<number>(prefCode ?? pref.pref_code);
   const { matrix: matrixMid, loading: matrixMidLoading, error: matrixMidError } = useMuniIndustryMatrixMid(analysisMode === "econ_zone");
+  const { data: commuteZones } = useCommuteZones();
+
+  // 選択中の市区町村が所属する通勤経済圏（自動提案用）
+  const autoZone = (() => {
+    if (!commuteZones) return null;
+    const code = selectedCity?.area_code ?? String(prefCode ?? pref.pref_code).padStart(2, "0") + "000";
+    // 市区町村コードで検索（政令市はXX100形式の場合あり）
+    const result = getZoneForMunicipality(commuteZones, code);
+    if (result) return result;
+    // 政令市の区コード（XX1XX）→ 市コード（XX100）で再検索
+    if (code.length === 5 && !code.endsWith("000")) {
+      const cityBase = code.slice(0, 2) + "100";
+      return getZoneForMunicipality(commuteZones, cityBase);
+    }
+    return null;
+  })();
   const econZoneResult = useMemo(() => {
     if (analysisMode !== "econ_zone" || !matrixMid || econZoneCodes.size === 0) return null;
     return computeCustomMetro(matrixMid, Array.from(econZoneCodes));
@@ -468,6 +485,28 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
             {matrixMidError && (
               <p className="text-xs text-red-700 font-bold">データ読み込みエラー: {matrixMidError}。ページを再読み込みしてください。</p>
             )}
+            {/* 通勤経済圏（自動提案） */}
+            {autoZone && (
+              <div className="rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 p-2.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">推奨経済圏（通勤流動ベース）:</span>
+                  <button
+                    onClick={() => setEconZoneCodes(new Set(autoZone.zone.all))}
+                    className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition-colors ${
+                      autoZone.zone.all.length === econZoneCodes.size && autoZone.zone.all.every(c => econZoneCodes.has(c))
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-white dark:bg-slate-800 border-emerald-400 hover:bg-emerald-50 text-emerald-800 dark:text-emerald-300"
+                    }`}
+                  >
+                    {autoZone.zone.name}（{autoZone.zone.type}・{autoZone.zone.all.length}市区町村）
+                  </button>
+                </div>
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-1">
+                  東大CSIS 都市雇用圏（2020年国勢調査ベース）。通勤者の10%以上が中心市に通勤する市区町村で構成。
+                </p>
+              </div>
+            )}
+
             {/* プリセット（選択中の都道府県に関連するもののみ表示） */}
             <div className="flex flex-wrap gap-1.5">
               {ZONE_PRESETS.filter((p) => p.prefCodes.includes(prefCode ?? pref.pref_code)).length === 0 && (
