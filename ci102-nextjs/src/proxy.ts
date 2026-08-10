@@ -63,6 +63,8 @@ const PUBLIC_PATHS = [
   "/api/auth/login",
   "/api/auth/logout",
   "/api/auth/external",  // Proformer連携トークン認証
+  "/data/commute_od/",   // 通勤OD行列（API Route内部からのfetch用・政府統計の加工品）
+  "/data/commute_louvain.json", // Louvainゾーン（同上）
   // 静的アセット (_next, favicon等) は matcher で除外済み
 ];
 
