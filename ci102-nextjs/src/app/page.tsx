@@ -1653,6 +1653,8 @@ function DashboardContent() {
                 <EbmTab
                   localEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.local_emp]))}
                   nationalEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.national_emp]))}
+                  localEmpMid={pref.lq_table_mid ? Object.fromEntries(pref.lq_table_mid.map((r) => [r.industry, r.local_emp])) : undefined}
+                  nationalEmpMid={pref.lq_table_mid ? Object.fromEntries(pref.lq_table_mid.map((r) => [r.industry, r.national_emp])) : undefined}
                   population={pref.population}
                   totalEmployment={pref.total_employment}
                   personsPerHousehold={pref.persons_per_household}

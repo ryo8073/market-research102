@@ -67,6 +67,14 @@ export interface MunicipalityData {
   basic_emp_mid?: number;
   n_basic_industries_mid?: number;
   top_lq_industries_mid?: Array<{ industry: string; lq: number; basic_emp_estimate: number }>;
+  // 中分類95業種の完全LQテーブル
+  lq_table_mid?: Array<{
+    industry: string;
+    local_emp: number;
+    national_emp: number;
+    lq: number;
+    basic_emp_estimate: number;
+  }>;
   // 農林業センサス2020 補完版（家族農家含む推計）
   ebm_mid_extended?: number;
   basic_ratio_mid_extended?: number;

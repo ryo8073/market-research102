@@ -81,6 +81,14 @@ export interface PrefectureData {
     lq: number;
     basic_emp_estimate: number;
   }>;
+  // 中分類95業種の完全LQテーブル
+  lq_table_mid?: Array<{
+    industry: string;
+    local_emp: number;
+    national_emp: number;
+    lq: number;
+    basic_emp_estimate: number;
+  }>;
   shift_share_table: Array<{
     industry: string;
     actual_change: number;

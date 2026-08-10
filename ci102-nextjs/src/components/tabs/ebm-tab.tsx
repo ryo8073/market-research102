@@ -32,6 +32,8 @@ let _housingCache: Record<string, HousingDefaults> | null = null;
 interface Props {
   localEmp: Record<string, number>;
   nationalEmp: Record<string, number>;
+  localEmpMid?: Record<string, number>;
+  nationalEmpMid?: Record<string, number>;
   population: number;
   totalEmployment: number;
   personsPerHousehold: number;
@@ -39,7 +41,9 @@ interface Props {
   selectedCity?: MunicipalityData | null;
 }
 
-export default function EbmTab({ localEmp, nationalEmp, population, totalEmployment, personsPerHousehold, prefCode, selectedCity }: Props) {
+export default function EbmTab({ localEmp, nationalEmp, localEmpMid, nationalEmpMid, population, totalEmployment, personsPerHousehold, prefCode, selectedCity }: Props) {
+  const hasMid = !!(localEmpMid && nationalEmpMid && Object.keys(localEmpMid).length > 0);
+  const [granularity, setGranularity] = useState<"mid" | "major">(hasMid ? "mid" : "major");
   const [newBasicJobs, setNewBasicJobs] = useState(100);
   const [avgUnitSize, setAvgUnitSize] = useState(65);
   const [floorsPerBldg, setFloorsPerBldg] = useState(5);
@@ -74,11 +78,15 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
   const [constructionCost, setConstructionCost] = useState(250000);
   const [targetYield, setTargetYield] = useState(5);
 
-  const lq = useMemo(() => lq_table(localEmp, nationalEmp), [localEmp, nationalEmp]);
+  const activeLocal = granularity === "mid" && localEmpMid ? localEmpMid : localEmp;
+  const activeNational = granularity === "mid" && nationalEmpMid ? nationalEmpMid : nationalEmp;
+  const lq = useMemo(() => lq_table(activeLocal, activeNational), [activeLocal, activeNational]);
   const basic = useMemo(() => total_basic_employment(lq), [lq]);
   const totalEmp = lq.reduce((s, r) => s + r.local_emp, 0);
   const ebm = economic_base_multiplier(totalEmp, basic);
   const per = population_employment_ratio(population, totalEmployment);
+  const numIndustries = lq.length;
+  const granLabel = granularity === "mid" ? `中分類${numIndustries}業種` : `大分類${numIndustries}業種`;
 
   const deltaTotal = forecast_total_employment_change(newBasicJobs, ebm);
   const deltaPop = forecast_population_change(deltaTotal, per);
@@ -90,15 +98,33 @@ export default function EbmTab({ localEmp, nationalEmp, population, totalEmploym
 
   return (
     <div className="space-y-6">
-      {/* 粒度・経済圏ガイド */}
-      <div className="rounded-lg border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 text-xs space-y-1.5">
-        <p><strong>⚠️ このタブは大分類17業種で表示しています。</strong>大分類ではLQ&gt;1の業種が少なく、EBMが実際より過大に算出されます。</p>
-        <p><strong>推奨:</strong> 投資判断には<strong>中分類95業種</strong>のEBMを使用してください（投資判断ハブ・エリア診断は中分類で算出済み）。</p>
+      {/* 粒度切替 + ガイド */}
+      <div className="rounded-lg border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 text-xs space-y-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="font-bold text-sm">📐 業種粒度:</span>
+          {hasMid && (
+            <div className="inline-flex rounded-lg border overflow-hidden">
+              <button
+                className={`px-3 py-1 text-xs font-bold transition-colors ${granularity === "mid" ? "bg-blue-600 text-white" : "bg-white dark:bg-slate-800 hover:bg-blue-50"}`}
+                onClick={() => setGranularity("mid")}
+              >中分類（{localEmpMid ? Object.keys(localEmpMid).length : 95}業種）推奨</button>
+              <button
+                className={`px-3 py-1 text-xs font-bold transition-colors ${granularity === "major" ? "bg-blue-600 text-white" : "bg-white dark:bg-slate-800 hover:bg-blue-50"}`}
+                onClick={() => setGranularity("major")}
+              >大分類（17業種）</button>
+            </div>
+          )}
+          <span className="text-muted-foreground">現在: <strong>{granLabel}</strong></span>
+        </div>
         <p>
-          <strong>⚠️ EBM は『高いほど経済が強い』ではなく『多角化度の逆数』</strong>。EBM 3-6 が教科書 MSA 健全レンジ。
-          大都市（特に東京23区内など）では行政区単体の分析はEBMが過大になるため、<strong>経済圏（複数市区町村）での分析</strong>が必要です。
+          <strong>⚠️ EBM は「高いほど経済が強い」ではなく「多角化度の逆数」。</strong>EBM 3〜6 が教科書MSA健全レンジ。
+          {granularity === "major" && " 大分類ではLQ>1業種が少なくEBMが過大になるため、中分類での分析を推奨します。"}
         </p>
-        <p>→ <a href="?tab=custom_metro" className="underline text-blue-700 font-bold">カスタム都市圏タブで経済圏を設定して分析</a> ｜ 詳細解説は <a href="/learn#ch9-granularity" className="underline text-blue-700">学習第9章</a></p>
+        <p>
+          大都市（特に東京23区内など）では行政区単体のEBMが過大になります。
+          → <a href="?tab=custom_metro" className="underline text-blue-700 font-bold">カスタム都市圏タブで経済圏を設定して分析</a>
+          ｜ <a href="/learn#ch9-granularity" className="underline text-blue-700">学習第9章</a>
+        </p>
       </div>
 
       {/* EBM/PER KPIs */}

@@ -10,37 +10,51 @@ export interface MuniIndustryEntry {
 }
 
 let _cache: Record<string, MuniIndustryEntry> | null = null;
+let _cacheMid: Record<string, MuniIndustryEntry> | null = null;
 
-export function useMuniIndustryMatrix() {
+function _useFetchMatrix(url: string, cacheRef: { current: Record<string, MuniIndustryEntry> | null }) {
   const [matrix, setMatrix] = useState<Record<string, MuniIndustryEntry> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (_cache) {
-      setMatrix(_cache);
+    if (cacheRef.current) {
+      setMatrix(cacheRef.current);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch("/data/muni_industry_matrix.json")
+    fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
       .then((json: Record<string, MuniIndustryEntry>) => {
-        _cache = json;
+        cacheRef.current = json;
         setMatrix(json);
       })
       .catch((err) => {
-        console.error("[useMuniIndustryMatrix]", err);
+        console.error(`[useMuniIndustryMatrix] ${url}`, err);
         setError(String(err));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [url, cacheRef]);
 
   return { matrix, loading, error };
+}
+
+const _majorRef = { get current() { return _cache; }, set current(v) { _cache = v; } };
+const _midRef = { get current() { return _cacheMid; }, set current(v) { _cacheMid = v; } };
+
+/** 大分類17業種マトリクス */
+export function useMuniIndustryMatrix() {
+  return _useFetchMatrix("/data/muni_industry_matrix.json", _majorRef);
+}
+
+/** 中分類95業種マトリクス */
+export function useMuniIndustryMatrixMid() {
+  return _useFetchMatrix("/data/muni_industry_matrix_mid.json", _midRef);
 }
 
 /** 複数市区町村の雇用を業種別に合算 */

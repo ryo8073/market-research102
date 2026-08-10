@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useMuniIndustryMatrix, computeCustomMetro } from "@/lib/use-muni-industry";
+import { useMuniIndustryMatrix, useMuniIndustryMatrixMid, computeCustomMetro } from "@/lib/use-muni-industry";
 import { PREFECTURES } from "@/lib/codes";
 
 export default function CustomMetroTab() {
   const { matrix, loading, error } = useMuniIndustryMatrix();
+  const { matrix: matrixMid, loading: loadingMid } = useMuniIndustryMatrixMid();
   const [selectedAreas, setSelectedAreas] = useState<Set<string>>(new Set());
   const [filterPref, setFilterPref] = useState<number>(13);
   const [search, setSearch] = useState("");
+  const [granularity, setGranularity] = useState<"mid" | "major">("mid");
 
   // フィルタリングされた市区町村リスト
   const filteredAreas = useMemo(() => {
@@ -24,11 +26,13 @@ export default function CustomMetroTab() {
       .map(([code, entry]) => ({ code, ...entry }));
   }, [matrix, filterPref, search]);
 
-  // カスタム経済圏の計算結果
+  // カスタム経済圏の計算結果（粒度切替対応）
+  const activeMatrix = granularity === "mid" && matrixMid ? matrixMid : matrix;
   const result = useMemo(() => {
-    if (!matrix || selectedAreas.size === 0) return null;
-    return computeCustomMetro(matrix, Array.from(selectedAreas));
-  }, [matrix, selectedAreas]);
+    if (!activeMatrix || selectedAreas.size === 0) return null;
+    return computeCustomMetro(activeMatrix, Array.from(selectedAreas));
+  }, [activeMatrix, selectedAreas]);
+  const granLabel = granularity === "mid" ? "中分類95業種" : "大分類17業種";
 
   const toggleArea = (code: string) => {
     setSelectedAreas((prev) => {
@@ -49,7 +53,7 @@ export default function CustomMetroTab() {
 
   const clearSelection = () => setSelectedAreas(new Set());
 
-  if (loading) return <div className="text-sm text-slate-500">市区町村業種データを読み込み中...</div>;
+  if (loading || (granularity === "mid" && loadingMid)) return <div className="text-sm text-slate-500">市区町村業種データを読み込み中...（{granularity === "mid" ? "中分類95業種" : "大分類17業種"}）</div>;
   if (error || !matrix) {
     return (
       <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">
@@ -64,13 +68,29 @@ export default function CustomMetroTab() {
         <h2 className="text-xl font-bold mb-2">カスタム経済圏分析</h2>
         <p className="text-sm text-gray-700">
           複数の市区町村を選択して<strong>独自の経済圏として合算評価</strong>します。
-          例: 「藤沢市 + 鎌倉市 + 茅ヶ崎市 + 平塚市」で湘南エリア、「函館市 + 北斗市 + 七飯町」で道南エリアなど。
+          行政区単体ではEBMが過大になる問題を、通勤圏・生活圏に合わせた経済圏設定で解決します。
         </p>
+      </div>
+
+      {/* 粒度切替 */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-sm font-bold">業種粒度:</span>
+        <div className="inline-flex rounded-lg border overflow-hidden">
+          <button
+            className={`px-3 py-1.5 text-sm font-bold transition-colors ${granularity === "mid" ? "bg-blue-600 text-white" : "bg-white hover:bg-blue-50"}`}
+            onClick={() => setGranularity("mid")}
+          >中分類（95業種）推奨</button>
+          <button
+            className={`px-3 py-1.5 text-sm font-bold transition-colors ${granularity === "major" ? "bg-blue-600 text-white" : "bg-white hover:bg-blue-50"}`}
+            onClick={() => setGranularity("major")}
+          >大分類（17業種）</button>
+        </div>
+        <span className="text-xs text-muted-foreground">中分類の方がEBMが正確（Mulligan凸性質）</span>
       </div>
 
       <div className="rounded-lg border-l-4 border-l-blue-500 bg-blue-50 p-3 text-sm">
         <strong>💡 使い方</strong>:
-        左側で県を選んで市区町村にチェックを入れると、右側に合算結果が即座に表示されます。
+        左側で県を選んで市区町村にチェックを入れると、右側に合算結果（<strong>{granLabel}</strong>）が即座に表示されます。
         都道府県をまたいで選択することも可能（例: 神奈川県と東京都を組み合わせて湘南＋多摩エリア）。
       </div>
 

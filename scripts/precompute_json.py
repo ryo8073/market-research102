@@ -246,6 +246,7 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
         basic_emp_mid = None
         n_basic_mid = None
         top_lq_mid = []
+        lq_table_mid_records = []  # 全95業種のLQテーブル（EBMタブ用）
         # 農林業センサス補完版（家族農家含む）
         ebm_mid_extended = None
         basic_ratio_mid_extended = None
@@ -275,6 +276,11 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
                             df_lq_mid[df_lq_mid["lq"] > 1.0]
                             .nlargest(10, "basic_emp_estimate")
                             [["industry", "lq", "basic_emp_estimate"]]
+                            .to_dict("records")
+                        )
+                        # 全95業種のLQテーブル（EBMタブ用）
+                        lq_table_mid_records = (
+                            df_lq_mid[["industry", "local_emp", "national_emp", "lq", "basic_emp_estimate"]]
                             .to_dict("records")
                         )
 
@@ -423,6 +429,7 @@ def compute_prefecture_full(accessor: MarketDataAccessor, pref_code: int) -> dic
             "basic_emp_mid": basic_emp_mid,
             "n_basic_industries_mid": n_basic_mid,
             "top_lq_industries_mid": top_lq_mid,
+            "lq_table_mid": lq_table_mid_records,  # 全95業種LQテーブル
             "suitability_score_mid": score_mid,
             # 農林業センサス2020 補完版（家族農家含む）
             "ebm_mid_extended": ebm_mid_extended,
@@ -916,6 +923,11 @@ def compute_municipalities(accessor: MarketDataAccessor, pref_code: int) -> list
                                 df_lq_mid[df_lq_mid["lq"] > 1.0]
                                 .nlargest(10, "basic_emp_estimate")
                                 [["industry", "lq", "basic_emp_estimate"]]
+                                .to_dict("records")
+                            )
+                            # 全95業種LQテーブル（EBMタブ用）
+                            rec["lq_table_mid"] = (
+                                df_lq_mid[["industry", "local_emp", "national_emp", "lq", "basic_emp_estimate"]]
                                 .to_dict("records")
                             )
 
