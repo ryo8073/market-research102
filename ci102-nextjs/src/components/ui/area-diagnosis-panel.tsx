@@ -509,7 +509,8 @@ export function AreaDiagnosisPanel({
 
         {/* ── 📈 需要（構造化指標カード） ── */}
         <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(22,163,74,0.2)", backgroundColor: "rgba(22,163,74,0.03)" }}>
-          <summary className="flex items-center gap-2 mb-1 cursor-pointer select-none">
+          <summary className="flex items-center gap-2 mb-1 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-black/5 dark:hover:bg-white/5 rounded-lg px-1 py-1 -mx-1 transition-colors">
+            <span className="text-[11px] text-muted-foreground transition-transform [[open]>&]:rotate-90">▶</span>
             <span className="text-base">📈</span>
             <span className="text-[13px] font-extrabold flex-1">需要 — 借り手・買い手はいるか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(demand).color }}>{rating(demand).label} {demand}</span>
@@ -585,7 +586,8 @@ export function AreaDiagnosisPanel({
 
         {/* ── 🏭 供給（経済基盤の厚み） ── */}
         <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>
-          <summary className="flex items-center gap-2 cursor-pointer select-none">
+          <summary className="flex items-center gap-2 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-black/5 dark:hover:bg-white/5 rounded-lg px-1 py-1 -mx-1 transition-colors">
+            <span className="text-[11px] text-muted-foreground transition-transform [[open]>&]:rotate-90">▶</span>
             <span className="text-base">🏭</span>
             <span className="text-[13px] font-extrabold flex-1">供給 — 地域経済は自立しているか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(supply).color }}>{rating(supply).label} {supply}</span>
@@ -661,7 +663,8 @@ export function AreaDiagnosisPanel({
 
         {/* ── 🔭 将来性 ── */}
         <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(13,148,136,0.2)", backgroundColor: "rgba(13,148,136,0.03)" }}>
-          <summary className="flex items-center gap-2 cursor-pointer select-none">
+          <summary className="flex items-center gap-2 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-black/5 dark:hover:bg-white/5 rounded-lg px-1 py-1 -mx-1 transition-colors">
+            <span className="text-[11px] text-muted-foreground transition-transform [[open]>&]:rotate-90">▶</span>
             <span className="text-base">🔭</span>
             <span className="text-[13px] font-extrabold flex-1">将来性 — 10年後も需要は続くか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white" style={{ backgroundColor: rating(future).color }}>{rating(future).label} {future}</span>
