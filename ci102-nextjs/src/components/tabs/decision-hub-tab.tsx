@@ -19,7 +19,8 @@ interface Props {
   prefCode?: number;
   municipalities?: MunicipalityData[];
   initialZoneCodes?: string[];
-  centerCode?: string | null;  // Proformer連携: ?center=cityCode → 自動経済圏検出
+  centerCode?: string | null;
+  onZoneChange?: (codes: string[]) => void;  // 経済圏選択を親に通知（全タブ共有用）
 }
 
 type PropertyType = "residential" | "commercial" | "office" | "industrial" | "medical";
@@ -269,7 +270,7 @@ const ZONE_PRESETS: ZonePreset[] = [
   { name: "札幌市", prefCodes: [1], codes: ["01101","01102","01103","01104","01105","01106","01107","01108","01109","01110"] },
 ];
 
-export default function DecisionHubTab({ pref, selectedCity, prefCode, municipalities, initialZoneCodes, centerCode }: Props) {
+export default function DecisionHubTab({ pref, selectedCity, prefCode, municipalities, initialZoneCodes, centerCode, onZoneChange }: Props) {
   // 経済圏モード（URLに?zone=または?center=がある場合は経済圏モードで起動）
   const hasInitialZone = (initialZoneCodes && initialZoneCodes.length > 0) || !!centerCode;
   const [analysisMode, setAnalysisMode] = useState<"single" | "econ_zone">(hasInitialZone ? "econ_zone" : "single");
@@ -341,6 +342,15 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
     }
     prevPrefRef.current = prefCode;
   }, [prefCode, pref.pref_code]);
+
+  // 経済圏選択が変わったら親に通知
+  useEffect(() => {
+    if (onZoneChange && analysisMode === "econ_zone") {
+      onZoneChange(Array.from(econZoneCodes));
+    } else if (onZoneChange && analysisMode === "single") {
+      onZoneChange([]);
+    }
+  }, [econZoneCodes, analysisMode, onZoneChange]);
 
   // 政令指定都市の区コード一覧（区コード→市コードのフォールバック用）
   // 政令市の区は XX1XX 形式で XX100 が市コード

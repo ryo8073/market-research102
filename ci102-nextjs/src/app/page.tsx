@@ -20,6 +20,7 @@ import { ClientTip, RiskAlert } from "@/components/ui/callouts";
 import { DataVintageBadge } from "@/components/ui/data-vintage-badge";
 import { PREFECTURES } from "@/lib/codes";
 import { usePrefectureData, usePrefDetailMid, type PrefectureData } from "@/lib/use-prefecture-data";
+import { useMuniIndustryMatrixMid } from "@/lib/use-muni-industry";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
 import { generateNarrative, computeBenchmark, type NarrativeResult } from "@/lib/insights";
 
@@ -810,6 +811,20 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
 /*  ScorecardTab (full component)                                      */
 /* ------------------------------------------------------------------ */
 
+/** 経済圏モード時に各タブの先頭に表示するバナー */
+function EconZoneBanner({ codes, label }: { codes: string[]; label?: string }) {
+  if (codes.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-blue-300 bg-blue-50 dark:bg-blue-950/20 p-3 mb-4 text-sm">
+      <strong>経済圏モード</strong>（{codes.length}市区町村を合算）{label && <span className="text-muted-foreground ml-1">— {label}</span>}
+      <p className="text-xs text-muted-foreground mt-0.5">
+        投資判断ハブで選択した経済圏のデータで表示しています。
+        <a href="?tab=decision_hub" className="text-blue-600 ml-1 hover:underline">→ 経済圏を変更する</a>
+      </p>
+    </div>
+  );
+}
+
 function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities, pfId, setPfId, pfData, pfLoading, fetchProformer, aiResult, aiLoading, runAiAnalysis }: {
   pref: PrefectureData;
   allData: Record<string, PrefectureData> | null;
@@ -1488,6 +1503,8 @@ function DashboardContent() {
   const initialZone = searchParams.get("zone")?.split(",").filter(Boolean) ?? [];
   // Proformer連携用: ?center=13120 → 通勤経済圏を自動検出して経済圏モードで起動
   const centerCode = searchParams.get("center") ?? null;
+  // ページレベルの経済圏コード（decision-hubから更新され、全タブに伝搬）
+  const [pageEconZoneCodes, setPageEconZoneCodes] = useState<string[]>(initialZone);
 
   // Sync state -> URL (replaceState, no history entry)
   // 注: zoneパラメータはdecision-hub-tab側で管理（ここではinitialZoneを渡すのみ）
@@ -1501,6 +1518,23 @@ function DashboardContent() {
   const { data: pref, allData, loading, error: prefError } = usePrefectureData(prefCode);
   const { detail: prefDetailMid } = usePrefDetailMid(prefCode);
   const lqTableMid = prefDetailMid?.lq_table_mid ?? pref?.lq_table_mid;
+
+  // 経済圏モード: matrixMidから合算employmentを計算（全タブ共有）
+  const hasEconZone = pageEconZoneCodes.length > 0;
+  const { matrix: pageMatrixMid } = useMuniIndustryMatrixMid(hasEconZone);
+  const econZoneEmployment = useMemo(() => {
+    if (!hasEconZone || !pageMatrixMid) return null;
+    const local: Record<string, number> = {};
+    const national = pageMatrixMid["00000"]?.employment ?? {};
+    for (const code of pageEconZoneCodes) {
+      const entry = pageMatrixMid[code];
+      if (!entry) continue;
+      for (const [ind, count] of Object.entries(entry.employment)) {
+        local[ind] = (local[ind] ?? 0) + count;
+      }
+    }
+    return { local, national };
+  }, [hasEconZone, pageMatrixMid, pageEconZoneCodes]);
   const { data: municipalities, error: muniError } = useMunicipalityData(prefCode);
   const selectedCity = cityCode ? municipalities.find((m) => m.area_code === cityCode) ?? null : null;
 
@@ -1704,10 +1738,11 @@ function DashboardContent() {
 
               {/* Tab 1: LQ */}
               <TabsContent value="lq">
+                <EconZoneBanner codes={pageEconZoneCodes} label="産業別LQを経済圏合算で表示" />
                 <ErrorBoundary>
                 <LqTab
-                  localEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.local_emp]))}
-                  nationalEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.national_emp]))}
+                  localEmp={econZoneEmployment?.local ?? Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.local_emp]))}
+                  nationalEmp={econZoneEmployment?.national ?? Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.national_emp]))}
                   localT0={pref.shift_share_table.length > 0 ? Object.fromEntries(pref.shift_share_table.map((r) => [r.industry, 0])) : undefined}
                   localT1={pref.shift_share_table.length > 0 ? Object.fromEntries(pref.shift_share_table.map((r) => [r.industry, r.actual_change])) : undefined}
                   nationalT0={undefined}
@@ -1720,12 +1755,13 @@ function DashboardContent() {
 
               {/* Tab 2: EBM */}
               <TabsContent value="ebm">
+                <EconZoneBanner codes={pageEconZoneCodes} label="需要予測を経済圏合算で表示" />
                 <ErrorBoundary>
                 <EbmTab
-                  localEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.local_emp]))}
-                  nationalEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.national_emp]))}
-                  localEmpMid={lqTableMid ? Object.fromEntries(lqTableMid.map((r) => [r.industry, r.local_emp])) : undefined}
-                  nationalEmpMid={lqTableMid ? Object.fromEntries(lqTableMid.map((r) => [r.industry, r.national_emp])) : undefined}
+                  localEmp={econZoneEmployment?.local ?? Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.local_emp]))}
+                  nationalEmp={econZoneEmployment?.national ?? Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.national_emp]))}
+                  localEmpMid={econZoneEmployment?.local ?? (lqTableMid ? Object.fromEntries(lqTableMid.map((r) => [r.industry, r.local_emp])) : undefined)}
+                  nationalEmpMid={econZoneEmployment?.national ?? (lqTableMid ? Object.fromEntries(lqTableMid.map((r) => [r.industry, r.national_emp])) : undefined)}
                   population={pref.population}
                   totalEmployment={pref.total_employment}
                   personsPerHousehold={pref.persons_per_household}
@@ -1737,6 +1773,7 @@ function DashboardContent() {
 
               {/* Tab 3: Shift-Share */}
               <TabsContent value="shift">
+                <EconZoneBanner codes={pageEconZoneCodes} label="競争力分析（シフトシェアは都道府県レベル）" />
                 <ErrorBoundary>
                 {pref.shift_share_table.length > 0 ? (
                   <ShiftShareTab
@@ -1758,6 +1795,7 @@ function DashboardContent() {
 
               {/* Tab 4: Gap */}
               <TabsContent value="gap">
+                <EconZoneBanner codes={pageEconZoneCodes} label="小売ギャップ（都道府県レベル）" />
                 <ErrorBoundary>
                 <GapTab sectors={pref.gap_table.map((r) => ({ sector: r.sector, demand: r.demand, supply: r.supply }))} selectedCity={selectedCity} />
                 </ErrorBoundary>
@@ -1765,6 +1803,7 @@ function DashboardContent() {
 
               {/* Tab 5: Real Estate */}
               <TabsContent value="realestate">
+                <EconZoneBanner codes={pageEconZoneCodes} label="不動産取引（都道府県レベル）" />
                 <ErrorBoundary>
                 <RealEstateTab prefCode={prefCode} cityCode={cityCode ? Number(cityCode) : undefined} />
                 </ErrorBoundary>
@@ -1806,6 +1845,7 @@ function DashboardContent() {
 
               {/* Tab 10: Demographics */}
               <TabsContent value="demographics">
+                <EconZoneBanner codes={pageEconZoneCodes} label="人口動態（都道府県レベル）" />
                 <ErrorBoundary>
                 <DemographicsTab prefCode={prefCode} prefName={pref.pref_name} pref={pref} allData={allData} />
                 </ErrorBoundary>
@@ -1835,7 +1875,7 @@ function DashboardContent() {
               {/* Tab 14: Decision Hub (統合判断) */}
               <TabsContent value="decision_hub">
                 <ErrorBoundary>
-                <DecisionHubTab pref={pref} selectedCity={selectedCity} prefCode={prefCode} municipalities={municipalities} initialZoneCodes={initialZone} centerCode={centerCode} />
+                <DecisionHubTab pref={pref} selectedCity={selectedCity} prefCode={prefCode} municipalities={municipalities} initialZoneCodes={initialZone} centerCode={centerCode} onZoneChange={setPageEconZoneCodes} />
                 </ErrorBoundary>
               </TabsContent>
             </div>
