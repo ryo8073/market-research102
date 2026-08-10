@@ -89,14 +89,26 @@ function MetricRow({ label, value, unit, meaning, tag }: {
   );
 }
 
+/** 経済圏合算データ（decision-hub-tabから渡される） */
+interface EconZoneOverride {
+  ebm: number;
+  basic_ratio: number;
+  basic_employment: number;
+  total_employment: number;
+  n_basic_industries: number;
+  top_lq_industries: Array<{ industry: string; lq: number; basic_emp: number }>;
+}
+
 export function AreaDiagnosisPanel({
   area,
   pref,
   city = null,
+  econZone = null,
 }: {
   area: string;
   pref: PrefectureData;
   city?: MunicipalityData | null;
+  econZone?: EconZoneOverride | null;
 }) {
   // モメンタム: 市区町村の速報があれば細分、なければ都道府県
   const c = city?.census2025 ?? pref.census2025;
@@ -144,15 +156,18 @@ export function AreaDiagnosisPanel({
   const leak = pref.num_leakage_sectors ?? 0;
   const rs = pref.rs_total ?? 0;
 
-  // 経済基盤: 市区町村が選択されていれば細分エリア、なければ都道府県（いずれも中分類95業種）
-  const useCity = !!city;
-  const ebScopeName = useCity ? city!.area_name : pref.pref_name;
-  const scopeTag = useCity ? "市区町村レベル" : "都道府県レベル";
-  const totalEmp = (useCity ? city!.total_emp : pref.total_employment) ?? 0;
-  const ebmMid = (useCity ? (city!.ebm_mid ?? city!.ebm) : (pref.ebm_mid ?? pref.ebm)) ?? pref.ebm ?? 0;
-  const basicMid = Math.round(((useCity ? (city!.basic_emp_mid ?? city!.basic_emp) : (pref.basic_emp_mid ?? pref.basic_emp)) ?? 0));
-  const basicRatioMid = (useCity ? (city!.basic_ratio_mid ?? city!.basic_ratio) : (pref.basic_ratio_mid ?? pref.basic_ratio)) ?? 0;
-  const baseInd = ((useCity ? city!.top_lq_industries_mid : pref.top_lq_industries_mid) ?? pref.top_lq_industries ?? []).slice(0, 5);
+  // 経済基盤: 経済圏 > 市区町村 > 都道府県の優先順で使用（中分類95業種）
+  const useEconZone = !!econZone;
+  const useCity = !useEconZone && !!city;
+  const ebScopeName = useEconZone ? area : useCity ? city!.area_name : pref.pref_name;
+  const scopeTag = useEconZone ? "経済圏（複数市区町村合算）" : useCity ? "市区町村レベル" : "都道府県レベル";
+  const totalEmp = useEconZone ? econZone!.total_employment : (useCity ? city!.total_emp : pref.total_employment) ?? 0;
+  const ebmMid = useEconZone ? econZone!.ebm : (useCity ? (city!.ebm_mid ?? city!.ebm) : (pref.ebm_mid ?? pref.ebm)) ?? pref.ebm ?? 0;
+  const basicMid = useEconZone ? Math.round(econZone!.basic_employment) : Math.round(((useCity ? (city!.basic_emp_mid ?? city!.basic_emp) : (pref.basic_emp_mid ?? pref.basic_emp)) ?? 0));
+  const basicRatioMid = useEconZone ? econZone!.basic_ratio : (useCity ? (city!.basic_ratio_mid ?? city!.basic_ratio) : (pref.basic_ratio_mid ?? pref.basic_ratio)) ?? 0;
+  const baseInd = useEconZone
+    ? econZone!.top_lq_industries.map(i => ({ industry: i.industry, lq: i.lq, basic_emp_estimate: i.basic_emp })).slice(0, 5)
+    : ((useCity ? city!.top_lq_industries_mid : pref.top_lq_industries_mid) ?? pref.top_lq_industries ?? []).slice(0, 5);
   const basicPct = totalEmp > 0 ? (basicMid / totalEmp) * 100 : basicRatioMid;
   const nonBasic = Math.max(0, totalEmp - basicMid);
   const resolvedPop = c.population;
@@ -610,11 +625,13 @@ export function AreaDiagnosisPanel({
               {ebmMid > 6 && " 単一行政区の分析ではEBMが過大になりやすく、この値もその傾向がある可能性があります。"}
               より正確な分析には、通勤圏を含む<strong>経済圏（複数市区町村）</strong>での再計算が推奨されます。
             </p>
-            <p className="text-[10px] mt-1">
-              <a href="?tab=custom_metro" className="text-blue-700 dark:text-blue-400 underline font-bold">
-                → 経済圏を設定して分析する（カスタム都市圏タブ）
-              </a>
-            </p>
+            {!useEconZone && (
+              <p className="text-[10px] mt-1">
+                <a href="?tab=decision_hub" className="text-blue-700 dark:text-blue-400 underline font-bold">
+                  → 投資判断ハブの「経済圏モード」で複数市区町村を合算して分析する
+                </a>
+              </p>
+            )}
           </div>
           <p className="text-[10px] text-muted-foreground mt-1.5">
             ※ 中分類95業種で算出（大分類17業種はLQ&gt;1業種が少なく基盤を過小評価するため）。参考: 大分類EBM {(pref.ebm ?? 0).toFixed(1)}。

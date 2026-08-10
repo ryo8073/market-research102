@@ -122,7 +122,8 @@ export default function EbmTab({ localEmp, nationalEmp, localEmpMid, nationalEmp
         </p>
         <p>
           大都市（特に東京23区内など）では行政区単体のEBMが過大になります。
-          → <a href="?tab=custom_metro" className="underline text-blue-700 font-bold">カスタム都市圏タブで経済圏を設定して分析</a>
+          → <a href="?tab=decision_hub" className="underline text-blue-700 font-bold">投資判断ハブの経済圏モードで分析</a>
+          ｜ <a href="?tab=custom_metro" className="underline text-blue-700">経済圏分析タブで詳細（HHI・多角化指標）</a>
           ｜ <a href="/learn#ch9-granularity" className="underline text-blue-700">学習第9章</a>
         </p>
       </div>

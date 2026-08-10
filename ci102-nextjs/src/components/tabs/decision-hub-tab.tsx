@@ -9,7 +9,7 @@ import { PricePredictionSection } from "@/components/price-prediction-section";
 import { useGranularityProgression } from "@/lib/use-granularity-progression";
 import { PopulationMomentumCard } from "@/components/ui/population-momentum-card";
 import { AreaDiagnosisPanel } from "@/components/ui/area-diagnosis-panel";
-import { useMuniIndustryMatrixMid, computeCustomMetro } from "@/lib/use-muni-industry";
+import { useMuniIndustryMatrixMid, computeCustomMetro, type CustomMetroResult } from "@/lib/use-muni-industry";
 import { PREFECTURES } from "@/lib/codes";
 
 interface Props {
@@ -46,11 +46,11 @@ const verdictColor = (score: number) =>
   { label: "回避", color: "#E76F51" };
 
 /** 各物件タイプの統合スコアを計算 */
-function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | null): PropertyScore[] {
-  // ベース指標（中分類95業種を優先。大野氏指摘: 大分類では乗数が過大になる）
-  const ebm = pref.ebm_mid ?? pref.ebm;
-  const basicRatio = pref.basic_ratio_mid ?? pref.basic_ratio;
-  const rsTotal = pref.rs_total_mid ?? pref.rs_total;
+function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | null, econZone?: CustomMetroResult | null): PropertyScore[] {
+  // 経済圏モード時は経済圏の値を優先
+  const ebm = econZone ? econZone.ebm : (pref.ebm_mid ?? pref.ebm);
+  const basicRatio = econZone ? econZone.basic_ratio : (pref.basic_ratio_mid ?? pref.basic_ratio);
+  const rsTotal = pref.rs_total_mid ?? pref.rs_total; // RSは都道府県（経済圏合算未対応）
   const gapFactor = pref.aggregate_gap_factor;
   const popChange20y = pref.pop_change_pct ?? 0;
   const popChange10y = pref.pop_change_10y_pct ?? 0;
@@ -256,7 +256,7 @@ const ZONE_PRESETS: ZonePreset[] = [
   { name: "都心5区", prefCodes: [13], codes: ["13101","13102","13103","13104","13113"] },
   { name: "都心8区", prefCodes: [13], codes: ["13101","13102","13103","13104","13113","13105","13106","13116"] },
   { name: "城南4区", prefCodes: [13], codes: ["13109","13110","13111","13112"] },
-  { name: "城北4区", prefCodes: [13], codes: ["13117","13119","13120","13116"] },
+  { name: "城北3区", prefCodes: [13], codes: ["13117","13119","13120"] },
   { name: "城東7区", prefCodes: [13], codes: ["13107","13108","13106","13118","13121","13122","13123"] },
   { name: "23区全域", prefCodes: [13], codes: Array.from({length:23},(_,i)=>`13${101+i}`) },
   { name: "横浜・川崎", prefCodes: [14], codes: ["14101","14102","14103","14104","14105","14106","14107","14108","14109","14110","14111","14112","14113","14114","14115","14116","14117","14118","14131","14132","14133","14134","14135","14136","14137"] },
@@ -283,7 +283,10 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
 
   // 粒度進行データ (AI プロンプト + UI 用)
   const { data: granularityData } = useGranularityProgression(pref.pref_code);
-  const scores = useMemo(() => calculatePropertyScores(pref, selectedCity), [pref, selectedCity]);
+  const scores = useMemo(
+    () => calculatePropertyScores(pref, selectedCity, analysisMode === "econ_zone" ? econZoneResult : null),
+    [pref, selectedCity, analysisMode, econZoneResult],
+  );
   const target = analysisMode === "econ_zone" && econZoneNames
     ? `経済圏: ${econZoneNames.length > 30 ? econZoneNames.slice(0, 30) + "…" : econZoneNames}（${econZoneCodes.size}市区町村）`
     : selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name;
@@ -358,6 +361,17 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
             ebmL2: granularityData.levels[2].ebm,
             inTextbookRange: granularityData.in_textbook_range,
             compressionPct: granularityData.compression_pct,
+          } : null,
+          // 経済圏モードの場合、合算データを含める
+          econZone: analysisMode === "econ_zone" && econZoneResult ? {
+            mode: "economic_zone",
+            municipalities: econZoneCodes.size,
+            names: econZoneNames,
+            ebm: econZoneResult.ebm,
+            basicRatio: econZoneResult.basic_ratio,
+            basicEmployment: econZoneResult.basic_employment,
+            totalEmployment: econZoneResult.total_employment,
+            nBasicIndustries: econZoneResult.n_basic_industries,
           } : null,
         }),
       });
@@ -514,7 +528,19 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
       </div>
 
       {/* CI102 エリア総合診断 — 需要・供給・強み・将来性の統合サマリー */}
-      <AreaDiagnosisPanel area={target} pref={pref} city={selectedCity} />
+      <AreaDiagnosisPanel
+        area={target}
+        pref={pref}
+        city={selectedCity}
+        econZone={analysisMode === "econ_zone" && econZoneResult ? {
+          ebm: econZoneResult.ebm,
+          basic_ratio: econZoneResult.basic_ratio,
+          basic_employment: econZoneResult.basic_employment,
+          total_employment: econZoneResult.total_employment,
+          n_basic_industries: econZoneResult.n_basic_industries,
+          top_lq_industries: econZoneResult.top_lq_industries,
+        } : null}
+      />
 
       <div className="rounded-lg border-2 bg-gradient-to-br from-emerald-50 to-blue-50 p-4">
         <p className="text-xs text-slate-600">💡 最有力候補</p>
