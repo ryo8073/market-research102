@@ -222,3 +222,38 @@ export function usePrefectureData(prefCode: number) {
 
   return { data, allData, loading, error };
 }
+
+/** 中分類詳細データ（lq_table_mid / shift_share_table_mid）の遅延ロード */
+let _detailMidCache: Record<string, { lq_table_mid?: PrefectureData["lq_table_mid"]; shift_share_table_mid?: PrefectureData["shift_share_table_mid"] }> | null = null;
+let _detailMidLoading = false;
+
+export function usePrefDetailMid(prefCode: number) {
+  const [detail, setDetail] = useState<{ lq_table_mid?: PrefectureData["lq_table_mid"]; shift_share_table_mid?: PrefectureData["shift_share_table_mid"] } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (_detailMidCache) {
+      setDetail(_detailMidCache[String(prefCode)] ?? null);
+      return;
+    }
+    if (_detailMidLoading) return;
+    _detailMidLoading = true;
+    setLoading(true);
+    fetch("/data/prefectures_detail_mid.json")
+      .then((r) => r.ok ? r.json() : null)
+      .then((json) => {
+        if (json) {
+          _detailMidCache = json;
+          setDetail(json[String(prefCode)] ?? null);
+        }
+      })
+      .catch((err) => console.error("[usePrefDetailMid]", err))
+      .finally(() => { setLoading(false); _detailMidLoading = false; });
+  }, [prefCode]);
+
+  useEffect(() => {
+    if (_detailMidCache) setDetail(_detailMidCache[String(prefCode)] ?? null);
+  }, [prefCode]);
+
+  return { detail, loading };
+}

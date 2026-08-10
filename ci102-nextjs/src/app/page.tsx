@@ -19,7 +19,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ClientTip, RiskAlert } from "@/components/ui/callouts";
 import { DataVintageBadge } from "@/components/ui/data-vintage-badge";
 import { PREFECTURES } from "@/lib/codes";
-import { usePrefectureData, type PrefectureData } from "@/lib/use-prefecture-data";
+import { usePrefectureData, usePrefDetailMid, type PrefectureData } from "@/lib/use-prefecture-data";
 import { useMunicipalityData, type MunicipalityData } from "@/lib/use-municipality-data";
 import { generateNarrative, computeBenchmark, type NarrativeResult } from "@/lib/insights";
 
@@ -1497,6 +1497,8 @@ function DashboardContent() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [prefCode, cityCode, activeTab, router]);
   const { data: pref, allData, loading, error: prefError } = usePrefectureData(prefCode);
+  const { detail: prefDetailMid } = usePrefDetailMid(prefCode);
+  const lqTableMid = prefDetailMid?.lq_table_mid ?? pref?.lq_table_mid;
   const { data: municipalities, error: muniError } = useMunicipalityData(prefCode);
   const selectedCity = cityCode ? municipalities.find((m) => m.area_code === cityCode) ?? null : null;
 
@@ -1720,8 +1722,8 @@ function DashboardContent() {
                 <EbmTab
                   localEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.local_emp]))}
                   nationalEmp={Object.fromEntries(pref.lq_table.map((r) => [r.industry, r.national_emp]))}
-                  localEmpMid={pref.lq_table_mid ? Object.fromEntries(pref.lq_table_mid.map((r) => [r.industry, r.local_emp])) : undefined}
-                  nationalEmpMid={pref.lq_table_mid ? Object.fromEntries(pref.lq_table_mid.map((r) => [r.industry, r.national_emp])) : undefined}
+                  localEmpMid={lqTableMid ? Object.fromEntries(lqTableMid.map((r) => [r.industry, r.local_emp])) : undefined}
+                  nationalEmpMid={lqTableMid ? Object.fromEntries(lqTableMid.map((r) => [r.industry, r.national_emp])) : undefined}
                   population={pref.population}
                   totalEmployment={pref.total_employment}
                   personsPerHousehold={pref.persons_per_household}
