@@ -1484,8 +1484,11 @@ function DashboardContent() {
     const t = searchParams.get("tab");
     return isValidTab(t) ? t : "decision_hub";
   });
+  // 経済圏コード（URL共有用: ?zone=13101,13102,...）
+  const initialZone = searchParams.get("zone")?.split(",").filter(Boolean) ?? [];
 
   // Sync state -> URL (replaceState, no history entry)
+  // 注: zoneパラメータはdecision-hub-tab側で管理（ここではinitialZoneを渡すのみ）
   useEffect(() => {
     const params = new URLSearchParams();
     params.set("pref", String(prefCode));
@@ -1828,7 +1831,7 @@ function DashboardContent() {
               {/* Tab 14: Decision Hub (統合判断) */}
               <TabsContent value="decision_hub">
                 <ErrorBoundary>
-                <DecisionHubTab pref={pref} selectedCity={selectedCity} prefCode={prefCode} municipalities={municipalities} />
+                <DecisionHubTab pref={pref} selectedCity={selectedCity} prefCode={prefCode} municipalities={municipalities} initialZoneCodes={initialZone} />
                 </ErrorBoundary>
               </TabsContent>
             </div>

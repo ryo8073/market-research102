@@ -199,9 +199,10 @@ with tab_score:
     # 分類粒度トグル — お客様の用途に応じて切替
     _has_mid = sc.ebm_mid is not None
     _has_ext = sc.ebm_mid_extended is not None
-    _granularity_options = ["大分類17業種（CCIM教科書）"]
+    _granularity_options = []
     if _has_mid:
-        _granularity_options.append("中分類95業種（詳細診断）")
+        _granularity_options.append("中分類95業種（推奨・詳細診断）")
+    _granularity_options.append("大分類17業種（CCIM教科書）")
     if _has_ext:
         _granularity_options.append("+農林業補完（地方都市の実評価）")
 
@@ -210,11 +211,11 @@ with tab_score:
         options=_granularity_options,
         horizontal=True,
         key="scorecard_granularity",
-        help="お客様の用途に応じて切替: 教科書通り→大分類 / 詳細診断→中分類 / 地方農業地域→+農林業",
+        help="中分類95業種が推奨（大分類ではEBMが過大になる）。教科書通り→大分類 / 地方農業地域→+農林業",
     )
 
     # アクティブな指標の選択
-    if _granularity.startswith("中分類"):
+    if "中分類" in _granularity:
         _active_ebm = sc.ebm_mid
         _active_basic_ratio = sc.basic_ratio_mid
         _active_basic_emp = sc.basic_emp_mid

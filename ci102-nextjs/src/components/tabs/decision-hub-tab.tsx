@@ -17,6 +17,7 @@ interface Props {
   selectedCity: MunicipalityData | null;
   prefCode?: number;
   municipalities?: MunicipalityData[];
+  initialZoneCodes?: string[];
 }
 
 type PropertyType = "residential" | "commercial" | "office" | "industrial" | "medical";
@@ -266,12 +267,13 @@ const ZONE_PRESETS: ZonePreset[] = [
   { name: "札幌市", prefCodes: [1], codes: ["01101","01102","01103","01104","01105","01106","01107","01108","01109","01110"] },
 ];
 
-export default function DecisionHubTab({ pref, selectedCity, prefCode, municipalities }: Props) {
-  // 経済圏モード
-  const [analysisMode, setAnalysisMode] = useState<"single" | "econ_zone">("single");
-  const [econZoneCodes, setEconZoneCodes] = useState<Set<string>>(new Set());
+export default function DecisionHubTab({ pref, selectedCity, prefCode, municipalities, initialZoneCodes }: Props) {
+  // 経済圏モード（URLに?zone=がある場合は経済圏モードで起動）
+  const hasInitialZone = initialZoneCodes && initialZoneCodes.length > 0;
+  const [analysisMode, setAnalysisMode] = useState<"single" | "econ_zone">(hasInitialZone ? "econ_zone" : "single");
+  const [econZoneCodes, setEconZoneCodes] = useState<Set<string>>(new Set(initialZoneCodes ?? []));
   const [ezFilterPref, setEzFilterPref] = useState<number>(prefCode ?? pref.pref_code);
-  const { matrix: matrixMid } = useMuniIndustryMatrixMid();
+  const { matrix: matrixMid, loading: matrixMidLoading, error: matrixMidError } = useMuniIndustryMatrixMid(analysisMode === "econ_zone");
   const econZoneResult = useMemo(() => {
     if (analysisMode !== "econ_zone" || !matrixMid || econZoneCodes.size === 0) return null;
     return computeCustomMetro(matrixMid, Array.from(econZoneCodes));
@@ -460,6 +462,12 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
             <p className="text-xs text-muted-foreground">
               通勤圏・生活圏に合わせた<strong>複数の市区町村を合算</strong>して分析します。行政区を超えた一体的な経済圏で評価することで、EBMの精度が向上します。
             </p>
+            {matrixMidLoading && (
+              <p className="text-xs text-blue-700 font-bold animate-pulse">中分類95業種データを読み込み中...</p>
+            )}
+            {matrixMidError && (
+              <p className="text-xs text-red-700 font-bold">データ読み込みエラー: {matrixMidError}。ページを再読み込みしてください。</p>
+            )}
             {/* プリセット（選択中の都道府県に関連するもののみ表示） */}
             <div className="flex flex-wrap gap-1.5">
               {ZONE_PRESETS.filter((p) => p.prefCodes.includes(prefCode ?? pref.pref_code)).length === 0 && (

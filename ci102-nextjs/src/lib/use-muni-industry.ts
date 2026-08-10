@@ -12,12 +12,13 @@ export interface MuniIndustryEntry {
 let _cache: Record<string, MuniIndustryEntry> | null = null;
 let _cacheMid: Record<string, MuniIndustryEntry> | null = null;
 
-function _useFetchMatrix(url: string, cacheRef: { current: Record<string, MuniIndustryEntry> | null }) {
+function _useFetchMatrix(url: string, cacheRef: { current: Record<string, MuniIndustryEntry> | null }, enabled = true) {
   const [matrix, setMatrix] = useState<Record<string, MuniIndustryEntry> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     if (cacheRef.current) {
       setMatrix(cacheRef.current);
       setLoading(false);
@@ -39,7 +40,7 @@ function _useFetchMatrix(url: string, cacheRef: { current: Record<string, MuniIn
         setError(String(err));
       })
       .finally(() => setLoading(false));
-  }, [url, cacheRef]);
+  }, [url, cacheRef, enabled]);
 
   return { matrix, loading, error };
 }
@@ -52,9 +53,9 @@ export function useMuniIndustryMatrix() {
   return _useFetchMatrix("/data/muni_industry_matrix.json", _majorRef);
 }
 
-/** 中分類95業種マトリクス */
-export function useMuniIndustryMatrixMid() {
-  return _useFetchMatrix("/data/muni_industry_matrix_mid.json", _midRef);
+/** 中分類95業種マトリクス（enabled=falseで遅延ロード可能） */
+export function useMuniIndustryMatrixMid(enabled = true) {
+  return _useFetchMatrix("/data/muni_industry_matrix_mid.json", _midRef, enabled);
 }
 
 /** 複数市区町村の雇用を業種別に合算 */

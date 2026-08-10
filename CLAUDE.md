@@ -17,7 +17,7 @@ data_sources.py        キャッシュ→API→sample_data の3段フォール�
 scorecard.py           全指標集約（ScorecardData dataclass + insights生成）
 cross_analysis.py      ギャップ×価格クロス分析（4象限散布図）
   ↑
-app.py                 Streamlit UI（8タブ: ⓪スコアカード〜⑦クロス分析）
+app.py                 Streamlit UI（レガシー。Next.jsが本番）
   ↑
 map_data.py            都道府県別集計（@st.cache_data付き）
 map_charts.py          Plotly choropleth_map 描画
@@ -27,6 +27,28 @@ data/industry_property_map.py  産業→物件用途マッピング（テナン�
 ai_analysis.py         Claude API統合（プロンプト構築+API呼出）
 api/proformer.py       Proformer DCF分析 API クライアント
 ```
+
+### Next.js 本番UI（ci102-nextjs/）
+
+```
+デフォルトタブ: 🎯 投資判断ハブ（decision_hub）
+  ├─ 単一地域モード（都道府県 or 市区町村）
+  ├─ 経済圏モード（複数市区町村合算・中分類95業種）
+  │   └─ 推奨プリセット or 手動選択 → EBM/物件スコア/AI全て連動
+  ├─ エリア総合診断（AreaDiagnosisPanel）
+  ├─ 物件タイプ別スコア（住宅/商業/オフィス/物流/医療）
+  └─ AI統合レポート
+
+詳細深掘りタブ:
+  🌐経済圏分析 | 📋スコア | 🏭経済基盤 | 📐需要予測 | 📊競争力 |
+  🛒小売市場 | 👥人口動態 | 🏠不動産取引 | 🗺️地図 | ⚠️災害 |
+  🚃交通 | 📈クロス | 🏙️都市圏 | 📍商圏
+
+URL共有: ?pref=13&city=13101&tab=decision_hub&zone=13101,13102,...
+```
+
+**粒度デフォルト: 中分類95業種**（大野氏指摘: 大分類17業種ではEBMが過大）。
+スコアカード・Decision Hub・診断パネル全て中分類がデフォルト。
 
 ## 絶対に守ること
 
