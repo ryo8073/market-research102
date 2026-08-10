@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 import { ECONOMIC_CENSUS_CURRENT, POPULATION_CENSUS_CURRENT } from "@/lib/data-versions";
@@ -19,6 +19,7 @@ interface Props {
   prefCode?: number;
   municipalities?: MunicipalityData[];
   initialZoneCodes?: string[];
+  centerCode?: string | null;  // Proformer連携: ?center=cityCode → 自動経済圏検出
 }
 
 type PropertyType = "residential" | "commercial" | "office" | "industrial" | "medical";
@@ -268,26 +269,70 @@ const ZONE_PRESETS: ZonePreset[] = [
   { name: "札幌市", prefCodes: [1], codes: ["01101","01102","01103","01104","01105","01106","01107","01108","01109","01110"] },
 ];
 
-export default function DecisionHubTab({ pref, selectedCity, prefCode, municipalities, initialZoneCodes }: Props) {
-  // 経済圏モード（URLに?zone=がある場合は経済圏モードで起動）
-  const hasInitialZone = initialZoneCodes && initialZoneCodes.length > 0;
+export default function DecisionHubTab({ pref, selectedCity, prefCode, municipalities, initialZoneCodes, centerCode }: Props) {
+  // 経済圏モード（URLに?zone=または?center=がある場合は経済圏モードで起動）
+  const hasInitialZone = (initialZoneCodes && initialZoneCodes.length > 0) || !!centerCode;
   const [analysisMode, setAnalysisMode] = useState<"single" | "econ_zone">(hasInitialZone ? "econ_zone" : "single");
   const [econZoneCodes, setEconZoneCodes] = useState<Set<string>>(new Set(initialZoneCodes ?? []));
   const [ezFilterPref, setEzFilterPref] = useState<number>(prefCode ?? pref.pref_code);
   const { matrix: matrixMid, loading: matrixMidLoading, error: matrixMidError } = useMuniIndustryMatrixMid(analysisMode === "econ_zone");
   const { data: commuteZones } = useCommuteZones();
 
+  // ?center= パラメータからの自動経済圏設定（commuteZonesロード後に1回だけ実行）
+  const [centerApplied, setCenterApplied] = useState(false);
+  useEffect(() => {
+    if (!centerCode || !commuteZones || centerApplied) return;
+    const zoneResult = getZoneForMunicipality(commuteZones, centerCode);
+    if (zoneResult) {
+      setEconZoneCodes(new Set(zoneResult.zone.all));
+      setAnalysisMode("econ_zone");
+      setCenterApplied(true);
+    } else {
+      // 政令市の区コードの場合のフォールバック
+      const cityBase = centerCode.slice(0, 2) + "100";
+      if (DESIGNATED_CITY_CODES.has(cityBase)) {
+        const baseResult = getZoneForMunicipality(commuteZones, cityBase);
+        if (baseResult) {
+          setEconZoneCodes(new Set(baseResult.zone.all));
+          setAnalysisMode("econ_zone");
+          setCenterApplied(true);
+        }
+      }
+    }
+  }, [centerCode, commuteZones, centerApplied]);
+
+  // 都道府県切替時にeconZoneCodesをリセット（staleなcross-pref selectionを防止）
+  const prevPrefRef = { current: prefCode };
+  useEffect(() => {
+    if (prefCode !== prevPrefRef.current) {
+      setEconZoneCodes(new Set());
+      setEzFilterPref(prefCode ?? pref.pref_code);
+    }
+    prevPrefRef.current = prefCode;
+  }, [prefCode, pref.pref_code]);
+
+  // 政令指定都市の区コード一覧（区コード→市コードのフォールバック用）
+  // 政令市の区は XX1XX 形式で XX100 が市コード
+  const DESIGNATED_CITY_CODES = new Set([
+    "01100","04100","11100","12100","13100","14100","14130",
+    "15100","22100","23100","26100","27100","28100",
+    "33100","34100","40100","40130","43100",
+  ]);
+
   // 選択中の市区町村が所属する通勤経済圏（自動提案用）
   const autoZone = (() => {
     if (!commuteZones) return null;
     const code = selectedCity?.area_code ?? String(prefCode ?? pref.pref_code).padStart(2, "0") + "000";
-    // 市区町村コードで検索（政令市はXX100形式の場合あり）
+    // 市区町村コードで直接検索
     const result = getZoneForMunicipality(commuteZones, code);
     if (result) return result;
     // 政令市の区コード（XX1XX）→ 市コード（XX100）で再検索
+    // ただし政令指定都市の区のみ（一般市の誤マッチを防止）
     if (code.length === 5 && !code.endsWith("000")) {
       const cityBase = code.slice(0, 2) + "100";
-      return getZoneForMunicipality(commuteZones, cityBase);
+      if (DESIGNATED_CITY_CODES.has(cityBase)) {
+        return getZoneForMunicipality(commuteZones, cityBase);
+      }
     }
     return null;
   })();
