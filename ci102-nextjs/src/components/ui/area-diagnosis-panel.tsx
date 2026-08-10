@@ -171,6 +171,33 @@ export function AreaDiagnosisPanel({
     fd = { dPop: Math.round(dPop), dHH, dPct: (dPop / pop2025) * 100 };
   }
   const dPct = fd?.dPct ?? null;
+
+  // 将来推計データを時系列チャートに追加（2030〜2050、5年刻み）
+  const projYears = [2030, 2035, 2040, 2045, 2050] as const;
+  const tsWithProjection = (() => {
+    if (!pp) return tsWithRate;
+    const combined = [...tsWithRate];
+    let prevPop = pp["2025"] ?? resolvedPop;
+    for (const y of projYears) {
+      const popY = pp[String(y)];
+      if (!popY) continue;
+      const rate = ((popY - prevPop) / prevPop) * 100;
+      combined.push({
+        year: y,
+        population: null as unknown as number,
+        households: null,
+        popRate: null,
+        hhRate: null,
+        agingRate: null,
+        populationProj: popY,
+        popRateProj: rate,
+      } as typeof tsWithRate[0] & { populationProj?: number; popRateProj?: number });
+      prevPop = popY;
+    }
+    return combined;
+  })();
+  const hasProjection = pp && projYears.some((y) => pp[String(y)]);
+
   // 25年後（2050年）の推計
   let fd50: { dPop: number; dPct: number } | null = null;
   if (pop2050 && pop2025) {
@@ -678,15 +705,15 @@ export function AreaDiagnosisPanel({
         {hasTimeseries && (
           <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(99,102,241,0.2)", backgroundColor: "rgba(99,102,241,0.03)" }}>
             <p className="text-[13px] font-extrabold text-indigo-800 dark:text-indigo-300">
-              📈 人口推移（過去25年の国勢調査）
-              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— {momoFine ? city!.area_name : pref.pref_name}・2000→2025</span>
+              📈 人口推移と将来推計
+              <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— {momoFine ? city!.area_name : pref.pref_name}・2000→2050</span>
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
-              投資判断で最も重要なのは「減少の加速度」。直近の変化率が改善傾向か悪化傾向かで、将来の需要見通しが変わります。
+              実績（2000〜2025 国勢調査）と将来推計（社人研 2030〜2050）を1つのチャートで。変化率の加速度が投資判断の鍵。
             </p>
-            <div className="h-[220px] w-full">
+            <div className="h-[240px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={tsWithRate} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <ComposedChart data={tsWithProjection} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="year" tick={{ fontSize: 11 }} />
                   <YAxis
@@ -706,17 +733,30 @@ export function AreaDiagnosisPanel({
                     formatter={(value: unknown, name: unknown) => {
                       const v = Number(value);
                       const n = String(name);
-                      if (n === "人口") return [`${v.toLocaleString()} 人`, n];
-                      if (n === "変化率") return [`${v.toFixed(2)}%`, n];
+                      if (n === "人口（実績）" || n === "人口（推計）") return [`${v.toLocaleString()} 人`, n];
+                      if (n === "変化率（実績）" || n === "変化率（推計）") return [`${v.toFixed(2)}%`, n];
                       if (n === "高齢化率") return [`${v.toFixed(1)}%`, n];
                       return [String(value), String(name)];
                     }}
-                    labelFormatter={(label: unknown) => `${label}年 国勢調査`}
+                    labelFormatter={(label: unknown) => {
+                      const y = Number(label);
+                      return y <= 2025 ? `${y}年 国勢調査（実績）` : `${y}年 社人研推計`;
+                    }}
                   />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine yAxisId="rate" y={0} stroke="#94A3B8" strokeDasharray="3 3" />
-                  <Bar yAxisId="pop" dataKey="population" name="人口" fill="#6366F1" opacity={0.35} radius={[3, 3, 0, 0]} />
-                  <Line yAxisId="rate" type="monotone" dataKey="popRate" name="変化率" stroke="#DC2626" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                  {/* 2025年の境界線 */}
+                  {hasProjection && <ReferenceLine yAxisId="pop" x={2025} stroke="#94A3B8" strokeDasharray="6 3" label={{ value: "← 実績 | 推計 →", fontSize: 9, fill: "#94A3B8", position: "top" }} />}
+                  {/* 実績（2000-2025） */}
+                  <Bar yAxisId="pop" dataKey="population" name="人口（実績）" fill="#6366F1" opacity={0.4} radius={[3, 3, 0, 0]} />
+                  <Line yAxisId="rate" type="monotone" dataKey="popRate" name="変化率（実績）" stroke="#DC2626" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                  {/* 将来推計（2030-2050） */}
+                  {hasProjection && (
+                    <Bar yAxisId="pop" dataKey="populationProj" name="人口（推計）" fill="#A5B4FC" opacity={0.3} radius={[3, 3, 0, 0]} />
+                  )}
+                  {hasProjection && (
+                    <Line yAxisId="rate" type="monotone" dataKey="popRateProj" name="変化率（推計）" stroke="#F87171" strokeWidth={1.5} dot={{ r: 3 }} strokeDasharray="6 3" connectNulls />
+                  )}
                   {tsWithRate.some((d) => d.agingRate != null) && (
                     <Line yAxisId="rate" type="monotone" dataKey="agingRate" name="高齢化率" stroke="#F59E0B" strokeWidth={1.5} dot={{ r: 3 }} strokeDasharray="4 4" connectNulls />
                   )}
@@ -749,7 +789,7 @@ export function AreaDiagnosisPanel({
               );
             })()}
             <p className="text-[10px] text-muted-foreground mt-2">
-              出典: 総務省統計局 国勢調査（各回）/ 社会・人口統計体系。全て <DataBadge tag="実測" /> 確定値。
+              2000〜2025: <DataBadge tag="実測" /> 国勢調査確定値 ｜ 2030〜2050: <DataBadge tag="推計" /> 国立社会保障・人口問題研究所。
               {tsWithRate.some((d) => d.agingRate != null) && " 高齢化率 = 65歳以上人口 ÷ 総人口（2025年は速報のため年齢別未公表）。"}
             </p>
           </div>
