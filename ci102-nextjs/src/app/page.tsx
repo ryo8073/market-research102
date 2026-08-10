@@ -830,31 +830,65 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
   const [granularity, setGranularity] = useState<Granularity>(hasMid ? "mid" : "major");
   const hasExtended = pref.ebm_mid_extended != null && pref.basic_ratio_mid_extended != null;
 
-  // 選択された粒度に応じてアクティブな指標を切り替え
+  // 市区町村 or 都道府県: 市区町村選択時は市区町村データを優先
+  const sc = selectedCity; // alias
+  const scopeLabel = sc ? sc.area_name : pref.pref_name;
+  const scopeEmp = sc?.total_emp ?? pref.total_employment ?? 0;
+  const isSmallArea = scopeEmp < 5000;
+
+  // 選択された粒度に応じてアクティブな指標を切り替え（市区町村優先）
   const activeEbm =
-    granularity === "extended" && pref.ebm_mid_extended != null ? pref.ebm_mid_extended :
-    granularity === "mid" && pref.ebm_mid != null ? pref.ebm_mid :
-    pref.ebm;
+    granularity === "extended" && (sc?.ebm_mid_extended ?? pref.ebm_mid_extended) != null ? (sc?.ebm_mid_extended ?? pref.ebm_mid_extended)! :
+    granularity === "mid" && (sc?.ebm_mid ?? pref.ebm_mid) != null ? (sc?.ebm_mid ?? pref.ebm_mid)! :
+    (sc?.ebm ?? pref.ebm);
   const activeBasicRatio =
-    granularity === "extended" && pref.basic_ratio_mid_extended != null ? pref.basic_ratio_mid_extended :
-    granularity === "mid" && pref.basic_ratio_mid != null ? pref.basic_ratio_mid :
-    pref.basic_ratio;
+    granularity === "extended" && (sc?.basic_ratio_mid_extended ?? pref.basic_ratio_mid_extended) != null ? (sc?.basic_ratio_mid_extended ?? pref.basic_ratio_mid_extended)! :
+    granularity === "mid" && (sc?.basic_ratio_mid ?? pref.basic_ratio_mid) != null ? (sc?.basic_ratio_mid ?? pref.basic_ratio_mid)! :
+    (sc?.basic_ratio ?? pref.basic_ratio);
   const activeBasicEmp =
-    granularity === "extended" && pref.basic_emp_mid_extended != null ? pref.basic_emp_mid_extended :
-    granularity === "mid" && pref.basic_emp_mid != null ? pref.basic_emp_mid :
-    pref.basic_emp;
+    granularity === "extended" && (sc?.basic_emp_mid_extended ?? pref.basic_emp_mid_extended) != null ? (sc?.basic_emp_mid_extended ?? pref.basic_emp_mid_extended)! :
+    granularity === "mid" && (sc?.basic_emp_mid ?? pref.basic_emp_mid) != null ? (sc?.basic_emp_mid ?? pref.basic_emp_mid)! :
+    (sc?.basic_emp ?? pref.basic_emp);
   const activeNBasicIndustries =
-    granularity === "extended" && pref.n_basic_industries_extended != null ? pref.n_basic_industries_extended :
-    granularity === "mid" && pref.n_basic_industries_mid != null ? pref.n_basic_industries_mid :
-    pref.top_lq_industries.filter(i => i.lq > 1.0).length;
+    granularity === "extended" && (sc?.n_basic_industries_extended ?? pref.n_basic_industries_extended) != null ? (sc?.n_basic_industries_extended ?? pref.n_basic_industries_extended)! :
+    granularity === "mid" && (sc?.n_basic_industries_mid ?? pref.n_basic_industries_mid) != null ? (sc?.n_basic_industries_mid ?? pref.n_basic_industries_mid)! :
+    sc ? (sc.num_basic ?? 0) : pref.top_lq_industries.filter(i => i.lq > 1.0).length;
   const activeTopLq =
-    granularity === "extended" && pref.top_lq_industries_extended && pref.top_lq_industries_extended.length > 0 ? pref.top_lq_industries_extended :
-    granularity === "mid" && pref.top_lq_industries_mid && pref.top_lq_industries_mid.length > 0 ? pref.top_lq_industries_mid :
+    granularity === "extended" && (sc?.top_lq_industries_extended ?? pref.top_lq_industries_extended)?.length ? (sc?.top_lq_industries_extended ?? pref.top_lq_industries_extended)! :
+    granularity === "mid" && (sc?.top_lq_industries_mid ?? pref.top_lq_industries_mid)?.length ? (sc?.top_lq_industries_mid ?? pref.top_lq_industries_mid)! :
     pref.top_lq_industries;
-  const activeScore =
-    granularity === "extended" && pref.suitability_score_extended ? pref.suitability_score_extended :
-    granularity === "mid" && pref.suitability_score_mid ? pref.suitability_score_mid :
-    pref.suitability_score;
+
+  // 投資適格スコア: 市区町村用は EBM/基盤比率/規模から簡易計算（RS/ギャップは都道府県フォールバック）
+  const activeScore = (() => {
+    const prefScore =
+      granularity === "extended" && pref.suitability_score_extended ? pref.suitability_score_extended :
+      granularity === "mid" && pref.suitability_score_mid ? pref.suitability_score_mid :
+      pref.suitability_score;
+    if (!sc) return prefScore;
+    // 市区町村用の簡易スコア計算
+    const ebm = activeEbm;
+    const ratio = activeBasicRatio;
+    const emp = scopeEmp;
+    // EBMスコア: 3-6が健全域 (山型)
+    const ebmS = ebm >= 3 && ebm <= 6 ? 100 : ebm >= 2 && ebm <= 8 ? 75 : ebm >= 1.5 && ebm <= 10 ? 55 : 35;
+    // 基盤比率スコア: 15-25%がピーク
+    const ratioS = ratio >= 15 && ratio <= 25 ? 100 : ratio >= 10 && ratio <= 35 ? 80 : ratio >= 5 ? 55 : 30;
+    // RS: 都道府県フォールバック
+    const rsS = prefScore.rs_score ?? 50;
+    // ギャップ: 都道府県フォールバック
+    const gapS = prefScore.gap_score ?? 50;
+    // 規模: log10スケール
+    const scaleS = Math.min(100, Math.max(0, Math.log10(Math.max(1, emp)) * 20 - 20));
+    const total = Math.round(0.20 * ebmS + 0.20 * ratioS + 0.25 * rsS + 0.20 * gapS + 0.15 * scaleS);
+    return {
+      total_score: total,
+      ebm_score: ebmS,
+      ratio_score: ratioS,
+      rs_score: rsS,
+      gap_score: gapS,
+      scale_score: scaleS,
+    };
+  })();
 
   const scoreLabel = activeScore.total_score >= 80 ? "優良"
     : activeScore.total_score >= 60 ? "良好"
@@ -921,6 +955,29 @@ function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities,
           詳細は <a href="/learn#ch9-granularity" className="underline text-blue-700">学習第9章</a>。
         </p>
       </Card>
+
+      {/* 分析対象の表示 */}
+      {sc && (
+        <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/20 p-3 text-sm">
+          <span className="font-bold">分析対象: {scopeLabel}</span>
+          <span className="text-muted-foreground ml-2">（{pref.pref_name}内・雇用 {scopeEmp.toLocaleString()} 人）</span>
+          {sc && <span className="text-xs text-muted-foreground ml-1">※ シフトシェア・小売ギャップは{pref.pref_name}の値を代用</span>}
+        </div>
+      )}
+
+      {/* 小規模自治体の注意 + 広域切替誘導 */}
+      {isSmallArea && sc && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-900 dark:text-amber-200">
+          <strong>⚠️ 母数が小さくスコアが不安定です</strong>（雇用 {scopeEmp.toLocaleString()} 人）。
+          1事業所の移転でLQ・EBMが大きく変動する可能性があります。
+          <div className="mt-1.5 flex gap-2">
+            <a href="?tab=decision_hub" className="inline-block rounded bg-blue-600 text-white px-3 py-1 text-xs font-bold hover:bg-blue-700">
+              → 投資判断ハブで経済圏（広域）分析する
+            </a>
+            <span className="text-xs self-center text-muted-foreground">複数市区町村を合算すると精度が向上します</span>
+          </div>
+        </div>
+      )}
 
       {/* 通勤歪み警告（事業所所在地 vs 居住地の地理的不整合） */}
       {pref.commute_distortion === "inflow" && (
