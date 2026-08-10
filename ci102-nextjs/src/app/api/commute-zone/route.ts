@@ -47,13 +47,15 @@ interface ODData {
 // OD行列キャッシュ（サーバーレス関数内のメモリキャッシュ）
 const _odCache: Record<string, ODData> = {};
 
-async function loadOD(prefCode: number, baseUrl: string): Promise<ODData | null> {
+async function loadOD(prefCode: number, baseUrl: string, cookieHeader?: string | null): Promise<ODData | null> {
   const key = String(prefCode).padStart(2, "0");
   if (_odCache[key]) return _odCache[key];
 
   try {
     const url = `${baseUrl}/data/commute_od/${key}.json`;
-    const res = await fetch(url, { next: { revalidate: 86400 } }); // 24h cache
+    const headers: Record<string, string> = {};
+    if (cookieHeader) headers["cookie"] = cookieHeader;
+    const res = await fetch(url, { headers, next: { revalidate: 86400 } });
     if (!res.ok) return null;
     const data: ODData = await res.json();
     _odCache[key] = data;
@@ -100,10 +102,12 @@ function computeZone(
 // Louvainデータキャッシュ
 let _louvainCache: Record<string, { zones: Record<string, string[]>; muni_to_zone: Record<string, string> }> | null = null;
 
-async function loadLouvain(baseUrl: string): Promise<typeof _louvainCache> {
+async function loadLouvain(baseUrl: string, cookieHeader?: string | null): Promise<typeof _louvainCache> {
   if (_louvainCache) return _louvainCache;
   try {
-    const res = await fetch(`${baseUrl}/data/commute_louvain.json`, { next: { revalidate: 86400 } });
+    const headers: Record<string, string> = {};
+    if (cookieHeader) headers["cookie"] = cookieHeader;
+    const res = await fetch(`${baseUrl}/data/commute_louvain.json`, { headers, next: { revalidate: 86400 } });
     if (!res.ok) return null;
     const data = await res.json();
     _louvainCache = data.resolutions;
@@ -127,7 +131,8 @@ export async function GET(request: NextRequest) {
   // Louvainモード
   if (method === "louvain") {
     const baseUrl = request.nextUrl.origin;
-    const louvain = await loadLouvain(baseUrl);
+    const cookieHdr = request.headers.get("cookie");
+    const louvain = await loadLouvain(baseUrl, cookieHdr);
     if (!louvain || !louvain[resolutionStr]) {
       return NextResponse.json({ error: `Louvainデータが見つかりません（resolution=${resolutionStr}）` }, { status: 404 });
     }
@@ -156,6 +161,7 @@ export async function GET(request: NextRequest) {
   const centerCode = center.padStart(5, "0");
   const prefCode = parseInt(centerCode.slice(0, 2), 10);
   const baseUrl = request.nextUrl.origin;
+  const cookieHeader = request.headers.get("cookie");
 
   // 自県 + 隣接県のODデータをロード
   const prefsToLoad = [prefCode, ...(ADJACENT_PREFS[prefCode] ?? [])];
@@ -164,7 +170,7 @@ export async function GET(request: NextRequest) {
 
   await Promise.all(
     prefsToLoad.map(async (pc) => {
-      const data = await loadOD(pc, baseUrl);
+      const data = await loadOD(pc, baseUrl, cookieHeader);
       if (data) {
         Object.assign(mergedOD, data.od);
         Object.assign(mergedEmployed, data.total_employed);
