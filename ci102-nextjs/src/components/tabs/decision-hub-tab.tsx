@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 import { ECONOMIC_CENSUS_CURRENT, POPULATION_CENSUS_CURRENT } from "@/lib/data-versions";
@@ -301,12 +301,43 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
     }
   }, [centerCode, commuteZones, centerApplied]);
 
+  // 経済圏動的生成のUI状態（トップレベルに配置 — Rules of Hooks遵守）
+  const [zoneLoading, setZoneLoading] = useState(false);
+  const [zoneMethod, setZoneMethod] = useState<string | null>(null);
+  const [zoneCount, setZoneCount] = useState<number | null>(null);
+  const [zoneError, setZoneError] = useState<string | null>(null);
+
+  const fetchZone = useCallback(async (url: string, label: string) => {
+    if (zoneLoading) return;
+    setZoneLoading(true);
+    setZoneMethod(label);
+    setZoneCount(null);
+    setZoneError(null);
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setEconZoneCodes(new Set(data.zone));
+        setZoneCount(data.zone.length);
+      } else {
+        setZoneError(`エラー: ${res.status}`);
+      }
+    } catch (e) {
+      console.error("[commute-zone]", e);
+      setZoneError("通信エラー。再度お試しください。");
+    } finally {
+      setZoneLoading(false);
+    }
+  }, [zoneLoading, setEconZoneCodes]);
+
   // 都道府県切替時にeconZoneCodesをリセット（staleなcross-pref selectionを防止）
-  const prevPrefRef = { current: prefCode };
+  const prevPrefRef = useRef(prefCode);
   useEffect(() => {
     if (prefCode !== prevPrefRef.current) {
       setEconZoneCodes(new Set());
       setEzFilterPref(prefCode ?? pref.pref_code);
+      setZoneMethod(null);
+      setZoneCount(null);
     }
     prevPrefRef.current = prefCode;
   }, [prefCode, pref.pref_code]);
@@ -553,80 +584,57 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
             )}
 
             {/* 閾値カスタム + Louvain（通勤OD行列ベース） */}
-            {selectedCity && (() => {
-              // ローディング・選択状態・結果表示の管理
-              const [zoneLoading, setZoneLoading] = useState(false);
-              const [zoneMethod, setZoneMethod] = useState<string | null>(null);
-              const [zoneCount, setZoneCount] = useState<number | null>(null);
-
-              const fetchZone = async (url: string, label: string) => {
-                if (zoneLoading) return; // 連打防止
-                setZoneLoading(true);
-                setZoneMethod(label);
-                setZoneCount(null);
-                try {
-                  const res = await fetch(url);
-                  if (res.ok) {
-                    const data = await res.json();
-                    setEconZoneCodes(new Set(data.zone));
-                    setZoneCount(data.zone.length);
-                  }
-                } catch (e) {
-                  console.error("[commute-zone]", e);
-                } finally {
-                  setZoneLoading(false);
-                }
-              };
-
-              return (
-                <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:bg-indigo-950/20 p-2.5 space-y-2">
-                  {/* 通勤率ベース */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">通勤率:</span>
-                    {[5, 10, 15, 25].map((t) => (
-                      <button
-                        key={t}
-                        disabled={zoneLoading}
-                        onClick={() => fetchZone(`/api/commute-zone?center=${selectedCity.area_code}&threshold=${t}`, `通勤率${t}%`)}
-                        className={`rounded border px-2.5 py-1 text-xs font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === `通勤率${t}%` ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
-                      >{t}%</button>
-                    ))}
-                    <span className="text-[10px] text-muted-foreground">低い=広い / 高い=狭い</span>
-                  </div>
-
-                  {/* Louvain */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">AI検出:</span>
-                    {(["0.5", "1.0", "2.0", "3.0"] as const).map((res) => {
-                      const label = res === "0.5" ? "細かい" : res === "1.0" ? "標準" : res === "2.0" ? "広域" : "超広域";
-                      const methodLabel = `Louvain ${label}`;
-                      return (
-                        <button
-                          key={res}
-                          disabled={zoneLoading}
-                          onClick={() => fetchZone(`/api/commute-zone?center=${selectedCity.area_code}&method=louvain&resolution=${res}`, methodLabel)}
-                          className={`rounded border px-2 py-1 text-[10px] font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === methodLabel ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
-                        >{label}</button>
-                      );
-                    })}
-                  </div>
-
-                  {/* 状態表示 */}
-                  {zoneLoading && (
-                    <p className="text-xs text-indigo-700 font-bold animate-pulse">経済圏を計算中...</p>
-                  )}
-                  {!zoneLoading && zoneMethod && zoneCount != null && (
-                    <p className="text-xs font-bold text-indigo-800 dark:text-indigo-300">
-                      {zoneMethod} → <strong>{zoneCount}市区町村</strong>を選択しました
-                    </p>
-                  )}
-
-                  <p className="text-[9px] text-muted-foreground">
-                    通勤率: OD行列から指定%以上の通勤先を再帰追加 ｜ AI検出: Louvainアルゴリズムで通勤ネットワークの最適分割を自動検出
-                  </p>
+            {selectedCity && (
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:bg-indigo-950/20 p-2.5 space-y-2">
+                {/* 通勤率ベース */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">通勤率:</span>
+                  {[5, 10, 15, 25].map((t) => (
+                    <button
+                      key={t}
+                      disabled={zoneLoading}
+                      onClick={() => fetchZone(`/api/commute-zone?center=${selectedCity.area_code}&threshold=${t}`, `通勤率${t}%`)}
+                      className={`rounded border px-2.5 py-1 text-xs font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === `通勤率${t}%` ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
+                    >{t}%</button>
+                  ))}
+                  <span className="text-[10px] text-muted-foreground">低い=広い / 高い=狭い</span>
                 </div>
-              );
-            })()}
+
+                {/* Louvain */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">AI検出:</span>
+                  {(["0.5", "1.0", "2.0", "3.0"] as const).map((res) => {
+                    const label = res === "0.5" ? "細かい" : res === "1.0" ? "標準" : res === "2.0" ? "広域" : "超広域";
+                    const methodLabel = `Louvain ${label}`;
+                    return (
+                      <button
+                        key={res}
+                        disabled={zoneLoading}
+                        onClick={() => fetchZone(`/api/commute-zone?center=${selectedCity.area_code}&method=louvain&resolution=${res}`, methodLabel)}
+                        className={`rounded border px-2 py-1 text-[10px] font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === methodLabel ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
+                      >{label}</button>
+                    );
+                  })}
+                </div>
+
+                {/* 状態表示 */}
+                {zoneLoading && (
+                  <p className="text-xs text-indigo-700 font-bold animate-pulse">経済圏を計算中...</p>
+                )}
+                {zoneError && (
+                  <p className="text-xs text-red-700 font-bold">{zoneError}</p>
+                )}
+                {!zoneLoading && !zoneError && zoneMethod && zoneCount != null && (
+                  <p className="text-xs font-bold text-indigo-800 dark:text-indigo-300">
+                    {zoneMethod} → <strong>{zoneCount}市区町村</strong>を選択しました
+                  </p>
+                )}
+
+                <p className="text-[9px] text-muted-foreground">
+                  通勤率: OD行列から指定%以上の通勤先を再帰追加 ｜ AI検出: Louvainアルゴリズムで通勤ネットワークの最適分割を自動検出
+                </p>
+              </div>
+            )}
 
             {/* プリセット（選択中の都道府県に関連するもののみ表示） */}
             <div className="flex flex-wrap gap-1.5">

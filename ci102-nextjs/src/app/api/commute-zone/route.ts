@@ -1,16 +1,14 @@
 /**
- * 通勤経済圏 動的生成API（バンドル版）
+ * 通勤経済圏 動的生成API
  *
- * ODデータ・Louvainデータをサーバーレス関数内に直接バンドル。
- * 自サイトへのfetchを排除し、認証問題・レイテンシを解消。
+ * ODデータ・Louvainデータは public/data/ からfetchで読み込み。
+ * サーバー側メモリキャッシュで2回目以降は即応答。
  *
  * GET /api/commute-zone?center=13120&threshold=10
  * GET /api/commute-zone?center=13120&method=louvain&resolution=1.0
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
 
 // 隣接都道府県マップ
 const ADJACENT_PREFS: Record<number, number[]> = {
@@ -40,53 +38,40 @@ interface ODData {
 const _odCache: Record<string, ODData> = {};
 let _louvainCache: Record<string, { zones: Record<string, string[]>; muni_to_zone: Record<string, string> }> | null = null;
 
-function loadODFromDisk(prefCode: number): ODData | null {
+/**
+ * ODデータをfetchで読み込み（内部URL）。
+ * Vercelではpublic/はCDN配信されるため、自サイトURLでfetchする。
+ * API RouteからのfetchはサーバーサイドなのでCookieは不要（internal request）。
+ */
+async function loadOD(prefCode: number, baseUrl: string): Promise<ODData | null> {
   const key = String(prefCode).padStart(2, "0");
   if (_odCache[key]) return _odCache[key];
-
-  // public/data/commute_od/ はビルド時に .next/static/ にコピーされないため
-  // process.cwd() + public/ から読む（Vercel Node.js Runtime対応）
-  const candidates = [
-    join(process.cwd(), "public", "data", "commute_od", `${key}.json`),
-    join(process.cwd(), ".next", "server", "data", "commute_od", `${key}.json`),
-  ];
-
-  for (const path of candidates) {
-    try {
-      if (existsSync(path)) {
-        const raw = readFileSync(path, "utf-8");
-        const data: ODData = JSON.parse(raw);
-        _odCache[key] = data;
-        return data;
-      }
-    } catch {
-      continue;
-    }
+  try {
+    // Vercel内部ではpublic/のファイルはCDN経由でアクセス可能
+    // 認証はproxyのmiddlewareで処理されるが、サーバーサイドfetchはmiddlewareを通らない場合がある
+    // そのため直接URLでfetchする
+    const url = `${baseUrl}/data/commute_od/${key}.json`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data: ODData = await res.json();
+    _odCache[key] = data;
+    return data;
+  } catch {
+    return null;
   }
-  return null;
 }
 
-function loadLouvainFromDisk(): typeof _louvainCache {
+async function loadLouvain(baseUrl: string): Promise<typeof _louvainCache> {
   if (_louvainCache) return _louvainCache;
-
-  const candidates = [
-    join(process.cwd(), "public", "data", "commute_louvain.json"),
-    join(process.cwd(), ".next", "server", "data", "commute_louvain.json"),
-  ];
-
-  for (const path of candidates) {
-    try {
-      if (existsSync(path)) {
-        const raw = readFileSync(path, "utf-8");
-        const data = JSON.parse(raw);
-        _louvainCache = data.resolutions;
-        return _louvainCache;
-      }
-    } catch {
-      continue;
-    }
+  try {
+    const res = await fetch(`${baseUrl}/data/commute_louvain.json`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    _louvainCache = data.resolutions;
+    return _louvainCache;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function computeZone(
@@ -123,7 +108,7 @@ function computeZone(
 
 export const dynamic = "force-dynamic";
 
-/** 成功レスポンスにキャッシュヘッダーを付与（同じクエリは1時間キャッシュ） */
+/** 成功レスポンスにキャッシュヘッダーを付与 */
 function cachedJson(data: unknown) {
   return NextResponse.json(data, {
     headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
@@ -142,10 +127,11 @@ export async function GET(request: NextRequest) {
   }
 
   const centerCode = center.padStart(5, "0");
+  const baseUrl = request.nextUrl.origin;
 
   // Louvainモード
   if (method === "louvain") {
-    const louvain = loadLouvainFromDisk();
+    const louvain = await loadLouvain(baseUrl);
     if (!louvain || !louvain[resolutionStr]) {
       return NextResponse.json({ error: `Louvainデータが見つかりません（resolution=${resolutionStr}）` }, { status: 404 });
     }
@@ -175,13 +161,15 @@ export async function GET(request: NextRequest) {
   const mergedOD: Record<string, Record<string, number>> = {};
   const mergedEmployed: Record<string, number> = {};
 
-  for (const pc of prefsToLoad) {
-    const data = loadODFromDisk(pc);
-    if (data) {
-      Object.assign(mergedOD, data.od);
-      Object.assign(mergedEmployed, data.total_employed);
-    }
-  }
+  await Promise.all(
+    prefsToLoad.map(async (pc) => {
+      const data = await loadOD(pc, baseUrl);
+      if (data) {
+        Object.assign(mergedOD, data.od);
+        Object.assign(mergedEmployed, data.total_employed);
+      }
+    })
+  );
 
   if (Object.keys(mergedOD).length === 0) {
     return NextResponse.json({
