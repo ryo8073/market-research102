@@ -1425,7 +1425,7 @@ function DashboardContent() {
   const [cityCode, setCityCode] = useState<string>(() => searchParams.get("city") ?? "");
   const [activeTab, setActiveTab] = useState<TabValue>(() => {
     const t = searchParams.get("tab");
-    return isValidTab(t) ? t : "scorecard";
+    return isValidTab(t) ? t : "decision_hub";
   });
 
   // Sync state -> URL (replaceState, no history entry)
@@ -1433,7 +1433,7 @@ function DashboardContent() {
     const params = new URLSearchParams();
     params.set("pref", String(prefCode));
     if (cityCode) params.set("city", cityCode);
-    if (activeTab !== "scorecard") params.set("tab", activeTab);
+    if (activeTab !== "decision_hub") params.set("tab", activeTab);
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [prefCode, cityCode, activeTab, router]);
   const { data: pref, allData, loading, error: prefError } = usePrefectureData(prefCode);
@@ -1552,66 +1552,72 @@ function DashboardContent() {
           <div className="text-center py-20 text-muted-foreground">データが見つかりません</div>
         ) : (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)} className="w-full">
-            <TabsList className="w-full justify-start overflow-x-auto flex-nowrap" aria-label="分析タブ">
-              <TabsTrigger value="scorecard" className="text-xs md:text-sm">
-                <span className="md:hidden">⓪</span>
-                <span className="hidden md:inline">⓪ スコアカード</span>
-              </TabsTrigger>
-              <TabsTrigger value="lq" className="text-xs md:text-sm">
-                <span className="md:hidden">①</span>
-                <span className="hidden md:inline">① 経済基盤</span>
-              </TabsTrigger>
-              <TabsTrigger value="ebm" className="text-xs md:text-sm">
-                <span className="md:hidden">②</span>
-                <span className="hidden md:inline">② 需要予測</span>
-              </TabsTrigger>
-              <TabsTrigger value="shift" className="text-xs md:text-sm">
-                <span className="md:hidden">③</span>
-                <span className="hidden md:inline">③ シフトシェア</span>
-              </TabsTrigger>
-              <TabsTrigger value="gap" className="text-xs md:text-sm">
-                <span className="md:hidden">④</span>
-                <span className="hidden md:inline">④ 小売市場</span>
-              </TabsTrigger>
-              <TabsTrigger value="realestate" className="text-xs md:text-sm">
-                <span className="md:hidden">⑤</span>
-                <span className="hidden md:inline">⑤ 不動産取引</span>
-              </TabsTrigger>
-              <TabsTrigger value="map" className="text-xs md:text-sm">
-                <span className="md:hidden">⑥</span>
-                <span className="hidden md:inline">⑥ 地図分析</span>
-              </TabsTrigger>
-              <TabsTrigger value="cross" className="text-xs md:text-sm">
-                <span className="md:hidden">⑦</span>
-                <span className="hidden md:inline">⑦ クロス分析</span>
-              </TabsTrigger>
-              <TabsTrigger value="risk" className="text-xs md:text-sm">
-                <span className="md:hidden">⑧</span>
-                <span className="hidden md:inline">⑧ 災害リスク</span>
-              </TabsTrigger>
-              <TabsTrigger value="access" className="text-xs md:text-sm">
-                <span className="md:hidden">⑨</span>
-                <span className="hidden md:inline">⑨ 交通アクセス</span>
-              </TabsTrigger>
-              <TabsTrigger value="demographics" className="text-xs md:text-sm">
-                <span className="md:hidden">⑩</span>
-                <span className="hidden md:inline">⑩ 人口動態</span>
-              </TabsTrigger>
-              <TabsTrigger value="metro" className="text-xs md:text-sm">
-                <span className="md:hidden">⑪</span>
-                <span className="hidden md:inline">⑪ 都市圏(MSA)</span>
+            <TabsList className="w-full justify-start overflow-x-auto flex-nowrap gap-0.5" aria-label="分析タブ">
+              {/* ── メイン ── */}
+              <TabsTrigger value="decision_hub" className="text-xs md:text-sm bg-emerald-50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-bold">
+                <span className="md:hidden">🎯</span>
+                <span className="hidden md:inline">🎯 投資判断</span>
               </TabsTrigger>
               <TabsTrigger value="custom_metro" className="text-xs md:text-sm">
-                <span className="md:hidden">⑫</span>
-                <span className="hidden md:inline">⑫ カスタム経済圏</span>
+                <span className="md:hidden">🌐</span>
+                <span className="hidden md:inline">🌐 経済圏分析</span>
+              </TabsTrigger>
+
+              {/* ── セパレーター ── */}
+              <span className="hidden md:inline self-center px-1 text-[10px] text-slate-400 select-none">|</span>
+
+              {/* ── 詳細深掘り ── */}
+              <TabsTrigger value="scorecard" className="text-xs md:text-sm">
+                <span className="md:hidden">📋</span>
+                <span className="hidden md:inline">📋 スコア</span>
+              </TabsTrigger>
+              <TabsTrigger value="lq" className="text-xs md:text-sm">
+                <span className="md:hidden">🏭</span>
+                <span className="hidden md:inline">🏭 経済基盤</span>
+              </TabsTrigger>
+              <TabsTrigger value="ebm" className="text-xs md:text-sm">
+                <span className="md:hidden">📐</span>
+                <span className="hidden md:inline">📐 需要予測</span>
+              </TabsTrigger>
+              <TabsTrigger value="shift" className="text-xs md:text-sm">
+                <span className="md:hidden">📊</span>
+                <span className="hidden md:inline">📊 競争力</span>
+              </TabsTrigger>
+              <TabsTrigger value="gap" className="text-xs md:text-sm">
+                <span className="md:hidden">🛒</span>
+                <span className="hidden md:inline">🛒 小売市場</span>
+              </TabsTrigger>
+              <TabsTrigger value="demographics" className="text-xs md:text-sm">
+                <span className="md:hidden">👥</span>
+                <span className="hidden md:inline">👥 人口動態</span>
+              </TabsTrigger>
+              <TabsTrigger value="realestate" className="text-xs md:text-sm">
+                <span className="md:hidden">🏠</span>
+                <span className="hidden md:inline">🏠 不動産取引</span>
+              </TabsTrigger>
+              <TabsTrigger value="map" className="text-xs md:text-sm">
+                <span className="md:hidden">🗺️</span>
+                <span className="hidden md:inline">🗺️ 地図</span>
+              </TabsTrigger>
+              <TabsTrigger value="risk" className="text-xs md:text-sm">
+                <span className="md:hidden">⚠️</span>
+                <span className="hidden md:inline">⚠️ 災害</span>
+              </TabsTrigger>
+              <TabsTrigger value="access" className="text-xs md:text-sm">
+                <span className="md:hidden">🚃</span>
+                <span className="hidden md:inline">🚃 交通</span>
+              </TabsTrigger>
+              <TabsTrigger value="cross" className="text-xs md:text-sm">
+                <span className="md:hidden">📈</span>
+                <span className="hidden md:inline">📈 クロス</span>
+              </TabsTrigger>
+              <TabsTrigger value="metro" className="text-xs md:text-sm">
+                <span className="md:hidden">🏙️</span>
+                <span className="hidden md:inline">🏙️ 都市圏</span>
               </TabsTrigger>
               <TabsTrigger value="trade_area" className="text-xs md:text-sm">
-                <span className="md:hidden">⑬</span>
-                <span className="hidden md:inline">⑬ 商圏分析（住所）</span>
-              </TabsTrigger>
-              <TabsTrigger value="decision_hub" className="text-xs md:text-sm bg-emerald-50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-                <span className="md:hidden">⑭🎯</span>
-                <span className="hidden md:inline">⑭ 投資判断ハブ 🎯</span>
+                <span className="md:hidden">📍</span>
+                <span className="hidden md:inline">📍 商圏</span>
               </TabsTrigger>
             </TabsList>
 
@@ -1765,7 +1771,7 @@ function DashboardContent() {
               {/* Tab 14: Decision Hub (統合判断) */}
               <TabsContent value="decision_hub">
                 <ErrorBoundary>
-                <DecisionHubTab pref={pref} selectedCity={selectedCity} />
+                <DecisionHubTab pref={pref} selectedCity={selectedCity} prefCode={prefCode} municipalities={municipalities} />
                 </ErrorBoundary>
               </TabsContent>
             </div>

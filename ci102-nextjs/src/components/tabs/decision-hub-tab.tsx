@@ -9,10 +9,14 @@ import { PricePredictionSection } from "@/components/price-prediction-section";
 import { useGranularityProgression } from "@/lib/use-granularity-progression";
 import { PopulationMomentumCard } from "@/components/ui/population-momentum-card";
 import { AreaDiagnosisPanel } from "@/components/ui/area-diagnosis-panel";
+import { useMuniIndustryMatrixMid, computeCustomMetro } from "@/lib/use-muni-industry";
+import { PREFECTURES } from "@/lib/codes";
 
 interface Props {
   pref: PrefectureData;
   selectedCity: MunicipalityData | null;
+  prefCode?: number;
+  municipalities?: MunicipalityData[];
 }
 
 type PropertyType = "residential" | "commercial" | "office" | "industrial" | "medical";
@@ -246,11 +250,42 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   ].sort((a, b) => b.totalScore - a.totalScore);
 }
 
-export default function DecisionHubTab({ pref, selectedCity }: Props) {
+/* ── 推奨経済圏プリセット（投資判断ハブ用） ── */
+const ZONE_PRESETS: Array<{ name: string; codes: string[] }> = [
+  { name: "都心5区", codes: ["13101","13102","13103","13104","13113"] },
+  { name: "都心8区", codes: ["13101","13102","13103","13104","13113","13105","13106","13116"] },
+  { name: "城南4区", codes: ["13109","13110","13111","13112"] },
+  { name: "城北4区", codes: ["13117","13119","13120","13116"] },
+  { name: "城東7区", codes: ["13107","13108","13106","13118","13121","13122","13123"] },
+  { name: "23区全域", codes: Array.from({length:23},(_,i)=>`13${101+i}`) },
+  { name: "横浜・川崎", codes: ["14101","14102","14103","14104","14105","14106","14107","14108","14109","14110","14111","14112","14113","14114","14115","14116","14117","14118","14131","14132","14133","14134","14135","14136","14137"] },
+  { name: "大阪市", codes: ["27102","27103","27104","27106","27107","27108","27109","27111","27113","27114","27115","27116","27117","27118","27119","27120","27121","27122","27123","27124","27125","27126","27127","27128"] },
+  { name: "名古屋市", codes: ["23101","23102","23103","23104","23105","23106","23107","23108","23109","23110","23111","23112","23113","23114","23115","23116"] },
+  { name: "福岡市", codes: ["40131","40132","40133","40134","40135","40136","40137"] },
+  { name: "札幌市", codes: ["01101","01102","01103","01104","01105","01106","01107","01108","01109","01110"] },
+];
+
+export default function DecisionHubTab({ pref, selectedCity, prefCode, municipalities }: Props) {
+  // 経済圏モード
+  const [analysisMode, setAnalysisMode] = useState<"single" | "econ_zone">("single");
+  const [econZoneCodes, setEconZoneCodes] = useState<Set<string>>(new Set());
+  const [ezFilterPref, setEzFilterPref] = useState<number>(prefCode ?? pref.pref_code);
+  const { matrix: matrixMid } = useMuniIndustryMatrixMid();
+  const econZoneResult = useMemo(() => {
+    if (analysisMode !== "econ_zone" || !matrixMid || econZoneCodes.size === 0) return null;
+    return computeCustomMetro(matrixMid, Array.from(econZoneCodes));
+  }, [analysisMode, matrixMid, econZoneCodes]);
+  const econZoneNames = useMemo(() => {
+    if (!matrixMid) return "";
+    return Array.from(econZoneCodes).map(c => matrixMid[c]?.area_name ?? c).join("・");
+  }, [matrixMid, econZoneCodes]);
+
   // 粒度進行データ (AI プロンプト + UI 用)
   const { data: granularityData } = useGranularityProgression(pref.pref_code);
   const scores = useMemo(() => calculatePropertyScores(pref, selectedCity), [pref, selectedCity]);
-  const target = selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name;
+  const target = analysisMode === "econ_zone" && econZoneNames
+    ? `経済圏: ${econZoneNames.length > 30 ? econZoneNames.slice(0, 30) + "…" : econZoneNames}（${econZoneCodes.size}市区町村）`
+    : selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name;
   const best = scores[0];
   const momentumC = selectedCity?.census2025 ?? pref.census2025;
 
@@ -378,12 +413,100 @@ export default function DecisionHubTab({ pref, selectedCity }: Props) {
       </div>
 
       <div>
-        <h2 className="text-xl font-bold mb-2">投資判断ハブ — 物件タイプ別の統合評価</h2>
+        <h2 className="text-xl font-bold mb-2">投資判断ハブ</h2>
         <p className="text-sm text-gray-700">
-          <strong>{target}</strong> の経済基盤・空間データ・商圏・人口動態を統合し、
-          <strong>5つの物件タイプ別</strong>に投資適格度を評価します。
-          全タブのデータを横断参照した「Deeply Connected」な判断ツール。
+          エリアの需要・供給・将来性を政府統計から定量評価し、<strong>5つの物件タイプ別</strong>に投資適格度を判定します。
         </p>
+      </div>
+
+      {/* ── 分析モード切替（単一地域 / 経済圏） ── */}
+      <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-4">
+        <div className="flex items-center gap-3 flex-wrap mb-2">
+          <span className="text-sm font-bold">分析モード:</span>
+          <div className="inline-flex rounded-lg border overflow-hidden">
+            <button
+              className={`px-4 py-1.5 text-sm font-bold transition-colors ${analysisMode === "single" ? "bg-blue-600 text-white" : "bg-white dark:bg-slate-800 hover:bg-blue-50"}`}
+              onClick={() => setAnalysisMode("single")}
+            >単一地域</button>
+            <button
+              className={`px-4 py-1.5 text-sm font-bold transition-colors ${analysisMode === "econ_zone" ? "bg-blue-600 text-white" : "bg-white dark:bg-slate-800 hover:bg-blue-50"}`}
+              onClick={() => setAnalysisMode("econ_zone")}
+            >経済圏（複数地域）</button>
+          </div>
+        </div>
+
+        {analysisMode === "single" ? (
+          <p className="text-xs text-muted-foreground">
+            サイドバーで選択した <strong>{selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name}</strong> を分析中。
+            行政区単体ではEBMが過大になる場合があります。より正確な分析には「経済圏」モードを使用してください。
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              通勤圏・生活圏に合わせた<strong>複数の市区町村を合算</strong>して分析します。行政区を超えた一体的な経済圏で評価することで、EBMの精度が向上します。
+            </p>
+            {/* プリセット */}
+            <div className="flex flex-wrap gap-1.5">
+              {ZONE_PRESETS.map((p) => (
+                <button
+                  key={p.name}
+                  onClick={() => setEconZoneCodes(new Set(p.codes))}
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors ${
+                    p.codes.length === econZoneCodes.size && p.codes.every(c => econZoneCodes.has(c))
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white dark:bg-slate-800 hover:bg-blue-50 hover:border-blue-300"
+                  }`}
+                  title={`${p.codes.length}市区町村`}
+                >{p.name}</button>
+              ))}
+            </div>
+            {/* 手動選択 */}
+            <details className="text-xs">
+              <summary className="cursor-pointer font-bold text-blue-700 dark:text-blue-400">手動で市区町村を追加・除外する</summary>
+              <div className="mt-2 space-y-2">
+                <div className="flex gap-2 items-center">
+                  <select value={ezFilterPref} onChange={(e) => setEzFilterPref(Number(e.target.value))} className="rounded px-2 py-1 text-xs border">
+                    {Object.entries(PREFECTURES).map(([code, name]) => (
+                      <option key={code} value={code}>{String(code).padStart(2, "0")} {name}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => {
+                    if (!matrixMid) return;
+                    const codes = Object.keys(matrixMid).filter(c => c !== "00000" && c.startsWith(String(ezFilterPref).padStart(2, "0")));
+                    setEconZoneCodes(prev => { const n = new Set(prev); codes.forEach(c => n.add(c)); return n; });
+                  }} className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs">県内すべて追加</button>
+                  <button onClick={() => setEconZoneCodes(new Set())} className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs">全クリア</button>
+                  <span className="text-muted-foreground ml-auto">選択中: <strong>{econZoneCodes.size}</strong></span>
+                </div>
+                {matrixMid && (
+                  <div className="max-h-[200px] overflow-y-auto border rounded bg-white dark:bg-slate-900">
+                    {Object.entries(matrixMid)
+                      .filter(([c, e]) => c !== "00000" && e.pref_code === ezFilterPref)
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([code, entry]) => (
+                        <label key={code} className={`flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 ${econZoneCodes.has(code) ? "bg-emerald-50 dark:bg-emerald-950" : ""}`}>
+                          <input type="checkbox" checked={econZoneCodes.has(code)} onChange={() => {
+                            setEconZoneCodes(prev => { const n = new Set(prev); n.has(code) ? n.delete(code) : n.add(code); return n; });
+                          }} className="accent-emerald-600" />
+                          <span className="flex-1 truncate">{entry.area_name}</span>
+                        </label>
+                      ))
+                    }
+                  </div>
+                )}
+              </div>
+            </details>
+            {/* 経済圏の分析結果サマリー */}
+            {econZoneResult && (
+              <div className="rounded-lg border bg-white dark:bg-slate-900 p-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div><div className="text-[10px] text-muted-foreground">EBM</div><div className="text-lg font-black">{econZoneResult.ebm.toFixed(2)}</div></div>
+                <div><div className="text-[10px] text-muted-foreground">外から稼ぐ割合</div><div className="text-lg font-black">{econZoneResult.basic_ratio.toFixed(1)}%</div></div>
+                <div><div className="text-[10px] text-muted-foreground">基盤雇用</div><div className="text-lg font-black">{Math.round(econZoneResult.basic_employment).toLocaleString()}</div></div>
+                <div><div className="text-[10px] text-muted-foreground">基盤産業数</div><div className="text-lg font-black">{econZoneResult.n_basic_industries}</div></div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* CI102 エリア総合診断 — 需要・供給・強み・将来性の統合サマリー */}
