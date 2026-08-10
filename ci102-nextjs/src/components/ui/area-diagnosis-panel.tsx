@@ -541,7 +541,7 @@ export function AreaDiagnosisPanel({
               <span className="text-sm font-extrabold flex-1">需要 — 借り手・買い手はいるか？</span>
               <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(demand).color }}>{rating(demand).label} {demand}</span>
             </div>
-            <p className="text-sm mt-1 pl-7" style={{ color: rating(demand).color }}>{demandSummary}</p>
+            <div className="block text-sm mt-1 pl-7" style={{ color: rating(demand).color }}>{demandSummary}</div>
           </summary>
           <p className="text-xs text-muted-foreground mb-3 mt-2">人口と世帯の増減が、入居率・賃料・売却価格に直結します</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -621,7 +621,7 @@ export function AreaDiagnosisPanel({
               <span className="text-sm font-extrabold flex-1">供給 — 地域経済は自立しているか？</span>
               <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(supply).color }}>{rating(supply).label} {supply}</span>
             </div>
-            <p className="text-sm mt-1 pl-7" style={{ color: rating(supply).color }}>{supplySummary}</p>
+            <div className="block text-sm mt-1 pl-7" style={{ color: rating(supply).color }}>{supplySummary}</div>
           </summary>
           <p className="text-xs text-muted-foreground mb-3 mt-2">域外から所得を稼ぐ「基盤産業」の厚みが、雇用と賃料の安定性を左右します</p>
 
@@ -701,7 +701,7 @@ export function AreaDiagnosisPanel({
               <span className="text-sm font-extrabold flex-1">将来性 — 10年後も需要は続くか？</span>
               <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(future).color }}>{rating(future).label} {future}</span>
             </div>
-            <p className="text-sm mt-1 pl-7" style={{ color: rating(future).color }}>{futureSummary}</p>
+            <div className="block text-sm mt-1 pl-7" style={{ color: rating(future).color }}>{futureSummary}</div>
           </summary>
           <p className="text-xs text-muted-foreground mb-3 mt-2">出口（売却）時の価値を左右する「将来の需要と競争力」を3つの指標で評価</p>
 
