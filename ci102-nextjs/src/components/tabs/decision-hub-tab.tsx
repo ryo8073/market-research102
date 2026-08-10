@@ -975,6 +975,29 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
   );
 }
 
+/** ファクターのソース名 → 深掘りタブへのマッピング */
+const SOURCE_TO_TAB: Record<string, { tab: string; label: string }> = {
+  "EBM/基盤雇用比率": { tab: "ebm", label: "📐 需要予測で深掘り" },
+  "EBM": { tab: "ebm", label: "📐 需要予測で深掘り" },
+  "国勢2025実測+社人研推計": { tab: "demographics", label: "👥 人口動態で深掘り" },
+  "人口動態": { tab: "demographics", label: "👥 人口動態で深掘り" },
+  "NLNI洪水": { tab: "risk", label: "⚠️ 災害リスクで深掘り" },
+  "洪水リスク": { tab: "risk", label: "⚠️ 災害リスクで深掘り" },
+  "NLNI鉄道+バス": { tab: "access", label: "🚃 交通アクセスで深掘り" },
+  "交通アクセス": { tab: "access", label: "🚃 交通アクセスで深掘り" },
+  "NLNI立地適正化": { tab: "map", label: "🗺️ 地図で深掘り" },
+  "立地適正化": { tab: "map", label: "🗺️ 地図で深掘り" },
+  "小売ギャップ": { tab: "gap", label: "🛒 小売市場で深掘り" },
+  "LQ小売業": { tab: "lq", label: "🏭 経済基盤で深掘り" },
+  "LQオフィス系": { tab: "lq", label: "🏭 経済基盤で深掘り" },
+  "LQ製造・物流": { tab: "lq", label: "🏭 経済基盤で深掘り" },
+  "LQ医療福祉": { tab: "lq", label: "🏭 経済基盤で深掘り" },
+  "シフトシェアRS": { tab: "shift", label: "📊 競争力で深掘り" },
+  "RS/成長性": { tab: "shift", label: "📊 競争力で深掘り" },
+  "MLIT地価": { tab: "realestate", label: "🏠 不動産取引で深掘り" },
+  "NLNI地価公示": { tab: "realestate", label: "🏠 不動産取引で深掘り" },
+};
+
 function PropertyTypeCard({ score }: { score: PropertyScore }) {
   return (
     <div className="rounded-lg border-2 p-4 property-card" data-print-block style={{ borderColor: score.verdict_color + "60" }}>
@@ -1015,7 +1038,15 @@ function PropertyTypeCard({ score }: { score: PropertyScore }) {
               <span className="w-12 shrink-0 text-right text-slate-400">×{(f.weight * 100).toFixed(0)}%</span>
             </div>
             <div className="ml-26 text-[10px] text-slate-500 pl-26" style={{ paddingLeft: "104px" }}>
-              {f.interpretation} <span className="text-slate-400">({f.source})</span>
+              {f.interpretation}
+              {(() => {
+                const link = SOURCE_TO_TAB[f.source];
+                return link ? (
+                  <a href={`?tab=${link.tab}`} className="ml-1 text-blue-600 hover:underline">{link.label} →</a>
+                ) : (
+                  <span className="text-slate-400 ml-1">({f.source})</span>
+                );
+              })()}
             </div>
           </div>
         ))}

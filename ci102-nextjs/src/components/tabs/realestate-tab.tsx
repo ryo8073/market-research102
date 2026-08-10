@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, Cell,
+  ComposedChart, Line, CartesianGrid, Legend,
 } from "recharts";
 import MuellerCycle from "@/components/mueller-cycle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -106,6 +107,41 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
 
   const types = useMemo(() => [...new Set(data.map((d: any) => d.Type))].filter(Boolean) as string[], [data]);
 
+  // 四半期トレンドデータ（最新8四半期を一括取得）
+  const [trendData, setTrendData] = useState<Array<{ label: string; median: number; count: number }>>([]);
+  const [trendLoading, setTrendLoading] = useState(false);
+  useEffect(() => {
+    setTrendLoading(true);
+    const quarters: Array<{ y: number; q: number }> = [];
+    // 最新8四半期を生成（2024Q2〜2026Q1）
+    for (let y = 2024; y <= 2026; y++) {
+      for (let q = 1; q <= 4; q++) {
+        if (y === 2024 && q < 2) continue;
+        if (y === 2026 && q > 1) continue;
+        quarters.push({ y, q });
+      }
+    }
+    Promise.all(
+      quarters.map(async ({ y, q }) => {
+        try {
+          const params = new URLSearchParams({ prefCode: String(prefCode), year: String(y), quarter: String(q) });
+          if (cityCode) params.set("cityCode", String(cityCode));
+          const r = await fetch(`/api/mlit?${params}`);
+          const json = await r.json();
+          const records = json.data ?? [];
+          const prices = records.map((d: any) => Number(d.UnitPrice)).filter((v: number) => v > 0).sort((a: number, b: number) => a - b);
+          const median = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
+          return { label: `${y}Q${q}`, median, count: records.length };
+        } catch {
+          return { label: `${y}Q${q}`, median: 0, count: 0 };
+        }
+      })
+    ).then((results) => {
+      setTrendData(results.filter((r) => r.count > 0));
+      setTrendLoading(false);
+    });
+  }, [prefCode, cityCode]);
+
   // Histogram bins for trade price
   const histogramBins = useMemo(() => {
     const prices = numericData.filter((d) => d.TradePrice > 0).map((d) => d.TradePrice);
@@ -141,6 +177,48 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* 四半期トレンドチャート */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">四半期トレンド — 成約単価の推移（円/m2）</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {trendLoading ? (
+            <p className="text-sm text-muted-foreground animate-pulse">トレンドデータを読み込み中...</p>
+          ) : trendData.length > 0 ? (
+            <>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={trendData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                    <YAxis
+                      yAxisId="price"
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(v: unknown) => `${(Number(v) / 10000).toFixed(0)}万`}
+                      width={48}
+                    />
+                    <YAxis yAxisId="count" orientation="right" tick={{ fontSize: 10 }} width={40} />
+                    <Tooltip
+                      formatter={(value: unknown, name: unknown) => {
+                        const v = Number(value);
+                        return String(name) === "中央値" ? [`¥${v.toLocaleString()}/m2`, String(name)] : [`${v.toLocaleString()}件`, String(name)];
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar yAxisId="count" dataKey="count" name="件数" fill="#E2E8F0" radius={[3, 3, 0, 0]} />
+                    <Line yAxisId="price" type="monotone" dataKey="median" name="中央値" stroke="#D4A843" strokeWidth={2.5} dot={{ r: 4 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">出典: 国交省 不動産情報ライブラリ（MLIT XIT001）。中央値は全物件種別の㎡単価。</p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">トレンドデータがありません。</p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Year/Quarter selectors */}
       <div className="flex flex-wrap gap-4 items-end">
         <div>
@@ -148,7 +226,7 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
           <select id="year-select" value={year} onChange={(e) => setYear(Number(e.target.value))}
             aria-label="年度を選択"
             className="ml-2 rounded border px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-            {[2024, 2023, 2022, 2021, 2020, 2019].map((y) => (
+            {[2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019].map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>

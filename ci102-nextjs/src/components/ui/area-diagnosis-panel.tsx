@@ -947,6 +947,21 @@ export function AreaDiagnosisPanel({
           <p className="mt-2 text-[10px] text-muted-foreground">※ 乗数(EBM/PER)は現在の産業構造が続くと仮定した理論値。基盤雇用はLQ&gt;1産業の超過雇用の合計（中分類95業種で算出）。</p>
         </details>
 
+        {/* ── さらに深掘りする ── */}
+        <div className="rounded-xl border bg-blue-50 dark:bg-blue-950/20 px-4 py-3 mb-3">
+          <p className="text-[11px] font-bold text-blue-800 dark:text-blue-300 mb-1.5">さらに深掘りする</p>
+          <div className="flex flex-wrap gap-2">
+            <a href="?tab=lq" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">🏭 産業の強みを詳しく</a>
+            <a href="?tab=ebm" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">📐 住宅需要をシミュレーション</a>
+            <a href="?tab=shift" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">📊 競争力の分解</a>
+            <a href="?tab=gap" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">🛒 小売の出店余地</a>
+            <a href="?tab=realestate" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">🏠 成約価格トレンド</a>
+            <a href="?tab=risk" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">⚠️ 災害リスク</a>
+            <a href="?tab=trade_area" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">📍 物件の商圏分析</a>
+            <a href="?tab=demographics" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold hover:bg-blue-100 transition-colors">👥 人口の30年推計</a>
+          </div>
+        </div>
+
         {/* ── データの鮮度と凡例 ── */}
         <div className="rounded-xl border bg-slate-50 dark:bg-slate-900/30 px-4 py-3">
           <p className="text-[11px] font-bold text-muted-foreground mb-1.5">データの性質と鮮度</p>
