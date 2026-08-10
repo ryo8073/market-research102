@@ -107,6 +107,9 @@ export function AreaDiagnosisPanel({
   const hh2020 = Math.round(c.households / (1 + (c.hh_change_pct || 0) / 100));
   const hhDelta = c.households - hh2020;
 
+  // 借家世帯比率（2020年確報）
+  const ht = (city?.housing_tenure ?? pref.housing_tenure) ?? null;
+
   // 時系列データ（2000-2025）
   const ts = (city?.pop_timeseries ?? pref.pop_timeseries ?? []).filter(
     (d) => d.population != null
@@ -155,10 +158,11 @@ export function AreaDiagnosisPanel({
   const resolvedPop = c.population;
   const perLocal = totalEmp > 0 ? resolvedPop / totalEmp : (pref.per ?? 0);
 
-  // 将来需要予測（社人研 2025→2035・都道府県）→ 世帯・住宅戸数へ換算
+  // 将来需要予測（社人研 2025→2050・都道府県）→ 世帯・住宅戸数へ換算
   const pp = pref.pop_projection;
   const pop2025 = pp?.["2025"] ?? pref.population;
   const pop2035 = pp?.["2035"] ?? null;
+  const pop2050 = pp?.["2050"] ?? null;
   const pph = pref.persons_per_household || 0;
   let fd: { dPop: number; dHH: number; dPct: number } | null = null;
   if (pop2035 && pph > 0) {
@@ -167,6 +171,12 @@ export function AreaDiagnosisPanel({
     fd = { dPop: Math.round(dPop), dHH, dPct: (dPop / pop2025) * 100 };
   }
   const dPct = fd?.dPct ?? null;
+  // 25年後（2050年）の推計
+  let fd50: { dPop: number; dPct: number } | null = null;
+  if (pop2050 && pop2025) {
+    const dPop50 = pop2050 - pop2025;
+    fd50 = { dPop: Math.round(dPop50), dPct: (dPop50 / pop2025) * 100 };
+  }
 
   // スコア（将来性は規模非依存に正規化: RSを雇用比に変換）
   const rsShare = totalEmp > 0 ? (rs / totalEmp) * 100 : 0;
@@ -187,6 +197,32 @@ export function AreaDiagnosisPanel({
 
   const projTxt = dPct != null ? `${fmtPct(dPct)}（2025→2035推計・都道府県）` : "—";
   const lqNames = lq.length ? lq.map((i) => `${i.industry}(LQ ${i.lq.toFixed(2)})`).join("、") : "際立った特化産業なし";
+
+  /* ── この街をひとことで ── */
+  const headline = (() => {
+    const parts: string[] = [];
+    // 人口トレンド
+    if (c.pop_change_pct >= 1) parts.push("人口が増えている");
+    else if (c.pop_change_pct >= -1) parts.push("人口はほぼ横ばい");
+    else if (c.pop_change_pct >= -5) parts.push("人口は緩やかに減少している");
+    else parts.push("人口が大きく減少している");
+    // 世帯トレンド
+    if (c.hh_change_pct > 0 && c.pop_change_pct < 0) parts.push("一方で世帯数は増えており、単身化・小世帯化が進んでいる");
+    else if (c.hh_change_pct > 0) parts.push("世帯数も増加している");
+    else parts.push("世帯数も減少している");
+    // 経済基盤の特徴
+    const topInd = baseInd[0];
+    if (topInd && topInd.lq >= 1.2) {
+      parts.push(`「${topInd.industry}」が全国の${topInd.lq.toFixed(1)}倍と特化した街`);
+    } else if (basicRatioMid >= 15) {
+      parts.push("域外から所得を稼ぐ基盤産業が厚い街");
+    } else {
+      parts.push("地域内サービス中心の街");
+    }
+    // 借家比率
+    if (ht && ht.rented_pct >= 40) parts.push("借家世帯の割合が高い街");
+    return parts.join("、") + "です。";
+  })();
 
   // CI102 指標の計算フロー（LQ→基盤雇用→EBM→PER→予測カスケード）
   const lqEx = baseInd.slice(0, 3);
@@ -378,6 +414,12 @@ export function AreaDiagnosisPanel({
           </div>
         </div>
 
+        {/* ── この街をひとことで ── */}
+        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-4 py-3 mb-4">
+          <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-1">{area} の見方</p>
+          <p className="text-[14px] font-extrabold leading-relaxed text-slate-800 dark:text-slate-100">{headline}</p>
+        </div>
+
         {/* ── 投資家が最初に知るべき3つの問い ── */}
         <div className="rounded-xl border bg-slate-50 dark:bg-slate-900/40 px-4 py-3 mb-4">
           <p className="text-[11px] font-bold text-muted-foreground mb-2">この分析で答える3つの問い</p>
@@ -461,6 +503,20 @@ export function AreaDiagnosisPanel({
               }
               tag="推計"
             />
+            {ht && (
+              <MetricRow
+                label="借家世帯の割合"
+                value={`${ht.rented_pct}%`}
+                unit={`民間借家 ${ht.rented_private_pct}%`}
+                meaning={ht.rented_pct >= 40
+                  ? "借家比率が高い — 賃貸需要が厚く、投資対象として有力なエリア"
+                  : ht.rented_pct >= 30
+                    ? "借家比率は標準的 — 賃貸市場は安定しているが競争も存在"
+                    : "持ち家中心の街 — 賃貸需要は限定的。ファミリー向け分譲の方が適する可能性"
+                }
+                tag="実測"
+              />
+            )}
           </div>
         </div>
 
@@ -475,21 +531,21 @@ export function AreaDiagnosisPanel({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
             <MetricRow
-              label="経済基盤乗数（EBM）"
+              label="街の外からお金を呼び込む力（EBM）"
               value={ebmMid.toFixed(1)}
               unit="倍"
-              meaning={ebmInterpretation()}
+              meaning={`基盤雇用1人が${ebmMid.toFixed(1)}人分の雇用を支える波及力。${ebmInterpretation()}`}
               tag="理論"
             />
             <MetricRow
-              label="基盤雇用比率"
+              label="外から稼ぐ仕事の割合（基盤比率）"
               value={`${basicRatioMid.toFixed(1)}%`}
               unit={`${basicMid.toLocaleString()}人 / ${totalEmp.toLocaleString()}人`}
               meaning={basicRatioMid >= 15
-                ? "輸出基盤が厚い — 域外需要に支えられ経済ショックに強い"
+                ? "域外から所得を稼ぐ産業が厚い — 外部ショックに強く、雇用が安定"
                 : basicRatioMid >= 8
-                  ? "基盤は標準的 — 主要産業の動向をモニタリング"
-                  : "基盤が薄い — 域内消費依存が高く、景気感応度が大きい"
+                  ? "基盤は標準的 — 主要産業の動向が賃貸需要を左右する"
+                  : "基盤が薄い — 地元消費に依存しており、景気に敏感"
               }
               tag="理論"
             />
@@ -508,13 +564,13 @@ export function AreaDiagnosisPanel({
 
           {/* 特化産業 */}
           <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-200 mt-2.5">
-            域外から所得を稼ぐ特化産業（LQ &gt; 1 = 全国平均より集積）:
+            街の外からお金を呼び込む特化産業（全国平均より働く人の割合が高い業種）:
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {baseInd.length ? (
               baseInd.map((i) => (
                 <span key={i.industry} className="rounded-full border bg-white dark:bg-slate-800 px-2.5 py-0.5 text-[11px] font-bold">
-                  {i.industry} <span className="text-emerald-600 dark:text-emerald-400">LQ {i.lq.toFixed(2)}</span>
+                  {i.industry} <span className="text-emerald-600 dark:text-emerald-400">全国の{i.lq.toFixed(1)}倍</span>
                 </span>
               ))
             ) : (
@@ -562,7 +618,7 @@ export function AreaDiagnosisPanel({
               tag="実測"
             />
             <MetricRow
-              label="長期人口推計"
+              label="10年後の人口推計"
               value={dPct != null ? fmtPct(dPct) : "—"}
               unit="2025→2035"
               meaning={dPct != null
@@ -573,6 +629,20 @@ export function AreaDiagnosisPanel({
               }
               tag="推計"
             />
+            {fd50 && (
+              <MetricRow
+                label="25年後の人口推計"
+                value={fmtPct(fd50.dPct)}
+                unit="2025→2050"
+                meaning={fd50.dPct >= -10
+                  ? "長期的にも大きな縮小はない — 出口戦略の選択肢が広い"
+                  : fd50.dPct >= -20
+                    ? "25年で1-2割縮小 — 出口時期を意識した投資計画が必要"
+                    : "25年で2割以上縮小 — 短期回収型の投資か、ディフェンシブ用途に限定"
+                }
+                tag="推計"
+              />
+            )}
           </div>
 
           <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-200">
@@ -689,14 +759,14 @@ export function AreaDiagnosisPanel({
         {ssTable.length > 0 && (
           <details className="rounded-xl border px-4 py-3 mb-4 bg-card">
             <summary className="text-[13px] font-extrabold cursor-pointer select-none">
-              📊 雇用の変化と競争力（シフトシェア分析）
+              📊 働く人が増減した理由を3つに分ける
               <span className="ml-1 font-semibold text-muted-foreground text-[11px]">— 2016 → 2021（クリックで展開）</span>
             </summary>
             <p className="text-[11px] text-muted-foreground mt-1.5 mb-2">
-              雇用の増減を「①全国トレンド ②産業構成 ③地域固有の競争力（RS）」の3要因に分解。RSがプラスなら、全国平均を上回る地域固有の強みがある。
+              雇用の増減を「①日本全体の変化 ②この街に多い業種の変化 ③それ以外の差（＝この街の競争力）」に分解。③がプラスなら、全国平均を上回るこの街固有の強みがあります。
             </p>
             <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-200">
-              総雇用の実測変化 <strong>{fmtNum(ssActual)} 人</strong> ＝ 全国トレンド {fmtNum(ssNat)} ＋ 産業構成 {fmtNum(ssMix)} ＋ <strong>地域シフト（RS） {fmtNum(rs)}</strong>
+              実際の変化 <strong>{fmtNum(ssActual)} 人</strong> ＝ 日本全体 {fmtNum(ssNat)} ＋ 多い業種 {fmtNum(ssMix)} ＋ <strong>この街の競争力 {fmtNum(rs)}</strong>
             </p>
             <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2.5">
               <div className="rounded-lg border bg-muted/30 px-3 py-2 text-center">

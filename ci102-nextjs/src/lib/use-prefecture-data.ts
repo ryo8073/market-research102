@@ -81,6 +81,14 @@ export interface PrefectureData {
     lq: number;
     basic_emp_estimate: number;
   }>;
+  // 住宅所有関係（2020年国勢調査確報）
+  housing_tenure?: {
+    total: number;
+    owned_pct: number;
+    rented_pct: number;
+    rented_private_pct: number;
+    source: string;
+  };
   // 中分類95業種の完全LQテーブル
   lq_table_mid?: Array<{
     industry: string;
