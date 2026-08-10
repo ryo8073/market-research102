@@ -584,7 +584,14 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
             )}
 
             {/* 閾値カスタム + Louvain（通勤OD行列ベース） */}
-            {selectedCity && (
+            {(() => {
+              // 市区町村 or 都道府県コードから代表コードを決定
+              const centerCode = selectedCity?.area_code ?? `${String(prefCode ?? pref.pref_code).padStart(2, "0")}000`;
+              // 都道府県コード(XX000)の場合は県庁所在地の代表コードを使用
+              const apiCenter = centerCode.endsWith("000")
+                ? `${centerCode.slice(0, 2)}100`  // 政令市 or 県庁所在地の推定
+                : centerCode;
+              return (
               <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:bg-indigo-950/20 p-2.5 space-y-2">
                 {/* 通勤率ベース */}
                 <div className="flex items-center gap-2 flex-wrap">
@@ -593,7 +600,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                     <button
                       key={t}
                       disabled={zoneLoading}
-                      onClick={() => fetchZone(`/api/commute-zone?center=${selectedCity.area_code}&threshold=${t}`, `通勤率${t}%`)}
+                      onClick={() => fetchZone(`/api/commute-zone?center=${apiCenter}&threshold=${t}`, `通勤率${t}%`)}
                       className={`rounded border px-2.5 py-1 text-xs font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === `通勤率${t}%` ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
                     >{t}%</button>
                   ))}
@@ -610,7 +617,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                       <button
                         key={res}
                         disabled={zoneLoading}
-                        onClick={() => fetchZone(`/api/commute-zone?center=${selectedCity.area_code}&method=louvain&resolution=${res}`, methodLabel)}
+                        onClick={() => fetchZone(`/api/commute-zone?center=${apiCenter}&method=louvain&resolution=${res}`, methodLabel)}
                         className={`rounded border px-2 py-1 text-[10px] font-bold transition-colors ${zoneLoading ? "opacity-50 cursor-wait" : "hover:bg-indigo-100"} ${zoneMethod === methodLabel ? "bg-indigo-600 text-white border-indigo-600" : ""}`}
                       >{label}</button>
                     );
@@ -634,7 +641,8 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                   通勤率: OD行列から指定%以上の通勤先を再帰追加 ｜ AI検出: Louvainアルゴリズムで通勤ネットワークの最適分割を自動検出
                 </p>
               </div>
-            )}
+              );
+            })()}
 
             {/* プリセット（選択中の都道府県に関連するもののみ表示） */}
             <div className="flex flex-wrap gap-1.5">
