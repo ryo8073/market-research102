@@ -1,13 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { feature } from "topojson-client";
 
 /**
- * NLNI overlay GeoJSON lazy-loading hook.
+ * NLNI overlay lazy-loading hook (TopoJSON対応・2段階ロード).
  *
- * Loads from /data/nlni/{layerId}_{prefCode}.geojson on demand.
- * Returns null if not yet loaded or file doesn't exist.
+ * 1. 低解像度版 (nlni_lite/*.topojson) を即座にロード
+ * 2. 高解像度版 (nlni_topo/*.topojson or R2) をバックグラウンドで取得
+ *
+ * TopoJSON→GeoJSONの変換はクライアントサイドで実行。
  */
+
+// R2のベースURL（設定されていなければローカルのnlni_topo/を使用）
+const R2_BASE = process.env.NEXT_PUBLIC_NLNI_R2_URL ?? "";
+
+function topoToGeo(topoJson: any): any {
+  if (!topoJson?.objects) return topoJson; // 既にGeoJSONの場合
+  const objectName = Object.keys(topoJson.objects)[0];
+  if (!objectName) return topoJson;
+  return feature(topoJson, topoJson.objects[objectName]);
+}
 
 // LRU制限付きキャッシュ（最大5エントリ。GeoJSONは巨大なためメモリ枯渇を防止）
 const MAX_CACHE = 5;
@@ -69,22 +82,56 @@ export function useNlniOverlay(prefCode: number, layerId: NlniLayerId, enabled: 
     setLoading(true);
     setError(null);
 
-    const url = `/data/nlni/${layerId}_${String(prefCode).padStart(2, "0")}.geojson`;
-    fetch(url)
-      .then((r) => {
-        if (!r.ok) throw new Error(`${r.status}`);
-        return r.json();
+    const prefStr = String(prefCode).padStart(2, "0");
+    const baseName = `${layerId}_${prefStr}`;
+
+    // Step 1: 低解像度版 (nlni_lite/) を即座にロード
+    const liteUrl = `/data/nlni_lite/${baseName}.topojson`;
+    const hiUrl = R2_BASE
+      ? `${R2_BASE}/${baseName}.topojson`
+      : `/data/nlni_topo/${baseName}.topojson`;
+    // フォールバック: 旧GeoJSON
+    const legacyUrl = `/data/nlni/${baseName}.geojson`;
+
+    // 低解像度を試行 → 高解像度 → レガシーGeoJSON の順
+    fetch(liteUrl)
+      .then((r) => r.ok ? r.json() : Promise.reject("lite not found"))
+      .then((topo) => {
+        const geo = topoToGeo(topo);
+        _cacheSet(cacheKey, geo);
+        setData(geo);
+        setLoading(false);
+
+        // Step 2: バックグラウンドで高解像度版を取得
+        fetch(hiUrl)
+          .then((r) => r.ok ? r.json() : null)
+          .then((hiTopo) => {
+            if (hiTopo) {
+              const hiGeo = topoToGeo(hiTopo);
+              _cacheSet(cacheKey, hiGeo);
+              setData(hiGeo);
+            }
+          })
+          .catch(() => {}); // 高解像度がなくても低解像度で十分
       })
-      .then((json) => {
-        _cacheSet(cacheKey, json);
-        setData(json);
-      })
-      .catch((err) => {
-        console.warn(`NLNI overlay ${layerId} not available for pref ${prefCode}:`, err.message);
-        setError(err.message);
-        setData(null);
-      })
-      .finally(() => setLoading(false));
+      .catch(() => {
+        // フォールバック: 旧GeoJSON
+        fetch(legacyUrl)
+          .then((r) => {
+            if (!r.ok) throw new Error(`${r.status}`);
+            return r.json();
+          })
+          .then((json) => {
+            _cacheSet(cacheKey, json);
+            setData(json);
+          })
+          .catch((err) => {
+            console.warn(`NLNI overlay ${layerId} not available for pref ${prefCode}:`, err.message);
+            setError(err.message);
+            setData(null);
+          })
+          .finally(() => setLoading(false));
+      });
   }, [prefCode, layerId, enabled]);
 
   return { data, loading, error };
