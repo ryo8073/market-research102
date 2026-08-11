@@ -92,8 +92,52 @@ function aggregateEconZoneCensus(
   };
 }
 
+/** 経済圏の空間データ集計結果 */
+interface EconZoneSpatial {
+  numStations: number;
+  dailyRiders: number;
+  floodRiskPct: number;
+  landPriceMedian: number;
+  carDep: number;
+  hasLocationPlan: boolean;
+  hasResidentialZone: boolean;
+  hasFunctionZone: boolean;
+}
+
+/** 経済圏の空間データを集計する */
+function aggregateEconZoneSpatial(
+  municipalities: MunicipalityData[],
+  codes: Set<string>,
+): EconZoneSpatial {
+  let stations = 0, riders = 0, floodSum = 0, floodCount = 0;
+  const prices: number[] = [];
+  let carDepSum = 0, carDepCount = 0;
+  let hasLoc = false, hasRes = false, hasFunc = false;
+  for (const m of municipalities) {
+    if (!codes.has(m.area_code)) continue;
+    stations += m.num_stations ?? 0;
+    riders += m.daily_riders ?? 0;
+    if (m.flood_risk_pct != null) { floodSum += m.flood_risk_pct; floodCount++; }
+    if (m.land_price_median != null && m.land_price_median > 0) prices.push(m.land_price_median);
+    if (m.car_dependency_score != null) { carDepSum += m.car_dependency_score; carDepCount++; }
+    if (m.has_location_plan) hasLoc = true;
+    if (m.has_residential_zone) hasRes = true;
+    if (m.has_function_zone) hasFunc = true;
+  }
+  return {
+    numStations: stations,
+    dailyRiders: riders,
+    floodRiskPct: floodCount > 0 ? floodSum / floodCount : 0,
+    landPriceMedian: prices.length > 0 ? prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)] : 0,
+    carDep: carDepCount > 0 ? carDepSum / carDepCount : 50,
+    hasLocationPlan: hasLoc,
+    hasResidentialZone: hasRes,
+    hasFunctionZone: hasFunc,
+  };
+}
+
 /** 各物件タイプの統合スコアを計算 */
-function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | null, econZone?: CustomMetroResult | null, econZoneCensus?: Census2025 | null): PropertyScore[] {
+function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | null, econZone?: CustomMetroResult | null, econZoneCensus?: Census2025 | null, econZoneSpatial?: EconZoneSpatial | null): PropertyScore[] {
   // 経済圏モード時は経済圏の値を優先
   const ebm = econZone ? econZone.ebm : (pref.ebm_mid ?? pref.ebm);
   const basicRatio = econZone ? econZone.basic_ratio : (pref.basic_ratio_mid ?? pref.basic_ratio);
@@ -115,15 +159,16 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   const agingRecent = recentPct != null ? Math.max(0, Math.min(100, -recentPct * 4 + 40)) : agingProj;
   const agingScore = recentPct != null ? Math.round(0.5 * agingProj + 0.5 * agingRecent) : agingProj;
   const agingInterp = "直近" + (recentPct != null ? (recentPct >= 0 ? "+" : "") + recentPct.toFixed(1) + "%" : "\u2014") + "/20年" + popChange20y.toFixed(1) + "%(減少=高齢化=需要増)";
-  const floodRisk = (city?.flood_risk_pct ?? pref.flood_risk_avg_pct ?? 0);
-  const landPrice = city?.land_price_median ?? pref.land_price_median_l01 ?? 0;
-  const carDep = city?.car_dependency_score ?? 50;
-  const numStations = city?.num_stations ?? 0;
-  const dailyRiders = city?.daily_riders ?? pref.total_daily_riders ?? 0;
+  // 空間データ: 経済圏集計→市区町村→都道府県の優先順
+  const floodRisk = econZoneSpatial?.floodRiskPct ?? city?.flood_risk_pct ?? pref.flood_risk_avg_pct ?? 0;
+  const landPrice = econZoneSpatial?.landPriceMedian ?? city?.land_price_median ?? pref.land_price_median_l01 ?? 0;
+  const carDep = econZoneSpatial?.carDep ?? city?.car_dependency_score ?? 50;
+  const numStations = econZoneSpatial?.numStations ?? city?.num_stations ?? 0;
+  const dailyRiders = econZoneSpatial?.dailyRiders ?? city?.daily_riders ?? pref.total_daily_riders ?? 0;
   const segment = city?.segment;
-  const hasLocationPlan = city?.has_location_plan ?? (pref.has_location_plan_count ?? 0) > 0;
-  const hasResidentialZone = city?.has_residential_zone ?? false;
-  const hasFunctionZone = city?.has_function_zone ?? false;
+  const hasLocationPlan = econZoneSpatial?.hasLocationPlan ?? city?.has_location_plan ?? (pref.has_location_plan_count ?? 0) > 0;
+  const hasResidentialZone = econZoneSpatial?.hasResidentialZone ?? city?.has_residential_zone ?? false;
+  const hasFunctionZone = econZoneSpatial?.hasFunctionZone ?? city?.has_function_zone ?? false;
   const lqIndustries = pref.top_lq_industries;
 
   // 経済基盤の健全性（EBM 3-6 で最大）— calc-score.ts の単一定義に統一（P1 閾値ズレ解消）
@@ -432,11 +477,18 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
     return aggregateEconZoneCensus(municipalities, econZoneCodes);
   }, [analysisMode, econZoneCodes, municipalities]);
 
+  // 経済圏の空間データ集計（駅数・洪水・地価等）
+  const econZoneSpatial = useMemo(() => {
+    if (analysisMode !== "econ_zone" || econZoneCodes.size === 0 || !municipalities?.length) return null;
+    return aggregateEconZoneSpatial(municipalities, econZoneCodes);
+  }, [analysisMode, econZoneCodes, municipalities]);
+
   // 粒度進行データ (AI プロンプト + UI 用)
   const { data: granularityData } = useGranularityProgression(pref.pref_code);
+  const isEconZone = analysisMode === "econ_zone";
   const scores = useMemo(
-    () => calculatePropertyScores(pref, selectedCity, analysisMode === "econ_zone" ? econZoneResult : null, analysisMode === "econ_zone" ? econZoneCensus : null),
-    [pref, selectedCity, analysisMode, econZoneResult, econZoneCensus],
+    () => calculatePropertyScores(pref, selectedCity, isEconZone ? econZoneResult : null, isEconZone ? econZoneCensus : null, isEconZone ? econZoneSpatial : null),
+    [pref, selectedCity, isEconZone, econZoneResult, econZoneCensus, econZoneSpatial],
   );
   const target = analysisMode === "econ_zone" && econZoneNames
     ? `経済圏: ${econZoneNames.length > 30 ? econZoneNames.slice(0, 30) + "…" : econZoneNames}（${econZoneCodes.size}市区町村）`
