@@ -798,6 +798,17 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
       {/* 🤖 ML 地価予測 (マクロ説明力) */}
       <PricePredictionSection pref={pref} />
 
+      {/* Proformerへの導線 */}
+      <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 p-4">
+        <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">次のステップ: 物件レベルの詳細分析</p>
+        <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
+          エリアの分析結果をもとに、Proformerで個別物件のDCF（割引キャッシュフロー）分析を行うことで、マクロ（エリア）×ミクロ（物件）の統合判断ができます。
+        </p>
+        <a href="https://app.proformer.ai" target="_blank" rel="noopener noreferrer" className="inline-block mt-2 rounded bg-emerald-600 text-white px-4 py-2 text-sm font-bold hover:bg-emerald-700 transition-colors">
+          Proformerで物件分析を始める →
+        </a>
+      </div>
+
       {/* 🏢 DCF (Proformer) 統合 - マクロ×ミクロ */}
       <DcfSection macroScore={best.totalScore} macroPropertyType={best.label} />
 

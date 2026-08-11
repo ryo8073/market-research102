@@ -1694,8 +1694,9 @@ function DashboardContent() {
         <div className="bg-blue-600 text-white px-4 py-3 text-sm">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             <div>
-              <strong>CI102 エリア分析</strong> — 政府統計から不動産投資の需要・供給・将来性を定量評価するツールです。
-              まず「🎯 投資判断」タブで全体像を把握し、気になる指標は各タブで深掘りしてください。
+              <strong>投資エリア分析</strong> — 政府統計から不動産投資の需要・経済基盤・将来性を定量評価。
+              通勤経済圏（Louvain AI検出）・中分類95業種EBM・5物件タイプ別スコアリングを搭載。
+              まず「🎯 投資判断」タブで全体像を把握してください。
               <a href="/learn" className="underline ml-1">分析手法を学ぶ →</a>
             </div>
             <button onClick={() => { localStorage.setItem("ci102_visited", "1"); setShowWelcomeBanner(false); }} className="shrink-0 rounded bg-white/20 px-3 py-1 text-xs font-bold hover:bg-white/30">閉じる</button>
@@ -2061,20 +2062,19 @@ function DashboardContent() {
               <DataVintageBadge variant="compact" />
             </div>
           </div>
-          <div className="flex gap-4 items-center">
-            <a href="/compare" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
-              地域比較 &rarr;
-            </a>
-            <a href="/learn" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">
-              分析手法を学ぶ &rarr;
-            </a>
+          <div className="flex gap-3 items-center flex-wrap">
+            <a href="/compare" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">地域比較</a>
+            <a href="/learn" className="text-xs text-[#D4A843] hover:underline whitespace-nowrap">分析手法を学ぶ</a>
+            <span className="text-xs text-slate-300">|</span>
+            <a href="/terms" className="text-xs text-slate-500 hover:underline whitespace-nowrap">利用規約</a>
+            <a href="/privacy" className="text-xs text-slate-500 hover:underline whitespace-nowrap">プライバシー</a>
+            <a href="mailto:yamanami-ryo@heya.co.jp?subject=不動産市場分析ツール フィードバック" className="text-xs text-slate-500 hover:underline whitespace-nowrap">フィードバック</a>
             <button
               onClick={async () => {
                 await fetch("/api/auth/logout", { method: "POST" });
                 window.location.href = "/login";
               }}
               className="text-xs text-slate-500 hover:underline whitespace-nowrap"
-              title="ログアウト"
             >
               ログアウト
             </button>
