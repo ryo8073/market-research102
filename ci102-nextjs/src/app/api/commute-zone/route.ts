@@ -143,8 +143,8 @@ export async function GET(request: NextRequest) {
   const method = request.nextUrl.searchParams.get("method") ?? "od";
   const resolutionStr = request.nextUrl.searchParams.get("resolution") ?? "1.0";
 
-  if (!center || center.length < 4) {
-    return NextResponse.json({ error: "center パラメータが必要です（市区町村コード5桁）" }, { status: 400 });
+  if (!center || !/^\d{4,5}$/.test(center)) {
+    return NextResponse.json({ error: "center パラメータが必要です（数字4-5桁の市区町村コード）" }, { status: 400 });
   }
 
   const centerCode = center.padStart(5, "0");

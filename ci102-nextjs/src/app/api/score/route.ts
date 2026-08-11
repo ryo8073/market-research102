@@ -27,8 +27,11 @@ export async function GET(request: NextRequest) {
   const prefCode = request.nextUrl.searchParams.get("pref");
   const cityCode = request.nextUrl.searchParams.get("city");
 
-  if (!prefCode) {
-    return NextResponse.json({ error: "pref パラメータが必要です" }, { status: 400 });
+  if (!prefCode || !/^\d{1,2}$/.test(prefCode)) {
+    return NextResponse.json({ error: "pref パラメータが必要です（1-47の数字）" }, { status: 400 });
+  }
+  if (cityCode && !/^\d{5}$/.test(cityCode)) {
+    return NextResponse.json({ error: "city パラメータは5桁の数字で指定してください" }, { status: 400 });
   }
 
   const baseUrl = request.nextUrl.origin;

@@ -465,14 +465,27 @@ export function AreaDiagnosisPanel({
     "将来性": "今後10年の需要変化と競争力の方向",
   };
 
+  const gradeLabel = (s: number) => s >= 80 ? "A" : s >= 60 ? "B" : s >= 40 ? "C" : "D";
+
   const Chip = ({ label, score }: { label: string; score: number }) => {
     const r = rating(score);
+    const grade = gradeLabel(score);
     return (
       <div className="rounded-xl border bg-muted/40 px-3 py-2.5">
         <div className="text-xs font-bold text-muted-foreground">{label}</div>
-        <div className="text-base font-black" style={{ color: r.color }}>{r.label}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-base font-black" style={{ color: r.color }}>{r.label}</span>
+          <span className="rounded px-1.5 py-0.5 text-xs font-black text-white" style={{ backgroundColor: r.color }}>{grade}</span>
+        </div>
         <div className="text-xs font-bold text-slate-600 dark:text-slate-300">{score}<span className="text-muted-foreground">/100</span></div>
-        <div className="mt-1 h-[5px] rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+        <div
+          className="mt-1 h-[5px] rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={score}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${label}: ${score}/100`}
+        >
           <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: r.color }} />
         </div>
         <p className="text-xs text-muted-foreground mt-1 leading-snug">{CHIP_DESC[label] ?? ""}</p>
@@ -519,7 +532,7 @@ export function AreaDiagnosisPanel({
         </div>
 
         {/* ── 3スコアチップ ── */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <Chip label="需要" score={demand} />
           <Chip label="経済基盤" score={supply} />
           <Chip label="将来性" score={future} />
@@ -531,6 +544,18 @@ export function AreaDiagnosisPanel({
           <p className="text-[21px] font-black leading-tight" style={{ color: st.color }}>{st.label}</p>
           <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200 mt-0.5">{st.text}</p>
         </div>
+
+        {/* ── スコア算出方法 ── */}
+        <details className="text-xs text-muted-foreground mb-4">
+          <summary className="cursor-pointer hover:underline">スコアの算出方法を見る</summary>
+          <div className="mt-2 rounded-lg border bg-slate-50 dark:bg-slate-900/30 p-3 space-y-1">
+            <p><strong>総合スコア</strong> = 需要×40% + 経済基盤×30% + 将来性×30%</p>
+            <p><strong>需要</strong>: 人口モメンタム（国勢調査実測）+ 小売漏損業種数 + 需給ギャップ</p>
+            <p><strong>経済基盤</strong>: EBM健全度（3-6が最高）×50% + 基盤比率×35% + 雇用規模×15%</p>
+            <p><strong>将来性</strong>: 全国比モメンタム + 産業競争力（RS/雇用比）+ 長期人口推計</p>
+            <p className="mt-1">データ出典: 経済センサス2021 / 国勢調査2025速報 / 社人研推計 / e-Stat</p>
+          </div>
+        </details>
 
         {/* ── 📈 需要（構造化指標カード） ── */}
         <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(22,163,74,0.2)", backgroundColor: "rgba(22,163,74,0.03)" }}>
@@ -996,6 +1021,32 @@ export function AreaDiagnosisPanel({
             <a href="?tab=risk" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-bold hover:bg-blue-100 transition-colors">⚠️ 災害リスク</a>
             <a href="?tab=trade_area" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-bold hover:bg-blue-100 transition-colors">📍 物件の商圏分析</a>
             <a href="?tab=demographics" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-bold hover:bg-blue-100 transition-colors">👥 人口の30年推計</a>
+            <button
+              onClick={() => {
+                const rows = [
+                  ["指標", "値"],
+                  ["エリア", area],
+                  ["総合スコア", String(overall)],
+                  ["需要", String(demand)],
+                  ["経済基盤", String(supply)],
+                  ["将来性", String(future)],
+                  ["投資スタンス", st.label],
+                  ["EBM", ebmMid.toFixed(2)],
+                  ["基盤比率", basicRatioMid.toFixed(1) + "%"],
+                  ["人口変化率", resolvedPopChangePct.toFixed(1) + "%"],
+                  ["借家率", ht?.rented_pct ? ht.rented_pct + "%" : "—"],
+                ];
+                const csv = rows.map(r => r.join(",")).join("\n");
+                const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `分析結果_${area}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-bold hover:bg-blue-100 transition-colors"
+            >📥 CSVダウンロード</button>
           </div>
         </div>
 

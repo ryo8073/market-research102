@@ -604,7 +604,7 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
                 ? `${centerCode.slice(0, 2)}100`  // 政令市 or 県庁所在地の推定
                 : centerCode;
               return (
-              <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:bg-indigo-950/20 p-2.5 space-y-2">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/20 p-2.5 space-y-2">
                 {/* 通勤率ベース */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">通勤率:</span>
