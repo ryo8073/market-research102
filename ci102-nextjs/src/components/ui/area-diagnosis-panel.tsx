@@ -31,14 +31,14 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 function stance(overall: number, demand: number, supply: number) {
   if (overall >= 70)
-    return { label: "積極取得を検討", color: "#16A34A", text: "需要・供給・将来性が揃う優良市場。価格と利回りが見合えば主力対象。" };
+    return { label: "積極取得を検討", color: "#16A34A", text: "需要・経済基盤・将来性が揃う優良市場。価格と利回りが見合えば主力対象。" };
   if (overall >= 55)
     return demand >= supply
-      ? { label: "選別取得（需要先行）", color: "#0D9488", text: "需要は追い風。供給(雇用基盤)の中身を精査し、立地を絞って取得。" }
-      : { label: "条件付取得（出口前提）", color: "#CA8A04", text: "供給は堅いが需要は伸び悩み。出口戦略を設計のうえ高稼働物件に限定。" };
+      ? { label: "選別取得（需要先行）", color: "#0D9488", text: "需要は追い風。経済基盤の中身を精査し、立地を絞って取得。" }
+      : { label: "条件付取得（出口前提）", color: "#CA8A04", text: "経済基盤は堅いが需要は伸び悩み。出口戦略を設計のうえ高稼働物件に限定。" };
   if (overall >= 40)
     return { label: "様子見・厳選", color: "#EA580C", text: "強みは局所的。中心部の希少立地・底堅い用途に限定して検討。" };
-  return { label: "取得は原則見送り", color: "#E11D48", text: "需要・供給とも弱い。新規取得は見送り、保有資産は早期出口・用途転換を検討。" };
+  return { label: "取得は原則見送り", color: "#E11D48", text: "需要・経済基盤とも弱い。新規取得は見送り、保有資産は早期出口・用途転換を検討。" };
 }
 
 // EBM健全度（CI102: 3〜6が健全域）
@@ -461,7 +461,7 @@ export function AreaDiagnosisPanel({
   /* ── Chipコンポーネント（説明付き） ── */
   const CHIP_DESC: Record<string, string> = {
     "需要": "入居者・テナントの量と増減トレンド",
-    "供給": "地域経済の自立度と雇用基盤の厚み",
+    "経済基盤": "地域経済の自立度と雇用基盤の厚み",
     "将来性": "今後10年の需要変化と競争力の方向",
   };
 
@@ -513,7 +513,7 @@ export function AreaDiagnosisPanel({
           <p className="text-xs font-bold text-muted-foreground mb-2">この分析で答える3つの問い</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="text-sm leading-snug"><span className="font-bold">1. 借り手・買い手はいるか？</span><span className="text-muted-foreground"> → 需要スコア</span></div>
-            <div className="text-sm leading-snug"><span className="font-bold">2. 地域経済は自立しているか？</span><span className="text-muted-foreground"> → 供給スコア</span></div>
+            <div className="text-sm leading-snug"><span className="font-bold">2. 地域経済は自立しているか？</span><span className="text-muted-foreground"> → 経済基盤スコア</span></div>
             <div className="text-sm leading-snug"><span className="font-bold">3. 10年後も需要は続くか？</span><span className="text-muted-foreground"> → 将来性スコア</span></div>
           </div>
         </div>
@@ -521,7 +521,7 @@ export function AreaDiagnosisPanel({
         {/* ── 3スコアチップ ── */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           <Chip label="需要" score={demand} />
-          <Chip label="供給" score={supply} />
+          <Chip label="経済基盤" score={supply} />
           <Chip label="将来性" score={future} />
         </div>
 
@@ -616,7 +616,7 @@ export function AreaDiagnosisPanel({
         <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(27,42,74,0.15)", backgroundColor: "rgba(27,42,74,0.03)" }}>
           <div className="flex items-center gap-2">
             <span>🏭</span>
-            <span className="text-sm font-extrabold flex-1">供給 — 地域経済は自立しているか？</span>
+            <span className="text-sm font-extrabold flex-1">経済基盤 — 地域経済は自立しているか？</span>
             <span className="rounded-full px-2.5 py-0.5 text-xs font-extrabold text-white shrink-0" style={{ backgroundColor: rating(supply).color }}>{rating(supply).label} {supply}</span>
           </div>
           <p className="text-sm mt-1" style={{ color: rating(supply).color }}>{supplySummary}</p>

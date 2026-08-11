@@ -1619,7 +1619,10 @@ function DashboardContent() {
       <header className="text-white px-4 py-3 shadow-md md:px-6 md:py-4 bg-[#1B2A4A] dark:bg-gray-900">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <h1 className="text-lg font-bold tracking-tight md:text-xl">不動産市場分析ダッシュボード</h1>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight md:text-xl">不動産市場分析ダッシュボード</h1>
+              <p className="text-xs text-white/60 mt-0.5">データ: 経済センサス2021 ｜ 国勢調査2025速報 ｜ 不動産取引2026Q1 ｜ 社人研推計2050</p>
+            </div>
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <select value={prefCode} onChange={(e) => { setPrefCode(Number(e.target.value)); setCityCode(""); setAiResult(null); }}
                 aria-label="都道府県を選択"
