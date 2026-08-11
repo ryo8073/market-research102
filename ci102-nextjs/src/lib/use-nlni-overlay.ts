@@ -85,15 +85,17 @@ export function useNlniOverlay(prefCode: number, layerId: NlniLayerId, enabled: 
     const prefStr = String(prefCode).padStart(2, "0");
     const baseName = `${layerId}_${prefStr}`;
 
-    // Step 1: 低解像度版 (nlni_lite/) を即座にロード
-    const liteUrl = `/data/nlni_lite/${baseName}.topojson`;
+    // R2が設定されていればR2から、なければローカルから取得
+    // 低解像度(lite) → 高解像度(topo) → レガシーGeoJSON の順
+    const liteUrl = R2_BASE
+      ? `${R2_BASE}/lite/${baseName}.topojson`
+      : `/data/nlni_lite/${baseName}.topojson`;
     const hiUrl = R2_BASE
-      ? `${R2_BASE}/${baseName}.topojson`
+      ? `${R2_BASE}/hires/${baseName}.topojson`
       : `/data/nlni_topo/${baseName}.topojson`;
-    // フォールバック: 旧GeoJSON
     const legacyUrl = `/data/nlni/${baseName}.geojson`;
 
-    // 低解像度を試行 → 高解像度 → レガシーGeoJSON の順
+    // Step 1: 低解像度版を取得（R2 or ローカル）
     fetch(liteUrl)
       .then((r) => r.ok ? r.json() : Promise.reject("lite not found"))
       .then((topo) => {
@@ -112,10 +114,10 @@ export function useNlniOverlay(prefCode: number, layerId: NlniLayerId, enabled: 
               setData(hiGeo);
             }
           })
-          .catch(() => {}); // 高解像度がなくても低解像度で十分
+          .catch(() => {});
       })
       .catch(() => {
-        // フォールバック: 旧GeoJSON
+        // フォールバック: レガシーGeoJSON（ローカル）
         fetch(legacyUrl)
           .then((r) => {
             if (!r.ok) throw new Error(`${r.status}`);

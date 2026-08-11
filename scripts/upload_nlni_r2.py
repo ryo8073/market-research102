@@ -18,23 +18,24 @@ if sys.platform == "win32":
 
 ROOT = Path(__file__).resolve().parent.parent
 TOPO_DIR = ROOT / "ci102-nextjs" / "public" / "data" / "nlni_topo"
+LITE_DIR = ROOT / "ci102-nextjs" / "public" / "data" / "nlni_lite"
 BUCKET = os.environ.get("R2_BUCKET_NAME", "ci102-nlni")
 
 
-def main():
-    files = sorted(TOPO_DIR.glob("*.topojson"))
+def upload_dir(src_dir: Path, prefix: str):
+    """ディレクトリ内の全ファイルをR2にアップロード。"""
+    files = sorted(src_dir.glob("*.topojson"))
     if not files:
-        print(f"TopoJSONファイルが見つかりません: {TOPO_DIR}")
+        print(f"ファイルが見つかりません: {src_dir}")
         return
 
-    print(f"アップロード対象: {len(files)} ファイル → R2 bucket: {BUCKET}")
     total_mb = sum(f.stat().st_size for f in files) / 1024 / 1024
-    print(f"合計サイズ: {total_mb:.0f} MB\n")
+    print(f"\n{prefix}/: {len(files)} ファイル, {total_mb:.0f} MB")
 
     success = 0
     failed = 0
     for i, f in enumerate(files):
-        key = f.name
+        key = f"{prefix}/{f.name}"
         size_kb = f.stat().st_size / 1024
         try:
             result = subprocess.run(
@@ -56,12 +57,17 @@ def main():
             print("wrangler が見つかりません。npm install -g wrangler でインストールしてください。")
             return
 
-    print(f"\n完了: {success} 成功 / {failed} 失敗")
-    if success == len(files):
-        print(f"\n次のステップ:")
-        print(f"1. Vercel Dashboard → Settings → Environment Variables")
-        print(f"2. NEXT_PUBLIC_NLNI_R2_URL = https://pub-xxxx.r2.dev (R2のパブリックURL)")
-        print(f"3. Save → Redeploy")
+    print(f"  完了: {success} 成功 / {failed} 失敗")
+
+
+def main():
+    print(f"R2 bucket: {BUCKET}")
+    upload_dir(LITE_DIR, "lite")
+    upload_dir(TOPO_DIR, "hires")
+    print(f"\n次のステップ:")
+    print(f"1. Vercel Dashboard → Settings → Environment Variables")
+    print(f"2. NEXT_PUBLIC_NLNI_R2_URL = https://pub-xxxx.r2.dev (R2のパブリックURL)")
+    print(f"3. Save → Redeploy")
 
 
 if __name__ == "__main__":

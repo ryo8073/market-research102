@@ -26,3 +26,4 @@ data/nlni/processors/__pycache__/
 .next/
 ci102-nextjs/public/data/nlni/*.geojson
 ci102-nextjs/public/data/nlni_topo/
+ci102-nextjs/public/data/nlni_lite/
