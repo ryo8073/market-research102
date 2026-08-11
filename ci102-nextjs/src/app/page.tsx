@@ -1492,7 +1492,14 @@ function DashboardContent() {
 
   const [prefCode, setPrefCode] = useState<number>(() => {
     const p = Number(searchParams.get("pref"));
-    return isValidPrefCode(p) ? p : 13;
+    if (isValidPrefCode(p)) return p;
+    // ?center= から都道府県コードを自動推定
+    const c = searchParams.get("center");
+    if (c && c.length >= 2) {
+      const cp = Number(c.slice(0, 2));
+      if (isValidPrefCode(cp)) return cp;
+    }
+    return 13;
   });
   const [cityCode, setCityCode] = useState<string>(() => searchParams.get("city") ?? "");
   const [activeTab, setActiveTab] = useState<TabValue>(() => {
@@ -1507,14 +1514,21 @@ function DashboardContent() {
   const [pageEconZoneCodes, setPageEconZoneCodes] = useState<string[]>(initialZone);
 
   // Sync state -> URL (replaceState, no history entry)
+  // 注: center= は初回のみ使用（commuteZonesロード後にzone=に変換される）
+  // center=が消えないように、zone=がまだ空の間はcenterを保持する
   useEffect(() => {
     const params = new URLSearchParams();
     params.set("pref", String(prefCode));
     if (cityCode) params.set("city", cityCode);
     if (activeTab !== "decision_hub") params.set("tab", activeTab);
-    if (pageEconZoneCodes.length > 0) params.set("zone", pageEconZoneCodes.join(","));
+    if (pageEconZoneCodes.length > 0) {
+      params.set("zone", pageEconZoneCodes.join(","));
+    } else if (centerCode) {
+      // zone=がまだ設定されていない間はcenterを保持（Proformer連携用）
+      params.set("center", centerCode);
+    }
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [prefCode, cityCode, activeTab, pageEconZoneCodes, router]);
+  }, [prefCode, cityCode, activeTab, pageEconZoneCodes, centerCode, router]);
   const { data: pref, allData, loading, error: prefError } = usePrefectureData(prefCode);
   const { detail: prefDetailMid } = usePrefDetailMid(prefCode);
   const lqTableMid = prefDetailMid?.lq_table_mid ?? pref?.lq_table_mid;
