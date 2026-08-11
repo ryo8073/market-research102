@@ -70,7 +70,8 @@ export async function GET(request: NextRequest) {
     const rS = score._ratioScore;
     const sS = score._scaleScore;
     const transit = Math.min(100, (pref.total_daily_riders ?? 0) / 500);
-    const floodSafe = 100 - (pref.flood_risk_avg_pct ?? 0) * 3;
+    // 0-100 にクランプ（浸水率>33% で負値になり物件スコアを引き下げる不具合を防止・P2）
+    const floodSafe = Math.max(0, Math.min(100, 100 - (pref.flood_risk_avg_pct ?? 0) * 3));
 
     return NextResponse.json({
       area,
@@ -86,11 +87,13 @@ export async function GET(request: NextRequest) {
       popChangePct: score._popChangePct,
       propertyScores: [
         { type: "residential", label: "住居系", score: Math.round(0.15 * eH + 0.30 * score.demand + 0.20 * floodSafe + 0.20 * transit + 0.15 * score.future), verdict: "" },
-        { type: "commercial", label: "商業系", score: Math.round(0.22 * Math.max(0, Math.min(100, 50 + agg * 3)) + 0.18 * rS + 0.18 * transit + 0.12 * score.demand + 0.10 * score.future + 0.10 * floodSafe + 0.10 * score.demand), verdict: "" },
+        // demand の二重計上を解消（旧: 0.12+0.10 の2項）。重複分は経済基盤健全度(eH)へ振替（P2）
+        { type: "commercial", label: "商業系", score: Math.round(0.22 * Math.max(0, Math.min(100, 50 + agg * 3)) + 0.18 * rS + 0.18 * transit + 0.12 * score.demand + 0.10 * score.future + 0.10 * floodSafe + 0.10 * eH), verdict: "" },
         { type: "office", label: "オフィス", score: Math.round(0.30 * rS + 0.20 * eH + 0.20 * score.future + 0.15 * sS + 0.15 * transit), verdict: "" },
         { type: "industrial", label: "物流・工業", score: Math.round(0.25 * rS + 0.15 * eH + 0.20 * Math.max(0, 100 - (pref.land_price_median_l01 ?? 0) / 5000) + 0.20 * sS + 0.20 * floodSafe), verdict: "" },
         { type: "medical", label: "医療・介護", score: Math.round(0.25 * rS + 0.30 * Math.max(0, Math.min(100, -(c?.pop_change_pct ?? 0) * 4 + 40)) + 0.15 * transit + 0.15 * sS + 0.15 * floodSafe), verdict: "" },
-      ].map(s => ({ ...s, verdict: s.score >= 70 ? "推奨" : s.score >= 50 ? "条件付推奨" : s.score >= 30 ? "様子見" : "回避" }))
+      ].map(s => ({ ...s, score: Math.max(0, Math.min(100, s.score)) }))
+        .map(s => ({ ...s, verdict: s.score >= 70 ? "推奨" : s.score >= 50 ? "条件付推奨" : s.score >= 30 ? "様子見" : "回避" }))
         .sort((a, b) => b.score - a.score),
       dataVintage: {
         economic_census: "2021",

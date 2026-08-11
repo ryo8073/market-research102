@@ -7,11 +7,12 @@ import { ECONOMIC_CENSUS_CURRENT, POPULATION_CENSUS_CURRENT } from "@/lib/data-v
 import { DcfSection } from "@/components/dcf-section";
 import { PricePredictionSection } from "@/components/price-prediction-section";
 import { useGranularityProgression } from "@/lib/use-granularity-progression";
-import { PopulationMomentumCard } from "@/components/ui/population-momentum-card";
+import { PopulationMomentumCard, type Census2025 } from "@/components/ui/population-momentum-card";
 import { AreaDiagnosisPanel } from "@/components/ui/area-diagnosis-panel";
 import { useMuniIndustryMatrixMid, computeCustomMetro, type CustomMetroResult } from "@/lib/use-muni-industry";
 import { useCommuteZones, getZoneForMunicipality } from "@/lib/use-commute-zones";
 import { PREFECTURES } from "@/lib/codes";
+import { ebmHealthScore } from "@/lib/calc-score";
 
 interface Props {
   pref: PrefectureData;
@@ -49,8 +50,50 @@ const verdictColor = (score: number) =>
   score >= 30 ? { label: "様子見", color: "#F59E0B" } :
   { label: "回避", color: "#E76F51" };
 
+/** 経済圏の複数市区町村から census2025 を集計する */
+function aggregateEconZoneCensus(
+  municipalities: MunicipalityData[],
+  codes: Set<string>,
+): Census2025 | null {
+  let pop = 0, pop2020 = 0, hh = 0, area = 0, count = 0;
+  let natPct = 0;
+  for (const m of municipalities) {
+    if (!codes.has(m.area_code) || !m.census2025) continue;
+    pop += m.census2025.population;
+    pop2020 += m.census2025.population_2020;
+    hh += m.census2025.households;
+    area += m.census2025.density > 0 ? m.census2025.population / m.census2025.density : 0;
+    natPct = m.census2025.national_pop_change_pct; // 全国値は共通
+    count++;
+  }
+  if (count === 0 || pop2020 === 0) return null;
+  const popPct = ((pop - pop2020) / pop2020) * 100;
+  // 世帯の2020年推計: 2025世帯数を人口増減率で逆算（簡易）
+  const hh2020 = pop2020 > 0 ? Math.round(hh / (1 + popPct / 100 * 0.5)) : 0;
+  const hhPct = hh2020 > 0 ? ((hh - hh2020) / hh2020) * 100 : 0;
+  const gap = popPct - natPct;
+  const cls: Census2025["momentum_class"] =
+    popPct >= 0 && gap >= 0 ? "growth" :
+    popPct >= 0 && gap < 0 ? "resilient" :
+    popPct < 0 && gap >= 0 ? "outperform_decline" :
+    popPct < 0 && popPct > -5 ? "decline" : "severe_decline";
+  const density = area > 0 ? pop / area : 0;
+  return {
+    population: pop,
+    population_2020: pop2020,
+    households: hh,
+    pop_change_pct: Math.round(popPct * 100) / 100,
+    hh_change_pct: Math.round(hhPct * 100) / 100,
+    national_pop_change_pct: natPct,
+    momentum_gap: Math.round(gap * 100) / 100,
+    momentum_class: cls,
+    density: Math.round(density * 10) / 10,
+    source: `経済圏合算（${count}市区町村, 2025国勢調査速報）`,
+  };
+}
+
 /** 各物件タイプの統合スコアを計算 */
-function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | null, econZone?: CustomMetroResult | null): PropertyScore[] {
+function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | null, econZone?: CustomMetroResult | null, econZoneCensus?: Census2025 | null): PropertyScore[] {
   // 経済圏モード時は経済圏の値を優先
   const ebm = econZone ? econZone.ebm : (pref.ebm_mid ?? pref.ebm);
   const basicRatio = econZone ? econZone.basic_ratio : (pref.basic_ratio_mid ?? pref.basic_ratio);
@@ -58,8 +101,8 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   const gapFactor = pref.aggregate_gap_factor;
   const popChange20y = pref.pop_change_pct ?? 0;
   const popChange10y = pref.pop_change_10y_pct ?? 0;
-  // 2025国勢調査の直近実測モメンタム（市区町村があれば細分）を判断に反映
-  const recentC = city?.census2025 ?? pref.census2025;
+  // 2025国勢調査の直近実測モメンタム（経済圏→市区町村→都道府県の優先順）
+  const recentC = econZoneCensus ?? city?.census2025 ?? pref.census2025;
   const recentPct = recentC?.pop_change_pct ?? null;
   const recentGap = recentC?.momentum_gap ?? null;
   const projScore20 = Math.max(0, Math.min(100, 50 + popChange20y * 3));
@@ -83,11 +126,8 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   const hasFunctionZone = city?.has_function_zone ?? false;
   const lqIndustries = pref.top_lq_industries;
 
-  // 経済基盤の健全性（EBM 3-6 で最大）
-  const economicHealth =
-    ebm >= 3 && ebm <= 6 ? 100 :
-    ebm >= 2 && ebm <= 8 ? 70 :
-    40;
+  // 経済基盤の健全性（EBM 3-6 で最大）— calc-score.ts の単一定義に統一（P1 閾値ズレ解消）
+  const economicHealth = ebmHealthScore(ebm);
 
   // 多角化（基盤雇用比率 15-25% で最大）
   const diversification =
@@ -386,17 +426,23 @@ export default function DecisionHubTab({ pref, selectedCity, prefCode, municipal
     return Array.from(econZoneCodes).map(c => matrixMid[c]?.area_name ?? c).join("・");
   }, [matrixMid, econZoneCodes]);
 
+  // 経済圏の census2025 集計（人口モメンタム用）
+  const econZoneCensus = useMemo(() => {
+    if (analysisMode !== "econ_zone" || econZoneCodes.size === 0 || !municipalities?.length) return null;
+    return aggregateEconZoneCensus(municipalities, econZoneCodes);
+  }, [analysisMode, econZoneCodes, municipalities]);
+
   // 粒度進行データ (AI プロンプト + UI 用)
   const { data: granularityData } = useGranularityProgression(pref.pref_code);
   const scores = useMemo(
-    () => calculatePropertyScores(pref, selectedCity, analysisMode === "econ_zone" ? econZoneResult : null),
-    [pref, selectedCity, analysisMode, econZoneResult],
+    () => calculatePropertyScores(pref, selectedCity, analysisMode === "econ_zone" ? econZoneResult : null, analysisMode === "econ_zone" ? econZoneCensus : null),
+    [pref, selectedCity, analysisMode, econZoneResult, econZoneCensus],
   );
   const target = analysisMode === "econ_zone" && econZoneNames
     ? `経済圏: ${econZoneNames.length > 30 ? econZoneNames.slice(0, 30) + "…" : econZoneNames}（${econZoneCodes.size}市区町村）`
     : selectedCity ? `${pref.pref_name} ${selectedCity.area_name}` : pref.pref_name;
   const best = scores[0];
-  const momentumC = selectedCity?.census2025 ?? pref.census2025;
+  const momentumC = econZoneCensus ?? selectedCity?.census2025 ?? pref.census2025;
 
   // AI 自然言語化（4層ガードレール対応）
   interface AiWarning {

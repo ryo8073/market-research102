@@ -38,10 +38,10 @@ def upload_dir(src_dir: Path, prefix: str):
         key = f"{prefix}/{f.name}"
         size_kb = f.stat().st_size / 1024
         try:
+            cmd = f'wrangler r2 object put "{BUCKET}/{key}" --file="{f}" --content-type=application/json'
             result = subprocess.run(
-                ["wrangler", "r2", "object", "put", f"{BUCKET}/{key}",
-                 f"--file={f}", "--content-type=application/json"],
-                capture_output=True, text=True, timeout=60,
+                cmd, shell=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60,
             )
             if result.returncode == 0:
                 success += 1
@@ -49,7 +49,8 @@ def upload_dir(src_dir: Path, prefix: str):
                     print(f"  進捗: {i+1}/{len(files)} ({success} 成功)")
             else:
                 failed += 1
-                print(f"  ERROR {key}: {result.stderr[:100]}")
+                err_msg = result.stderr.decode("utf-8", errors="replace")[:100]
+                print(f"  ERROR {key}: {err_msg}")
         except subprocess.TimeoutExpired:
             failed += 1
             print(f"  TIMEOUT {key}")

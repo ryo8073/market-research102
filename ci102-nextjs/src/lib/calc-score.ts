@@ -7,9 +7,11 @@
 
 import type { PrefectureData } from "./use-prefecture-data";
 
-const DCLASS: Record<string, number> = {
+export const DCLASS: Record<string, number> = {
   growth: 85, resilient: 70, outperform_decline: 55, decline: 38, severe_decline: 20,
 };
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 export function ebmHealthScore(ebm: number): number {
   if (ebm >= 3 && ebm <= 6) return 100;
@@ -18,12 +20,62 @@ export function ebmHealthScore(ebm: number): number {
   return 35;
 }
 
+/**
+ * 経済基盤スコア（0-100）の唯一の定義。
+ * TOP3/比較(page.tsx)・スコアAPI・エリア診断パネルの全モード
+ * （都道府県/市区町村/経済圏）で必ずこの関数を使う。重み・閾値の重複定義を禁止。
+ *   EBM健全度 ×50% + 基盤比率 ×35% + 雇用規模 ×15%
+ */
+export function economicBaseScore(ebm: number, basicRatio: number, totalEmp: number): number {
+  const ebmH = ebmHealthScore(ebm);
+  const ratioScore = Math.min(100, Math.max(0, basicRatio * 4));
+  const scaleScore = Math.min(100, Math.max(0, Math.log10(Math.max(1, totalEmp)) * 20 - 20));
+  return Math.round(0.5 * ebmH + 0.35 * ratioScore + 0.15 * scaleScore);
+}
+
+/**
+ * 現在需要スコア（0-100）。
+ * 離散的な momentum_class 加点を廃止し、人口・世帯・小売需給を連続値で評価する。
+ * 将来性スコアと入力を重複させないため、長期人口推計とRSはここに含めない。
+ */
+export function currentDemandScore(
+  popChangePct: number | null | undefined,
+  hhChangePct: number | null | undefined,
+  momentumGap: number | null | undefined,
+  aggregateGapFactor: number | null | undefined,
+): number {
+  const pop = popChangePct ?? 0;
+  const hh = hhChangePct ?? 0;
+  const gap = momentumGap ?? 0;
+  const retailGap = aggregateGapFactor ?? 0;
+  const populationScore = clamp(50 + pop * 5 + gap * 4, 0, 100);
+  const householdScore = clamp(50 + hh * 5, 0, 100);
+  const retailScore = clamp(50 + retailGap * 1.5, 0, 100);
+  return Math.round(0.55 * populationScore + 0.30 * householdScore + 0.15 * retailScore);
+}
+
+/**
+ * 将来性スコア（0-100）。
+ * 現在需要との二重計上を避け、産業競争力（RS/同一スコープ雇用）と
+ * 長期人口推計のみを使用する。人口縮小側をやや重く見る非対称レンジは、
+ * 出口流動性の下振れを保守的に評価するため。
+ */
+export function futureOutlookScore(rsSharePct: number, projectedPopChangePct: number | null): number {
+  const projection = projectedPopChangePct ?? 0;
+  return Math.round(clamp(
+    50 + clamp(rsSharePct * 10, -20, 20) + clamp(projection * 1.5, -25, 15),
+    0,
+    100,
+  ));
+}
+
 export function calcPrefScore(p: PrefectureData) {
   const c2 = p.census2025;
-  const demand = Math.min(100,
-    (DCLASS[c2?.momentum_class ?? "decline"] ?? 40) +
-    Math.min(10, (p.num_leakage_sectors ?? 0) * 3) +
-    ((p.aggregate_gap_factor ?? 0) > 10 ? 5 : 0)
+  const demand = currentDemandScore(
+    c2?.pop_change_pct,
+    c2?.hh_change_pct,
+    c2?.momentum_gap,
+    p.aggregate_gap_factor,
   );
 
   const ebm = p.ebm_mid ?? p.ebm ?? 0;
@@ -32,21 +84,16 @@ export function calcPrefScore(p: PrefectureData) {
   const ratioScore = Math.min(100, Math.max(0, basicRatio * 4));
   const totalEmp = p.total_employment ?? 0;
   const scaleScore = Math.min(100, Math.max(0, Math.log10(Math.max(1, totalEmp)) * 20 - 20));
-  const supply = Math.round(0.5 * ebmH + 0.35 * ratioScore + 0.15 * scaleScore);
+  const supply = economicBaseScore(ebm, basicRatio, totalEmp);
 
   const rs = p.rs_total_mid ?? p.rs_total ?? 0;
   const rsShare = totalEmp > 0 ? (rs / totalEmp) * 100 : 0;
-  const gap = c2?.momentum_gap ?? 0;
   const pp = p.pop_projection;
   const dPct = pp?.["2035"] && pp?.["2025"]
     ? ((pp["2035"] - pp["2025"]) / pp["2025"]) * 100
     : 0;
 
-  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-  const future = Math.round(clamp(
-    50 + clamp(gap * 4, -24, 24) + clamp(rsShare * 8, -12, 12) + clamp(dPct * 1.2, -18, 12),
-    0, 100,
-  ));
+  const future = futureOutlookScore(rsShare, dPct);
 
   const overall = Math.round(0.4 * demand + 0.3 * supply + 0.3 * future);
   const stance = overall >= 70 ? "積極取得" : overall >= 55 ? "選別取得" : overall >= 40 ? "様子見" : "見送り";

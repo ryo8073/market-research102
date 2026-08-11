@@ -6,16 +6,7 @@ import type { MunicipalityData } from "@/lib/use-municipality-data";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine,
 } from "recharts";
-
-type Cls = NonNullable<PrefectureData["census2025"]>["momentum_class"];
-
-const DCLASS: Record<Cls, number> = {
-  growth: 85,
-  resilient: 70,
-  outperform_decline: 55,
-  decline: 38,
-  severe_decline: 20,
-};
+import { economicBaseScore, currentDemandScore, futureOutlookScore } from "@/lib/calc-score";
 
 function rating(score: number): { label: string; color: string } {
   if (score >= 75) return { label: "強い", color: "#16A34A" };
@@ -25,9 +16,9 @@ function rating(score: number): { label: string; color: string } {
   return { label: "弱い", color: "#E11D48" };
 }
 
-const fmtPct = (v: number) => `${v > 0 ? "▲+" : v < 0 ? "▼" : ""}${v.toFixed(1)}%`;
-const fmtNum = (v: number) => `${v > 0 ? "▲+" : v < 0 ? "▼" : ""}${Math.round(v).toLocaleString()}`;
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+// 方向は矢印(▲/▼)で示し、数値は絶対値で表示（"▼-3.2%" のような二重符号を回避）
+const fmtPct = (v: number) => `${v > 0 ? "▲+" : v < 0 ? "▼" : ""}${Math.abs(v).toFixed(1)}%`;
+const fmtNum = (v: number) => `${v > 0 ? "▲+" : v < 0 ? "▼" : ""}${Math.round(Math.abs(v)).toLocaleString()}`;
 
 function stance(overall: number, demand: number, supply: number) {
   if (overall >= 70)
@@ -39,20 +30,6 @@ function stance(overall: number, demand: number, supply: number) {
   if (overall >= 40)
     return { label: "様子見・厳選", color: "#EA580C", text: "強みは局所的。中心部の希少立地・底堅い用途に限定して検討。" };
   return { label: "取得は原則見送り", color: "#E11D48", text: "需要・経済基盤とも弱い。新規取得は見送り、保有資産は早期出口・用途転換を検討。" };
-}
-
-// EBM健全度（CI102: 3〜6が健全域）
-function ebmHealth(ebm: number): number {
-  if (ebm >= 3 && ebm <= 6) return 100;
-  if (ebm >= 2 && ebm <= 8) return 75;
-  if (ebm >= 1.5 && ebm <= 10) return 55;
-  return 35;
-}
-function supplyFromBase(ebm: number, basicRatio: number, totalEmp: number): number {
-  const ebmScore = ebmHealth(ebm);
-  const ratioScore = clamp(basicRatio * 4, 0, 100); // 25%→100
-  const scaleScore = clamp(Math.log10(Math.max(1, totalEmp)) * 20 - 20, 0, 100);
-  return Math.round(0.5 * ebmScore + 0.35 * ratioScore + 0.15 * scaleScore);
 }
 
 type Need = { icon: string; label: string; why: string };
@@ -133,7 +110,9 @@ export function AreaDiagnosisPanel({
 
   const pop2020 = resolvedPop2020;
   const popDelta = resolvedPopulation - pop2020;
-  const hh2020 = Math.round(resolvedHouseholds / (1 + (resolvedHhChangePct || 0) / 100));
+  // 2020年世帯数は変化率から逆算（実測フィールドが無いため）。分母0を回避（P2）
+  const hhDenom = 1 + (resolvedHhChangePct || 0) / 100;
+  const hh2020 = hhDenom > 0 ? Math.round(resolvedHouseholds / hhDenom) : resolvedHouseholds;
   const hhDelta = resolvedHouseholds - hh2020;
 
   // 借家世帯比率（経済圏集約 or 市区町村 or 都道府県）
@@ -169,7 +148,6 @@ export function AreaDiagnosisPanel({
   const ssActual = pref.actual_emp_change ?? ssTable.reduce((sum, i) => sum + i.actual_change, 0);
   const rsMid = pref.rs_total_mid ?? null;
 
-  const su = pref.suitability_score;
   const gap = c.momentum_gap;
   const agg = pref.aggregate_gap_factor ?? 0;
   const leak = pref.num_leakage_sectors ?? 0;
@@ -190,7 +168,10 @@ export function AreaDiagnosisPanel({
   const basicPct = totalEmp > 0 ? (basicMid / totalEmp) * 100 : basicRatioMid;
   const nonBasic = Math.max(0, totalEmp - basicMid);
   const resolvedPop = resolvedPopulation;
-  const perLocal = totalEmp > 0 ? resolvedPop / totalEmp : (pref.per ?? 0);
+  // 経済圏モードで人口が未集約（雇用のみ合算）の場合、人口÷雇用のスコープが
+  // 不一致になるため PER 計算を無効化し都道府県PERにフォールバック（P0-4）
+  const perScopeValid = !useEconZone || useEzPop;
+  const perLocal = perScopeValid && totalEmp > 0 ? resolvedPop / totalEmp : (pref.per ?? 0);
 
   // 将来需要予測（社人研 2025→2050・都道府県）→ 世帯・住宅戸数へ換算
   const pp = pref.pop_projection;
@@ -239,14 +220,15 @@ export function AreaDiagnosisPanel({
     fd50 = { dPop: Math.round(dPop50), dPct: (dPop50 / pop2025) * 100 };
   }
 
-  // スコア（将来性は規模非依存に正規化: RSを雇用比に変換）
-  const rsShare = totalEmp > 0 ? (rs / totalEmp) * 100 : 0;
-  const demand = Math.min(100, (DCLASS[c.momentum_class] ?? 40) + Math.min(10, leak * 3) + (agg > 10 ? 5 : 0));
-  const supply = useCity
-    ? supplyFromBase(ebmMid, basicRatioMid, totalEmp)
-    : Math.round(0.45 * (su?.ratio_score ?? 0) + 0.25 * (su?.ebm_score ?? 0) + 0.3 * (su?.scale_score ?? 0));
-  let future = 50 + clamp(gap * 4, -24, 24) + clamp(rsShare * 8, -12, 12) + (dPct != null ? clamp(dPct * 1.2, -18, 12) : 0);
-  future = Math.round(clamp(future, 0, 100));
+  // 産業競争力(RS)は都道府県指標。分子(RS=pref)と分母(雇用)を都道府県スコープで統一（P0-1）
+  const prefTotalEmp = pref.total_employment ?? 0;
+  const rsShare = prefTotalEmp > 0 ? (rs / prefTotalEmp) * 100 : 0;
+  // 需要=現在の水準（人口・世帯・小売）。将来性と入力を分離し人口の二重計上を排除（P1-MECE）
+  const demand = currentDemandScore(resolvedPopChangePct, resolvedHhChangePct, gap, agg);
+  // 経済基盤スコアは calc-score.ts の単一定義を全モード（都道府県/市区町村/経済圏）で共用（P0-3, P1）
+  const supply = economicBaseScore(ebmMid, basicRatioMid, totalEmp);
+  // 将来性=産業競争力(RS)＋長期人口推計。dPct は都道府県推計を適用（P0-2, 表示側でラベル明記）
+  const future = futureOutlookScore(rsShare, dPct);
   const overall = Math.round(0.4 * demand + 0.3 * supply + 0.3 * future);
   const st = stance(overall, demand, supply);
 
@@ -334,14 +316,20 @@ export function AreaDiagnosisPanel({
     {
       title: "③ 経済基盤乗数 EBM",
       formula: "EBM = 総雇用 ÷ 基盤雇用",
-      calc: `EBM = ${totalEmp.toLocaleString()} ÷ ${basicMid.toLocaleString()} = ${ebmMid.toFixed(2)}`,
+      calc: basicMid > 0
+        ? `EBM = ${totalEmp.toLocaleString()} ÷ ${basicMid.toLocaleString()} = ${ebmMid.toFixed(2)}`
+        : `EBM = ${ebmMid.toFixed(2)}（基盤雇用が僅少のため内訳表示を省略）`,
       note: `基盤雇用1人が地域全体で約${ebmMid.toFixed(1)}人の雇用を生む波及力。${ebmMid >= 3 && ebmMid <= 6 ? "CI102健全域(3〜6)。" : ebmMid > 6 ? "高め=基盤過小/通勤流入の可能性。" : "低め=基盤依存度が高い。"}`,
     },
     {
       title: "④ 人口・雇用比 PER",
       formula: "PER = 人口 ÷ 総雇用",
-      calc: `PER = ${resolvedPop.toLocaleString()} ÷ ${totalEmp.toLocaleString()} = ${perLocal.toFixed(2)}`,
-      note: "雇用1人あたりの人口。雇用増が人口(需要)へ波及する係数。",
+      calc: perScopeValid
+        ? `PER = ${resolvedPop.toLocaleString()} ÷ ${totalEmp.toLocaleString()} = ${perLocal.toFixed(2)}`
+        : `PER = ${perLocal.toFixed(2)}（経済圏で人口が未集約のため都道府県PERを使用）`,
+      note: perScopeValid
+        ? "雇用1人あたりの人口。雇用増が人口(需要)へ波及する係数。"
+        : "雇用1人あたりの人口。経済圏の人口が未集約のため、参考として都道府県PERを適用しています。",
     },
     {
       title: "⑤ 予測カスケード（乗数の効き方）",
@@ -465,7 +453,8 @@ export function AreaDiagnosisPanel({
     "将来性": "今後10年の需要変化と競争力の方向",
   };
 
-  const gradeLabel = (s: number) => s >= 80 ? "A" : s >= 60 ? "B" : s >= 40 ? "C" : "D";
+  // rating() のバンド（75/60/45/30）と一致させ、ラベルとグレードの区切りズレを解消（P1-2）
+  const gradeLabel = (s: number) => s >= 75 ? "A" : s >= 60 ? "B" : s >= 45 ? "C" : s >= 30 ? "D" : "E";
 
   const Chip = ({ label, score }: { label: string; score: number }) => {
     const r = rating(score);
@@ -550,9 +539,10 @@ export function AreaDiagnosisPanel({
           <summary className="cursor-pointer hover:underline">スコアの算出方法を見る</summary>
           <div className="mt-2 rounded-lg border bg-slate-50 dark:bg-slate-900/30 p-3 space-y-1">
             <p><strong>総合スコア</strong> = 需要×40% + 経済基盤×30% + 将来性×30%</p>
-            <p><strong>需要</strong>: 人口モメンタム（国勢調査実測）+ 小売漏損業種数 + 需給ギャップ</p>
-            <p><strong>経済基盤</strong>: EBM健全度（3-6が最高）×50% + 基盤比率×35% + 雇用規模×15%</p>
-            <p><strong>将来性</strong>: 全国比モメンタム + 産業競争力（RS/雇用比）+ 長期人口推計</p>
+            <p><strong>需要</strong>（現在の水準）: 人口変化×55% + 世帯変化×30% + 小売需給×15%。連続スコア化し閾値ジャンプを排除。</p>
+            <p><strong>経済基盤</strong>（構造）: EBM健全度（3-6が最高）×50% + 基盤比率×35% + 雇用規模×15%。全画面で単一定義を共用。</p>
+            <p><strong>将来性</strong>（方向）: 産業競争力（RS/雇用比）+ 長期人口推計（都道府県）。下振れ側をやや厚く評価（保守的設計）。</p>
+            <p className="mt-1 text-[11px]">※ 需要は「絶対水準」、将来性は「競争力＋長期方向」と役割を分離し、人口動態の二重計上を回避しています（両者は相関しますが同一入力の重複加点はしません）。RS・長期推計は都道府県値で、市区町村選択時も適用します。</p>
             <p className="mt-1">データ出典: 経済センサス2021 / 国勢調査2025速報 / 社人研推計 / e-Stat</p>
           </div>
         </details>
@@ -608,7 +598,7 @@ export function AreaDiagnosisPanel({
             <MetricRow
               label="長期人口見通し（10年後）"
               value={dPct != null ? fmtPct(dPct) : "—"}
-              unit="2025→2035"
+              unit="2025→2035・都道府県推計"
               meaning={dPct != null
                 ? dPct >= 0
                   ? "人口増加が続く見込み — 中長期の投資に適した市場"
@@ -654,7 +644,7 @@ export function AreaDiagnosisPanel({
               label="街の外からお金を呼び込む力（EBM）"
               value={ebmMid.toFixed(1)}
               unit="倍"
-              meaning={`基盤雇用1人が${ebmMid.toFixed(1)}人分の雇用を支える波及力。${ebmInterpretation()}`}
+              meaning={`EBMは高いほど良い指標ではありません（3〜6が健全域）。${ebmInterpretation()}（基盤雇用1人あたり地域全体で約${ebmMid.toFixed(1)}人分の雇用に対応）`}
               tag="理論"
             />
             <MetricRow
@@ -746,7 +736,7 @@ export function AreaDiagnosisPanel({
             <MetricRow
               label="10年後の人口推計"
               value={dPct != null ? fmtPct(dPct) : "—"}
-              unit="2025→2035"
+              unit="2025→2035・都道府県推計"
               meaning={dPct != null
                 ? fd!.dHH >= 0
                   ? `世帯が約${fd!.dHH.toLocaleString()}増 → 新規住宅の純需要あり`
@@ -759,7 +749,7 @@ export function AreaDiagnosisPanel({
               <MetricRow
                 label="25年後の人口推計"
                 value={fmtPct(fd50.dPct)}
-                unit="2025→2050"
+                unit="2025→2050・都道府県推計"
                 meaning={fd50.dPct >= -10
                   ? "長期的にも大きな縮小はない — 出口戦略の選択肢が広い"
                   : fd50.dPct >= -20
@@ -778,6 +768,11 @@ export function AreaDiagnosisPanel({
             }
             {fd && fd.dHH < 0 && basicRatioMid >= 12 ? " ただし輸出基盤の厚みが縮小を緩和する可能性あり。" : ""}
           </p>
+          {(useCity || useEconZone) && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              ※ 長期人口推計（社人研）と産業競争力（RS）は<strong>都道府県値</strong>を適用しています（市区町村別の公式推計・RSが未提供のため）。衰退県内の成長都市などでは実力より辛めに出る場合があります。
+            </p>
+          )}
         </details>
         </div>
 
@@ -790,13 +785,13 @@ export function AreaDiagnosisPanel({
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div className="rounded-lg border bg-muted/30 px-3 py-2">
               <div className="text-xs font-bold text-muted-foreground">人口</div>
-              <div className="text-sm font-extrabold">{pop2020.toLocaleString()} <span className="text-muted-foreground">→</span> {c.population.toLocaleString()}</div>
-              <div className="text-xs font-bold" style={{ color: c.pop_change_pct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(popDelta)} 人（{fmtPct(c.pop_change_pct)}）／ 全国 {fmtPct(c.national_pop_change_pct)}・差 {gap >= 0 ? "+" : ""}{gap.toFixed(1)}pt</div>
+              <div className="text-sm font-extrabold">{resolvedPop2020.toLocaleString()} <span className="text-muted-foreground">→</span> {resolvedPopulation.toLocaleString()}</div>
+              <div className="text-xs font-bold" style={{ color: resolvedPopChangePct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(popDelta)} 人（{fmtPct(resolvedPopChangePct)}）／ 全国 {fmtPct(c.national_pop_change_pct)}・差 {gap >= 0 ? "+" : ""}{gap.toFixed(1)}pt</div>
             </div>
             <div className="rounded-lg border bg-muted/30 px-3 py-2">
               <div className="text-xs font-bold text-muted-foreground">世帯</div>
-              <div className="text-sm font-extrabold">{hh2020.toLocaleString()} <span className="text-muted-foreground">→</span> {c.households.toLocaleString()}</div>
-              <div className="text-xs font-bold" style={{ color: c.hh_change_pct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(hhDelta)} 世帯（{fmtPct(c.hh_change_pct)}）{c.pop_change_pct < 0 && c.hh_change_pct > 0 ? "／人口減でも世帯増=単身化" : ""}</div>
+              <div className="text-sm font-extrabold">{hh2020.toLocaleString()} <span className="text-muted-foreground">→</span> {resolvedHouseholds.toLocaleString()}</div>
+              <div className="text-xs font-bold" style={{ color: resolvedHhChangePct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(hhDelta)} 世帯（{fmtPct(resolvedHhChangePct)}）{resolvedPopChangePct < 0 && resolvedHhChangePct > 0 ? "／人口減でも世帯増=単身化" : ""}</div>
             </div>
           </div>
         </div>
@@ -1060,7 +1055,7 @@ export function AreaDiagnosisPanel({
             <span className="flex items-center gap-1 text-xs"><DataBadge tag="理論" /> CI102手法に基づく算出値（LQ・EBM・PER等）</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            人口・世帯: 2025年国勢調査速報（実測）｜ 産業・雇用: 2021年経済センサス活動調査 ｜ 将来推計: 社人研2025→2035 ｜ 経済基盤: {scopeTag}（中分類95業種）で算出
+            人口・世帯: 2025年国勢調査速報（実測）｜ 産業・雇用: 2021年経済センサス活動調査 ｜ 将来推計: 社人研2025→2050（10年後指標は2035時点） ｜ 経済基盤: {scopeTag}（中分類95業種）で算出
           </p>
         </div>
       </CardContent>
