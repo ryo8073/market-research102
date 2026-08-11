@@ -1047,6 +1047,7 @@ export function AreaDiagnosisPanel({
               }}
               className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-bold hover:bg-blue-100 transition-colors"
             >📥 CSVダウンロード</button>
+            <a href="#area-compare" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-bold hover:bg-blue-100 transition-colors">📊 他のエリアと比較</a>
           </div>
         </div>
 

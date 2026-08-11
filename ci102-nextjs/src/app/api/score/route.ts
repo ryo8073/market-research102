@@ -102,7 +102,8 @@ export async function GET(request: NextRequest) {
       area,
       overall,
       demand,
-      supply,
+      economicBase: supply,  // UI表示「経済基盤」に対応
+      supply,                // 後方互換
       future,
       stance,
       ebm: Math.round(ebm * 100) / 100,

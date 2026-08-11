@@ -1974,7 +1974,7 @@ function DashboardContent() {
                       <summary className="text-sm font-bold cursor-pointer hover:underline">📊 全国エリアランキング TOP3（クリックで表示）</summary>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
                         {top3.map((r, i) => (
-                          <button key={r.code} onClick={() => setPrefCode(r.code)} className="rounded-lg border-2 p-3 text-left hover:bg-slate-50 transition-colors" style={{ borderColor: i === 0 ? "#D4A843" : "#E2E8F0" }}>
+                          <button key={r.code} onClick={() => { setPrefCode(r.code); setCityCode(""); }} className="rounded-lg border-2 p-3 text-left hover:bg-slate-50 transition-colors" style={{ borderColor: i === 0 ? "#D4A843" : "#E2E8F0" }}>
                             <div className="flex items-center gap-2">
                               <span className="text-lg font-black">{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
                               <span className="text-sm font-bold">{r.name}</span>
@@ -2000,7 +2000,7 @@ function DashboardContent() {
                   const currentScore = calcPrefScore(pref);
 
                   return (
-                    <div className="mt-6 rounded-xl border-2 border-slate-200 p-4">
+                    <div id="area-compare" className="mt-6 rounded-xl border-2 border-slate-200 p-4">
                       <h3 className="text-sm font-bold mb-2">エリア比較</h3>
                       <div className="flex gap-2 items-center flex-wrap mb-3">
                         <span className="text-xs text-muted-foreground">比較する都道府県を追加:</span>
