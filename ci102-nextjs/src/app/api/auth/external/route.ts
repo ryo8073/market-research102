@@ -70,7 +70,9 @@ export async function GET(request: NextRequest) {
     const { cookieString, sessionId } = await issueSessionCookie();
     console.log(`[external-auth] Token verified. Session ${sessionId} issued.`);
 
-    const redirectUrl = new URL(redirect, request.url);
+    // オープンリダイレクト防止: 相対パスのみ許可
+    const safeRedirect = redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/";
+    const redirectUrl = new URL(safeRedirect, request.url);
     const response = NextResponse.redirect(redirectUrl);
     response.headers.set("Set-Cookie", cookieString);
     return response;

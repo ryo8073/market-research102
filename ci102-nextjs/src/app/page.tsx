@@ -811,6 +811,36 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
 /*  ScorecardTab (full component)                                      */
 /* ------------------------------------------------------------------ */
 
+/** 都道府県のスコアを統一ロジックで計算（TOP3・比較・APIと整合） */
+function calcPrefScore(p: PrefectureData) {
+  const DCLASS: Record<string, number> = { growth: 85, resilient: 70, outperform_decline: 55, decline: 38, severe_decline: 20 };
+  const c2 = p.census2025;
+  const demand = Math.min(100, (DCLASS[c2?.momentum_class ?? "decline"] ?? 40) + Math.min(10, (p.num_leakage_sectors ?? 0) * 3) + ((p.aggregate_gap_factor ?? 0) > 10 ? 5 : 0));
+  const ebm = p.ebm_mid ?? p.ebm ?? 0;
+  const ebmHealth = ebm >= 3 && ebm <= 6 ? 100 : ebm >= 2 && ebm <= 8 ? 75 : ebm >= 1.5 && ebm <= 10 ? 55 : 35;
+  const basicRatio = p.basic_ratio_mid ?? p.basic_ratio ?? 0;
+  const ratioScore = Math.min(100, Math.max(0, basicRatio * 4));
+  const totalEmp = p.total_employment ?? 0;
+  const scaleScore = Math.min(100, Math.max(0, Math.log10(Math.max(1, totalEmp)) * 20 - 20));
+  const supply = Math.round(0.5 * ebmHealth + 0.35 * ratioScore + 0.15 * scaleScore);
+  const rs = p.rs_total_mid ?? p.rs_total ?? 0;
+  const rsShare = totalEmp > 0 ? (rs / totalEmp) * 100 : 0;
+  const gap = c2?.momentum_gap ?? 0;
+  const pp = p.pop_projection;
+  const dPct = pp?.["2035"] && pp?.["2025"] ? ((pp["2035"] - pp["2025"]) / pp["2025"]) * 100 : 0;
+  const future = Math.round(Math.max(0, Math.min(100,
+    50 + Math.max(-24, Math.min(24, gap * 4)) + Math.max(-12, Math.min(12, rsShare * 8)) + Math.max(-18, Math.min(12, dPct * 1.2))
+  )));
+  const overall = Math.round(0.4 * demand + 0.3 * supply + 0.3 * future);
+  const stance = overall >= 70 ? "積極取得" : overall >= 55 ? "選別取得" : overall >= 40 ? "様子見" : "見送り";
+  return {
+    name: p.pref_name, code: p.pref_code, overall, demand, supply, future, stance,
+    ebm: ebm.toFixed(1),
+    popPct: c2?.pop_change_pct?.toFixed(1) ?? "—",
+    rentedPct: p.housing_tenure?.rented_pct?.toFixed(0) ?? "—",
+  };
+}
+
 /** 経済圏モード時に各タブの先頭に表示するバナー */
 function EconZoneBanner({ codes, label }: { codes: string[]; label?: string }) {
   if (codes.length === 0) return null;
@@ -1512,6 +1542,8 @@ function DashboardContent() {
   });
   const [cityCode, setCityCode] = useState<string>(() => searchParams.get("city") ?? "");
   const [compareCodes, setCompareCodes] = useState<number[]>([]);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+  useEffect(() => { if (typeof window !== "undefined" && !localStorage.getItem("ci102_visited")) setShowWelcomeBanner(true); }, []);
   const [activeTab, setActiveTab] = useState<TabValue>(() => {
     const t = searchParams.get("tab");
     return isValidTab(t) ? t : "decision_hub";
@@ -1658,7 +1690,7 @@ function DashboardContent() {
       </header>
 
       {/* 初訪問バナー */}
-      {typeof window !== "undefined" && !localStorage.getItem("ci102_visited") && (
+      {showWelcomeBanner && (
         <div className="bg-blue-600 text-white px-4 py-3 text-sm">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             <div>
@@ -1666,7 +1698,7 @@ function DashboardContent() {
               まず「🎯 投資判断」タブで全体像を把握し、気になる指標は各タブで深掘りしてください。
               <a href="/learn" className="underline ml-1">分析手法を学ぶ →</a>
             </div>
-            <button onClick={() => { localStorage.setItem("ci102_visited", "1"); window.location.reload(); }} className="shrink-0 rounded bg-white/20 px-3 py-1 text-xs font-bold hover:bg-white/30">閉じる</button>
+            <button onClick={() => { localStorage.setItem("ci102_visited", "1"); setShowWelcomeBanner(false); }} className="shrink-0 rounded bg-white/20 px-3 py-1 text-xs font-bold hover:bg-white/30">閉じる</button>
           </div>
         </div>
       )}
@@ -1935,21 +1967,7 @@ function DashboardContent() {
               <TabsContent value="decision_hub">
                 {/* エリアランキングTOP3 */}
                 {allData && (() => {
-                  const DCLASS: Record<string, number> = { growth: 85, resilient: 70, outperform_decline: 55, decline: 38, severe_decline: 20 };
-                  const ranked = Object.values(allData).map((p) => {
-                    const c2 = p.census2025;
-                    const d = Math.min(100, (DCLASS[c2?.momentum_class ?? "decline"] ?? 40) + Math.min(10, (p.num_leakage_sectors ?? 0) * 3));
-                    const e = p.ebm_mid ?? p.ebm ?? 0;
-                    const s = e >= 3 && e <= 6 ? 100 : e >= 2 && e <= 8 ? 75 : 55;
-                    const rs = p.rs_total_mid ?? p.rs_total ?? 0;
-                    const te = p.total_employment ?? 1;
-                    const gap = c2?.momentum_gap ?? 0;
-                    const pp = p.pop_projection;
-                    const dp = pp?.["2035"] && pp?.["2025"] ? ((pp["2035"] - pp["2025"]) / pp["2025"]) * 100 : 0;
-                    const f = Math.round(Math.max(0, Math.min(100, 50 + gap * 4 + (rs / te) * 800 + dp * 1.2)));
-                    const ov = Math.round(0.4 * d + 0.3 * s + 0.3 * f);
-                    return { name: p.pref_name, code: p.pref_code, overall: ov, demand: d, supply: s, future: f };
-                  }).sort((a, b) => b.overall - a.overall);
+                  const ranked = Object.values(allData).map(calcPrefScore).sort((a, b) => b.overall - a.overall);
                   const top3 = ranked.slice(0, 3);
                   return (
                     <details className="mb-4">
@@ -1978,28 +1996,8 @@ function DashboardContent() {
 
                 {/* マルチエリア比較 */}
                 {allData && (() => {
-                  const DCLASS: Record<string, number> = { growth: 85, resilient: 70, outperform_decline: 55, decline: 38, severe_decline: 20 };
-                  const calcScore = (p: PrefectureData) => {
-                    const c2 = p.census2025;
-                    const d = Math.min(100, (DCLASS[c2?.momentum_class ?? "decline"] ?? 40) + Math.min(10, (p.num_leakage_sectors ?? 0) * 3));
-                    const e = p.ebm_mid ?? p.ebm ?? 0;
-                    const s = e >= 3 && e <= 6 ? 100 : e >= 2 && e <= 8 ? 75 : 55;
-                    const rs = p.rs_total_mid ?? p.rs_total ?? 0;
-                    const te = p.total_employment ?? 1;
-                    const gap = c2?.momentum_gap ?? 0;
-                    const pp = p.pop_projection;
-                    const dp = pp?.["2035"] && pp?.["2025"] ? ((pp["2035"] - pp["2025"]) / pp["2025"]) * 100 : 0;
-                    const f = Math.round(Math.max(0, Math.min(100, 50 + gap * 4 + (rs / te) * 800 + dp * 1.2)));
-                    const ov = Math.round(0.4 * d + 0.3 * s + 0.3 * f);
-                    const stance = ov >= 70 ? "積極取得" : ov >= 55 ? "選別取得" : ov >= 40 ? "様子見" : "見送り";
-                    return { name: p.pref_name, code: p.pref_code, overall: ov, demand: d, supply: s, future: f, stance,
-                      ebm: (p.ebm_mid ?? p.ebm ?? 0).toFixed(1),
-                      popPct: c2?.pop_change_pct?.toFixed(1) ?? "—",
-                      rentedPct: p.housing_tenure?.rented_pct?.toFixed(0) ?? "—",
-                    };
-                  };
-                  const compareData = compareCodes.map(c => allData[String(c)] ? calcScore(allData[String(c)]) : null).filter(Boolean);
-                  const currentScore = calcScore(pref);
+                  const compareData = compareCodes.map(c => allData[String(c)] ? calcPrefScore(allData[String(c)]) : null).filter(Boolean);
+                  const currentScore = calcPrefScore(pref);
 
                   return (
                     <div className="mt-6 rounded-xl border-2 border-slate-200 p-4">
