@@ -106,6 +106,14 @@ export async function GET(request: NextRequest) {
       basicRatio: Math.round(basicRatio * 10) / 10,
       population: c?.population,
       popChangePct: c?.pop_change_pct,
+      propertyScores: [
+        { type: "residential", label: "住居系", score: Math.round(0.15 * ebmHealth + 0.30 * demand + 0.20 * (100 - (pref.flood_risk_avg_pct ?? 0) * 3) + 0.20 * Math.min(100, (pref.total_daily_riders ?? 0) / 500) + 0.15 * future), verdict: "" },
+        { type: "commercial", label: "商業系", score: Math.round(0.22 * Math.max(0, Math.min(100, 50 + agg * 3)) + 0.18 * ratioScore + 0.18 * Math.min(100, (pref.total_daily_riders ?? 0) / 500) + 0.12 * demand + 0.10 * future + 0.10 * (100 - (pref.flood_risk_avg_pct ?? 0) * 3) + 0.10 * demand), verdict: "" },
+        { type: "office", label: "オフィス", score: Math.round(0.30 * ratioScore + 0.20 * ebmHealth + 0.20 * future + 0.15 * scaleScore + 0.15 * Math.min(100, (pref.total_daily_riders ?? 0) / 500)), verdict: "" },
+        { type: "industrial", label: "物流・工業", score: Math.round(0.25 * ratioScore + 0.15 * ebmHealth + 0.20 * Math.max(0, 100 - (pref.land_price_median_l01 ?? 0) / 5000) + 0.20 * scaleScore + 0.20 * (100 - (pref.flood_risk_avg_pct ?? 0) * 3)), verdict: "" },
+        { type: "medical", label: "医療・介護", score: Math.round(0.25 * ratioScore + 0.30 * Math.max(0, Math.min(100, -c?.pop_change_pct * 4 + 40)) + 0.15 * Math.min(100, (pref.total_daily_riders ?? 0) / 500) + 0.15 * scaleScore + 0.15 * (100 - (pref.flood_risk_avg_pct ?? 0) * 3)), verdict: "" },
+      ].map(s => ({ ...s, verdict: s.score >= 70 ? "推奨" : s.score >= 50 ? "条件付推奨" : s.score >= 30 ? "様子見" : "回避" }))
+        .sort((a, b) => b.score - a.score),
       dataVintage: {
         economic_census: "2021",
         population_census: "2025速報",

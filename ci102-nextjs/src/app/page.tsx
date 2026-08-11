@@ -825,6 +825,15 @@ function EconZoneBanner({ codes, label }: { codes: string[]; label?: string }) {
   );
 }
 
+/** 各タブの先頭にCI102教科書のリンクを表示 */
+function LearnLink({ chapter, title }: { chapter: string; title: string }) {
+  return (
+    <div className="text-xs text-muted-foreground mb-3">
+      📖 この分析手法: <a href={`/learn#${chapter}`} className="text-blue-600 hover:underline">{title}</a>
+    </div>
+  );
+}
+
 function ScorecardTab({ pref, allData, scoreColor, selectedCity, municipalities, pfId, setPfId, pfData, pfLoading, fetchProformer, aiResult, aiLoading, runAiAnalysis }: {
   pref: PrefectureData;
   allData: Record<string, PrefectureData> | null;
@@ -1781,6 +1790,7 @@ function DashboardContent() {
 
               {/* Tab 1: LQ */}
               <TabsContent value="lq">
+                <LearnLink chapter="ch1-lq" title="第1章: 特化係数（LQ）— どの産業が強い街か" />
                 <EconZoneBanner codes={pageEconZoneCodes} label="産業別LQを経済圏合算で表示" />
                 <ErrorBoundary>
                 <LqTab
@@ -1798,6 +1808,7 @@ function DashboardContent() {
 
               {/* Tab 2: EBM */}
               <TabsContent value="ebm">
+                <LearnLink chapter="ch2-ebm" title="第2章: 経済基盤乗数（EBM）— 雇用が住宅需要に波及する仕組み" />
                 <EconZoneBanner codes={pageEconZoneCodes} label="需要予測を経済圏合算で表示" />
                 <ErrorBoundary>
                 <EbmTab
@@ -1816,6 +1827,7 @@ function DashboardContent() {
 
               {/* Tab 3: Shift-Share */}
               <TabsContent value="shift">
+                <LearnLink chapter="ch4-shift" title="第4章: シフトシェア分析 — 全国トレンドvs地域の競争力" />
                 <EconZoneBanner codes={pageEconZoneCodes} label="競争力分析（シフトシェアは都道府県レベル）" />
                 <ErrorBoundary>
                 {pref.shift_share_table.length > 0 ? (
@@ -1838,6 +1850,7 @@ function DashboardContent() {
 
               {/* Tab 4: Gap */}
               <TabsContent value="gap">
+                <LearnLink chapter="ch5-gap" title="第5章: 小売ギャップ分析 — 出店余地を見つける" />
                 <EconZoneBanner codes={pageEconZoneCodes} label="小売ギャップ（都道府県レベル）" />
                 <ErrorBoundary>
                 <GapTab sectors={pref.gap_table.map((r) => ({ sector: r.sector, demand: r.demand, supply: r.supply }))} selectedCity={selectedCity} />
@@ -1846,6 +1859,7 @@ function DashboardContent() {
 
               {/* Tab 5: Real Estate */}
               <TabsContent value="realestate">
+                <LearnLink chapter="ch7-spatial" title="第7章: 空間データ分析 — 地価・災害・交通の重ね合わせ" />
                 <EconZoneBanner codes={pageEconZoneCodes} label="不動産取引（都道府県レベル）" />
                 <ErrorBoundary>
                 <RealEstateTab prefCode={prefCode} cityCode={cityCode ? Number(cityCode) : undefined} />
@@ -1888,6 +1902,7 @@ function DashboardContent() {
 
               {/* Tab 10: Demographics */}
               <TabsContent value="demographics">
+                <LearnLink chapter="ch3-per" title="第3章: 人口雇用比率（PER）— 雇用増が人口にどう波及するか" />
                 <EconZoneBanner codes={pageEconZoneCodes} label="人口動態（都道府県レベル）" />
                 <ErrorBoundary>
                 <DemographicsTab prefCode={prefCode} prefName={pref.pref_name} pref={pref} allData={allData} />
@@ -1917,8 +1932,119 @@ function DashboardContent() {
 
               {/* Tab 14: Decision Hub (統合判断) */}
               <TabsContent value="decision_hub">
+                {/* エリアランキングTOP3 */}
+                {allData && (() => {
+                  const DCLASS: Record<string, number> = { growth: 85, resilient: 70, outperform_decline: 55, decline: 38, severe_decline: 20 };
+                  const ranked = Object.values(allData).map((p) => {
+                    const c2 = p.census2025;
+                    const d = Math.min(100, (DCLASS[c2?.momentum_class ?? "decline"] ?? 40) + Math.min(10, (p.num_leakage_sectors ?? 0) * 3));
+                    const e = p.ebm_mid ?? p.ebm ?? 0;
+                    const s = e >= 3 && e <= 6 ? 100 : e >= 2 && e <= 8 ? 75 : 55;
+                    const rs = p.rs_total_mid ?? p.rs_total ?? 0;
+                    const te = p.total_employment ?? 1;
+                    const gap = c2?.momentum_gap ?? 0;
+                    const pp = p.pop_projection;
+                    const dp = pp?.["2035"] && pp?.["2025"] ? ((pp["2035"] - pp["2025"]) / pp["2025"]) * 100 : 0;
+                    const f = Math.round(Math.max(0, Math.min(100, 50 + gap * 4 + (rs / te) * 800 + dp * 1.2)));
+                    const ov = Math.round(0.4 * d + 0.3 * s + 0.3 * f);
+                    return { name: p.pref_name, code: p.pref_code, overall: ov, demand: d, supply: s, future: f };
+                  }).sort((a, b) => b.overall - a.overall);
+                  const top3 = ranked.slice(0, 3);
+                  return (
+                    <details className="mb-4">
+                      <summary className="text-sm font-bold cursor-pointer hover:underline">📊 全国エリアランキング TOP3（クリックで表示）</summary>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                        {top3.map((r, i) => (
+                          <button key={r.code} onClick={() => setPrefCode(r.code)} className="rounded-lg border-2 p-3 text-left hover:bg-slate-50 transition-colors" style={{ borderColor: i === 0 ? "#D4A843" : "#E2E8F0" }}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-black">{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
+                              <span className="text-sm font-bold">{r.name}</span>
+                              <span className="ml-auto text-lg font-black text-emerald-600">{r.overall}</span>
+                            </div>
+                            <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                              <span>需要 {r.demand}</span>
+                              <span>基盤 {r.supply}</span>
+                              <span>将来 {r.future}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  );
+                })()}
                 <ErrorBoundary>
                 <DecisionHubTab pref={pref} selectedCity={selectedCity} prefCode={prefCode} municipalities={municipalities} initialZoneCodes={initialZone} centerCode={centerCode} onZoneChange={setPageEconZoneCodes} />
+
+                {/* マルチエリア比較 */}
+                {allData && (() => {
+                  const DCLASS: Record<string, number> = { growth: 85, resilient: 70, outperform_decline: 55, decline: 38, severe_decline: 20 };
+                  const calcScore = (p: PrefectureData) => {
+                    const c2 = p.census2025;
+                    const d = Math.min(100, (DCLASS[c2?.momentum_class ?? "decline"] ?? 40) + Math.min(10, (p.num_leakage_sectors ?? 0) * 3));
+                    const e = p.ebm_mid ?? p.ebm ?? 0;
+                    const s = e >= 3 && e <= 6 ? 100 : e >= 2 && e <= 8 ? 75 : 55;
+                    const rs = p.rs_total_mid ?? p.rs_total ?? 0;
+                    const te = p.total_employment ?? 1;
+                    const gap = c2?.momentum_gap ?? 0;
+                    const pp = p.pop_projection;
+                    const dp = pp?.["2035"] && pp?.["2025"] ? ((pp["2035"] - pp["2025"]) / pp["2025"]) * 100 : 0;
+                    const f = Math.round(Math.max(0, Math.min(100, 50 + gap * 4 + (rs / te) * 800 + dp * 1.2)));
+                    const ov = Math.round(0.4 * d + 0.3 * s + 0.3 * f);
+                    const stance = ov >= 70 ? "積極取得" : ov >= 55 ? "選別取得" : ov >= 40 ? "様子見" : "見送り";
+                    return { name: p.pref_name, code: p.pref_code, overall: ov, demand: d, supply: s, future: f, stance,
+                      ebm: (p.ebm_mid ?? p.ebm ?? 0).toFixed(1),
+                      popPct: c2?.pop_change_pct?.toFixed(1) ?? "—",
+                      rentedPct: p.housing_tenure?.rented_pct?.toFixed(0) ?? "—",
+                    };
+                  };
+                  const [compareCodes, setCompareCodes] = useState<number[]>([]);
+                  const compareData = compareCodes.map(c => allData[String(c)] ? calcScore(allData[String(c)]) : null).filter(Boolean);
+                  const currentScore = calcScore(pref);
+
+                  return (
+                    <div className="mt-6 rounded-xl border-2 border-slate-200 p-4">
+                      <h3 className="text-sm font-bold mb-2">エリア比較</h3>
+                      <div className="flex gap-2 items-center flex-wrap mb-3">
+                        <span className="text-xs text-muted-foreground">比較する都道府県を追加:</span>
+                        <select
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            if (v && !compareCodes.includes(v) && v !== prefCode && compareCodes.length < 3) {
+                              setCompareCodes([...compareCodes, v]);
+                            }
+                          }}
+                          value=""
+                          className="rounded border px-2 py-1 text-xs"
+                        >
+                          <option value="">選択...</option>
+                          {Object.entries(PREFECTURES).filter(([c]) => Number(c) !== prefCode && !compareCodes.includes(Number(c))).map(([c, n]) => (
+                            <option key={c} value={c}>{n}</option>
+                          ))}
+                        </select>
+                        {compareCodes.length > 0 && (
+                          <button onClick={() => setCompareCodes([])} className="text-xs text-red-600 hover:underline">クリア</button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        {[currentScore, ...compareData].map((s, i) => s && (
+                          <div key={s.code} className={`rounded-lg border p-3 ${i === 0 ? "border-blue-300 bg-blue-50" : ""}`}>
+                            <p className="text-sm font-bold">{s.name} {i === 0 && <span className="text-xs text-blue-600">（現在）</span>}</p>
+                            <p className="text-2xl font-black mt-1" style={{ color: s.overall >= 70 ? "#16A34A" : s.overall >= 50 ? "#CA8A04" : "#DC2626" }}>{s.overall}<span className="text-xs text-muted-foreground">/100</span></p>
+                            <p className="text-xs font-bold" style={{ color: s.overall >= 70 ? "#16A34A" : s.overall >= 50 ? "#CA8A04" : "#DC2626" }}>{s.stance}</p>
+                            <div className="mt-2 space-y-1 text-xs">
+                              <div className="flex justify-between"><span>需要</span><span className="font-bold">{s.demand}</span></div>
+                              <div className="flex justify-between"><span>経済基盤</span><span className="font-bold">{s.supply}</span></div>
+                              <div className="flex justify-between"><span>将来性</span><span className="font-bold">{s.future}</span></div>
+                              <div className="flex justify-between"><span>EBM</span><span className="font-bold">{s.ebm}</span></div>
+                              <div className="flex justify-between"><span>人口変化</span><span className="font-bold">{s.popPct}%</span></div>
+                              <div className="flex justify-between"><span>借家率</span><span className="font-bold">{s.rentedPct}%</span></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
                 </ErrorBoundary>
               </TabsContent>
             </div>
