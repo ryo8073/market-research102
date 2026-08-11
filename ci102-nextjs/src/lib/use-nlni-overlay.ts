@@ -9,7 +9,20 @@ import { useState, useEffect } from "react";
  * Returns null if not yet loaded or file doesn't exist.
  */
 
+// LRU制限付きキャッシュ（最大5エントリ。GeoJSONは巨大なためメモリ枯渇を防止）
+const MAX_CACHE = 5;
 const _cache: Record<string, any> = {};
+const _cacheOrder: string[] = [];
+function _cacheSet(key: string, value: any) {
+  if (_cacheOrder.length >= MAX_CACHE && !_cache[key]) {
+    const oldest = _cacheOrder.shift()!;
+    delete _cache[oldest];
+  }
+  _cache[key] = value;
+  const idx = _cacheOrder.indexOf(key);
+  if (idx !== -1) _cacheOrder.splice(idx, 1);
+  _cacheOrder.push(key);
+}
 
 export type NlniLayerId =
   | "railways"
@@ -63,7 +76,7 @@ export function useNlniOverlay(prefCode: number, layerId: NlniLayerId, enabled: 
         return r.json();
       })
       .then((json) => {
-        _cache[cacheKey] = json;
+        _cacheSet(cacheKey, json);
         setData(json);
       })
       .catch((err) => {

@@ -811,34 +811,14 @@ function MunicipalityDetail({ city, municipalities, prefName, granularity }: {
 /*  ScorecardTab (full component)                                      */
 /* ------------------------------------------------------------------ */
 
-/** 都道府県のスコアを統一ロジックで計算（TOP3・比較・APIと整合） */
-function calcPrefScore(p: PrefectureData) {
-  const DCLASS: Record<string, number> = { growth: 85, resilient: 70, outperform_decline: 55, decline: 38, severe_decline: 20 };
-  const c2 = p.census2025;
-  const demand = Math.min(100, (DCLASS[c2?.momentum_class ?? "decline"] ?? 40) + Math.min(10, (p.num_leakage_sectors ?? 0) * 3) + ((p.aggregate_gap_factor ?? 0) > 10 ? 5 : 0));
-  const ebm = p.ebm_mid ?? p.ebm ?? 0;
-  const ebmHealth = ebm >= 3 && ebm <= 6 ? 100 : ebm >= 2 && ebm <= 8 ? 75 : ebm >= 1.5 && ebm <= 10 ? 55 : 35;
-  const basicRatio = p.basic_ratio_mid ?? p.basic_ratio ?? 0;
-  const ratioScore = Math.min(100, Math.max(0, basicRatio * 4));
-  const totalEmp = p.total_employment ?? 0;
-  const scaleScore = Math.min(100, Math.max(0, Math.log10(Math.max(1, totalEmp)) * 20 - 20));
-  const supply = Math.round(0.5 * ebmHealth + 0.35 * ratioScore + 0.15 * scaleScore);
-  const rs = p.rs_total_mid ?? p.rs_total ?? 0;
-  const rsShare = totalEmp > 0 ? (rs / totalEmp) * 100 : 0;
-  const gap = c2?.momentum_gap ?? 0;
-  const pp = p.pop_projection;
-  const dPct = pp?.["2035"] && pp?.["2025"] ? ((pp["2035"] - pp["2025"]) / pp["2025"]) * 100 : 0;
-  const future = Math.round(Math.max(0, Math.min(100,
-    50 + Math.max(-24, Math.min(24, gap * 4)) + Math.max(-12, Math.min(12, rsShare * 8)) + Math.max(-18, Math.min(12, dPct * 1.2))
-  )));
-  const overall = Math.round(0.4 * demand + 0.3 * supply + 0.3 * future);
-  const stance = overall >= 70 ? "積極取得" : overall >= 55 ? "選別取得" : overall >= 40 ? "様子見" : "見送り";
-  return {
-    name: p.pref_name, code: p.pref_code, overall, demand, supply, future, stance,
-    ebm: ebm.toFixed(1),
-    popPct: c2?.pop_change_pct?.toFixed(1) ?? "—",
-    rentedPct: p.housing_tenure?.rented_pct?.toFixed(0) ?? "—",
-  };
+// スコア計算は lib/calc-score.ts に統一（TOP3・比較・API共通）
+import { calcPrefScore } from "@/lib/calc-score";
+
+/** API呼び出し後の401チェック（セッション切れ→ログインへ誘導） */
+function check401(res: Response) {
+  if (res.status === 401 && typeof window !== "undefined") {
+    window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname + window.location.search);
+  }
 }
 
 /** 経済圏モード時に各タブの先頭に表示するバナー */
@@ -1628,6 +1608,7 @@ function DashboardContent() {
     setPfLoading(true);
     try {
       const res = await fetch(`/api/proformer?externalId=${pfId}`);
+      check401(res);
       const json = await res.json();
       if (json.error) { setPfData(null); } else { setPfData(json); }
     } catch { setPfData(null); }
@@ -1644,6 +1625,7 @@ function DashboardContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prefData: pref, proformerData: pfData }),
       });
+      check401(res);
       const json = await res.json();
       setAiResult(json.analysis ?? json.error ?? "分析生成に失敗しました");
     } catch { setAiResult("API接続エラー"); }

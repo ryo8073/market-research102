@@ -22,6 +22,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { calcPrefScore, ebmHealthScore } from "@/lib/calc-score";
 
 export async function GET(request: NextRequest) {
   const prefCode = request.nextUrl.searchParams.get("pref");
@@ -58,64 +59,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // スコア計算（簡易版 — decision-hub-tabのcalculatePropertyScoresと同等ロジック）
-    const ebm = pref.ebm_mid ?? pref.ebm ?? 0;
-    const basicRatio = pref.basic_ratio_mid ?? pref.basic_ratio ?? 0;
-    const rs = pref.rs_total_mid ?? pref.rs_total ?? 0;
-
+    // スコア計算（共通モジュール calcPrefScore を使用）
+    const score = calcPrefScore(pref);
     const c = (city as any)?.census2025 ?? pref.census2025;
-    const gap = c?.momentum_gap ?? 0;
     const agg = pref.aggregate_gap_factor ?? 0;
-    const leak = pref.num_leakage_sectors ?? 0;
-    const totalEmp = (city as any)?.total_emp ?? pref.total_employment ?? 0;
-    const rsShare = totalEmp > 0 ? (rs / totalEmp) * 100 : 0;
-
-    // 需要スコア
-    const DCLASS: Record<string, number> = { growth: 85, resilient: 70, outperform_decline: 55, decline: 38, severe_decline: 20 };
-    const demand = Math.min(100, (DCLASS[c?.momentum_class ?? "decline"] ?? 40) + Math.min(10, leak * 3) + (agg > 10 ? 5 : 0));
-
-    // 経済基盤スコア
-    const ebmHealth = ebm >= 3 && ebm <= 6 ? 100 : ebm >= 2 && ebm <= 8 ? 75 : ebm >= 1.5 && ebm <= 10 ? 55 : 35;
-    const ratioScore = Math.min(100, Math.max(0, basicRatio * 4));
-    const scaleScore = Math.min(100, Math.max(0, Math.log10(Math.max(1, totalEmp)) * 20 - 20));
-    const supply = Math.round(0.5 * ebmHealth + 0.35 * ratioScore + 0.15 * scaleScore);
-
-    // 将来性スコア
-    const popProj = pref.pop_projection;
-    const dPct = popProj?.["2035"] && popProj?.["2025"]
-      ? ((popProj["2035"] - popProj["2025"]) / popProj["2025"]) * 100
-      : 0;
-    let future = 50 + Math.max(-24, Math.min(24, gap * 4)) + Math.max(-12, Math.min(12, rsShare * 8)) + Math.max(-18, Math.min(12, dPct * 1.2));
-    future = Math.round(Math.max(0, Math.min(100, future)));
-
-    const overall = Math.round(0.4 * demand + 0.3 * supply + 0.3 * future);
-
-    // 投資スタンス
-    let stance = "取得は原則見送り";
-    if (overall >= 70) stance = "積極取得を検討";
-    else if (overall >= 55) stance = demand >= supply ? "選別取得（需要先行）" : "条件付取得（出口前提）";
-    else if (overall >= 40) stance = "様子見・厳選";
-
     const area = city ? `${pref.pref_name} ${(city as any).area_name}` : pref.pref_name;
+
+    // 物件タイプ別スコア（共通モジュールの中間値を使用）
+    const eH = score._ebmHealth;
+    const rS = score._ratioScore;
+    const sS = score._scaleScore;
+    const transit = Math.min(100, (pref.total_daily_riders ?? 0) / 500);
+    const floodSafe = 100 - (pref.flood_risk_avg_pct ?? 0) * 3;
 
     return NextResponse.json({
       area,
-      overall,
-      demand,
-      economicBase: supply,  // UI表示「経済基盤」に対応
-      supply,                // 後方互換
-      future,
-      stance,
-      ebm: Math.round(ebm * 100) / 100,
-      basicRatio: Math.round(basicRatio * 10) / 10,
-      population: c?.population,
-      popChangePct: c?.pop_change_pct,
+      overall: score.overall,
+      demand: score.demand,
+      economicBase: score.supply,
+      supply: score.supply,
+      future: score.future,
+      stance: score.stance,
+      ebm: parseFloat(score.ebm),
+      basicRatio: parseFloat(score.basicRatio),
+      population: score._population,
+      popChangePct: score._popChangePct,
       propertyScores: [
-        { type: "residential", label: "住居系", score: Math.round(0.15 * ebmHealth + 0.30 * demand + 0.20 * (100 - (pref.flood_risk_avg_pct ?? 0) * 3) + 0.20 * Math.min(100, (pref.total_daily_riders ?? 0) / 500) + 0.15 * future), verdict: "" },
-        { type: "commercial", label: "商業系", score: Math.round(0.22 * Math.max(0, Math.min(100, 50 + agg * 3)) + 0.18 * ratioScore + 0.18 * Math.min(100, (pref.total_daily_riders ?? 0) / 500) + 0.12 * demand + 0.10 * future + 0.10 * (100 - (pref.flood_risk_avg_pct ?? 0) * 3) + 0.10 * demand), verdict: "" },
-        { type: "office", label: "オフィス", score: Math.round(0.30 * ratioScore + 0.20 * ebmHealth + 0.20 * future + 0.15 * scaleScore + 0.15 * Math.min(100, (pref.total_daily_riders ?? 0) / 500)), verdict: "" },
-        { type: "industrial", label: "物流・工業", score: Math.round(0.25 * ratioScore + 0.15 * ebmHealth + 0.20 * Math.max(0, 100 - (pref.land_price_median_l01 ?? 0) / 5000) + 0.20 * scaleScore + 0.20 * (100 - (pref.flood_risk_avg_pct ?? 0) * 3)), verdict: "" },
-        { type: "medical", label: "医療・介護", score: Math.round(0.25 * ratioScore + 0.30 * Math.max(0, Math.min(100, -(c?.pop_change_pct ?? 0) * 4 + 40)) + 0.15 * Math.min(100, (pref.total_daily_riders ?? 0) / 500) + 0.15 * scaleScore + 0.15 * (100 - (pref.flood_risk_avg_pct ?? 0) * 3)), verdict: "" },
+        { type: "residential", label: "住居系", score: Math.round(0.15 * eH + 0.30 * score.demand + 0.20 * floodSafe + 0.20 * transit + 0.15 * score.future), verdict: "" },
+        { type: "commercial", label: "商業系", score: Math.round(0.22 * Math.max(0, Math.min(100, 50 + agg * 3)) + 0.18 * rS + 0.18 * transit + 0.12 * score.demand + 0.10 * score.future + 0.10 * floodSafe + 0.10 * score.demand), verdict: "" },
+        { type: "office", label: "オフィス", score: Math.round(0.30 * rS + 0.20 * eH + 0.20 * score.future + 0.15 * sS + 0.15 * transit), verdict: "" },
+        { type: "industrial", label: "物流・工業", score: Math.round(0.25 * rS + 0.15 * eH + 0.20 * Math.max(0, 100 - (pref.land_price_median_l01 ?? 0) / 5000) + 0.20 * sS + 0.20 * floodSafe), verdict: "" },
+        { type: "medical", label: "医療・介護", score: Math.round(0.25 * rS + 0.30 * Math.max(0, Math.min(100, -(c?.pop_change_pct ?? 0) * 4 + 40)) + 0.15 * transit + 0.15 * sS + 0.15 * floodSafe), verdict: "" },
       ].map(s => ({ ...s, verdict: s.score >= 70 ? "推奨" : s.score >= 50 ? "条件付推奨" : s.score >= 30 ? "様子見" : "回避" }))
         .sort((a, b) => b.score - a.score),
       dataVintage: {
