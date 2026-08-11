@@ -24,3 +24,5 @@ data/nlni/processors/__pycache__/
 
 # Next.js ビルド成果物
 .next/
+ci102-nextjs/public/data/nlni/*.geojson
+ci102-nextjs/public/data/nlni_topo/
