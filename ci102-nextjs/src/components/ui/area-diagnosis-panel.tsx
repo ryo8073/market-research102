@@ -783,19 +783,19 @@ export function AreaDiagnosisPanel({
 
         {/* ── 🔁 データ更新の変化 (以前2020 → 最新2025 実測) ── */}
         <div className="rounded-xl border px-4 py-3 mb-4 bg-card">
-          <p className="text-sm font-semibold font-extrabold">
+          <p className="text-sm font-extrabold">
             🔁 前回→今回の変化
             <span className="ml-1 font-semibold text-muted-foreground text-xs">— 2020 → 2025（国勢調査 実測 / {momoFine ? city!.area_name : pref.pref_name}）</span>
           </p>
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div className="rounded-lg border bg-muted/30 px-3 py-2">
               <div className="text-xs font-bold text-muted-foreground">人口</div>
-              <div className="text-sm font-semibold font-extrabold">{pop2020.toLocaleString()} <span className="text-muted-foreground">→</span> {c.population.toLocaleString()}</div>
+              <div className="text-sm font-extrabold">{pop2020.toLocaleString()} <span className="text-muted-foreground">→</span> {c.population.toLocaleString()}</div>
               <div className="text-xs font-bold" style={{ color: c.pop_change_pct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(popDelta)} 人（{fmtPct(c.pop_change_pct)}）／ 全国 {fmtPct(c.national_pop_change_pct)}・差 {gap >= 0 ? "+" : ""}{gap.toFixed(1)}pt</div>
             </div>
             <div className="rounded-lg border bg-muted/30 px-3 py-2">
               <div className="text-xs font-bold text-muted-foreground">世帯</div>
-              <div className="text-sm font-semibold font-extrabold">{hh2020.toLocaleString()} <span className="text-muted-foreground">→</span> {c.households.toLocaleString()}</div>
+              <div className="text-sm font-extrabold">{hh2020.toLocaleString()} <span className="text-muted-foreground">→</span> {c.households.toLocaleString()}</div>
               <div className="text-xs font-bold" style={{ color: c.hh_change_pct >= 0 ? "#16A34A" : "#DC2626" }}>{fmtNum(hhDelta)} 世帯（{fmtPct(c.hh_change_pct)}）{c.pop_change_pct < 0 && c.hh_change_pct > 0 ? "／人口減でも世帯増=単身化" : ""}</div>
             </div>
           </div>
@@ -804,7 +804,7 @@ export function AreaDiagnosisPanel({
         {/* ── 📈 人口推移チャート（2000-2025 国勢調査6回分） ── */}
         {hasTimeseries && (
           <div className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(99,102,241,0.2)", backgroundColor: "rgba(99,102,241,0.03)" }}>
-            <p className="text-sm font-semibold font-extrabold text-indigo-800 dark:text-indigo-300">
+            <p className="text-sm font-extrabold text-indigo-800 dark:text-indigo-300">
               📈 人口推移と将来推計
               <span className="ml-1 font-semibold text-muted-foreground text-xs">— {momoFine ? city!.area_name : pref.pref_name}・2000→2050</span>
             </p>
@@ -898,7 +898,7 @@ export function AreaDiagnosisPanel({
         {/* ── 📊 雇用の変化とRS (2016→2021 シフトシェア分解・都道府県) ── */}
         {ssTable.length > 0 && (
           <details className="rounded-xl border px-4 py-3 mb-4 bg-card">
-            <summary className="text-sm font-semibold font-extrabold cursor-pointer select-none">
+            <summary className="text-sm font-extrabold cursor-pointer select-none">
               📊 働く人が増減した理由を3つに分ける
               <span className="ml-1 font-semibold text-muted-foreground text-xs">— 2016 → 2021（クリックで展開）</span>
             </summary>
@@ -934,7 +934,7 @@ export function AreaDiagnosisPanel({
         {/* ── 🎯 このエリアのニーズ ── */}
         {needsTop.length > 0 && (
           <div className="rounded-xl border px-4 py-3.5 mb-4 bg-card">
-            <p className="text-sm font-semibold font-extrabold">
+            <p className="text-sm font-extrabold">
               🎯 このエリアで狙うべきニーズ（用途別）
               <span className="ml-1 font-semibold text-muted-foreground text-xs">— データから導かれる投資対象</span>
             </p>
@@ -986,7 +986,7 @@ export function AreaDiagnosisPanel({
 
         {/* ── 🧮 指標の計算フロー (CI102の導出過程) ── */}
         <details className="rounded-xl border-2 px-4 py-3.5 mb-4" style={{ borderColor: "rgba(37,99,235,0.2)", backgroundColor: "rgba(37,99,235,0.03)" }}>
-          <summary className="text-sm font-semibold font-extrabold text-blue-800 dark:text-blue-300 cursor-pointer select-none">
+          <summary className="text-sm font-extrabold text-blue-800 dark:text-blue-300 cursor-pointer select-none">
             🧮 計算の根拠を確認する（CI102 計算フロー）
             <span className="ml-1 font-semibold text-muted-foreground text-xs">— クリックで展開</span>
           </summary>

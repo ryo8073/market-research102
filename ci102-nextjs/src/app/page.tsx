@@ -1511,6 +1511,7 @@ function DashboardContent() {
     return 13;
   });
   const [cityCode, setCityCode] = useState<string>(() => searchParams.get("city") ?? "");
+  const [compareCodes, setCompareCodes] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<TabValue>(() => {
     const t = searchParams.get("tab");
     return isValidTab(t) ? t : "decision_hub";
@@ -1997,7 +1998,6 @@ function DashboardContent() {
                       rentedPct: p.housing_tenure?.rented_pct?.toFixed(0) ?? "—",
                     };
                   };
-                  const [compareCodes, setCompareCodes] = useState<number[]>([]);
                   const compareData = compareCodes.map(c => allData[String(c)] ? calcScore(allData[String(c)]) : null).filter(Boolean);
                   const currentScore = calcScore(pref);
 
