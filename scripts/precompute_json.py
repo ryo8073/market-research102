@@ -567,6 +567,60 @@ def compute_metro_areas(accessor: MarketDataAccessor) -> dict:
     return results
 
 
+def _load_housing_vacancy() -> pd.DataFrame | None:
+    """Load housing vacancy census 2023 CSV."""
+    csv_path = Path(__file__).resolve().parent.parent / "data" / "cache" / "census_housing_vacancy_2023.csv"
+    if csv_path.exists():
+        try:
+            df = pd.read_csv(csv_path, dtype={"area_code": str})
+            df["area_code"] = df["area_code"].str.zfill(5)
+            print(f"  Housing vacancy 2023 loaded: {len(df)} areas")
+            return df
+        except Exception as e:
+            print(f"  Housing vacancy load error: {e}")
+    return None
+
+
+def _safe_housing_int(val) -> int:
+    """NaN-safe int conversion for housing data."""
+    import math
+    if val is None or (isinstance(val, float) and math.isnan(val)):
+        return 0
+    return int(val)
+
+
+def _safe_housing_float(val) -> float:
+    """NaN-safe float conversion for housing data."""
+    import math
+    if val is None or (isinstance(val, float) and math.isnan(val)):
+        return 0.0
+    return round(float(val), 1)
+
+
+def _enrich_municipality_with_housing(rec: dict, housing_df: pd.DataFrame | None):
+    """Add housing vacancy metrics to a municipality record."""
+    if housing_df is None:
+        return
+    muni_code = rec.get("area_code", "")
+    row = housing_df[housing_df["area_code"] == muni_code]
+    if row.empty:
+        return
+    r = row.iloc[0]
+    rec["housing"] = {
+        "total_dwellings": _safe_housing_int(r.get("total_dwellings", 0)),
+        "owned": _safe_housing_int(r.get("owned", 0)),
+        "rental": _safe_housing_int(r.get("rental", 0)),
+        "owned_pct": _safe_housing_float(r.get("owned_pct", 0)),
+        "rental_pct": _safe_housing_float(r.get("rental_pct", 0)),
+        "vacancy_total": _safe_housing_int(r.get("vacancy_total", 0)),
+        "vacancy_rental": _safe_housing_int(r.get("vacancy_rental", 0)),
+        "vacancy_sales": _safe_housing_int(r.get("vacancy_sales", 0)),
+        "vacancy_rate_pct": _safe_housing_float(r.get("vacancy_rate_pct", 0)),
+        "rental_vacancy_rate_pct": _safe_housing_float(r.get("rental_vacancy_rate_pct", 0)),
+        "source": "総務省 令和5年住宅・土地統計調査(2023)",
+    }
+
+
 def _load_nlni_data() -> dict[str, pd.DataFrame]:
     """Load all available NLNI processed CSVs. Returns {name: DataFrame}."""
     if not NLNI_AVAILABLE:
@@ -973,6 +1027,10 @@ def main():
 
     accessor = MarketDataAccessor()
 
+    # Load housing vacancy data (optional)
+    print("Loading housing vacancy data...")
+    housing_df = _load_housing_vacancy()
+
     # Load NLNI data (optional — if not downloaded, skip gracefully)
     print("Loading NLNI spatial data...")
     nlni = _load_nlni_data()
@@ -1021,7 +1079,9 @@ def main():
         print(f"  [{pc:02d}/47] {name}...", end=" ")
         munis = compute_municipalities(accessor, pc)
         if munis:
-            # Enrich each municipality with NLNI data
+            # Enrich each municipality with housing + NLNI data
+            for rec in munis:
+                _enrich_municipality_with_housing(rec, housing_df)
             if nlni:
                 for rec in munis:
                     _enrich_municipality_with_nlni(rec, pc, nlni)
