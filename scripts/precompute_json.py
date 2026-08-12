@@ -1057,10 +1057,31 @@ def main():
 
     # Write prefectures.json
     out_path = OUTPUT_DIR / "prefectures.json"
+    # --- 中分類詳細（EBMタブ専用）を分離して初期ロードを軽量化 ---
+    # NOTE: この分離はパイプラインに組み込まれている（手動後処理にしない）。
+    #       再実行のたびに prefectures.json（軽量）と prefectures_detail_mid.json（遅延）を
+    #       両方とも正しく再生成し、二重化・スタール化を防ぐ。
+    #       参照: src/lib/use-prefecture-data.ts usePrefDetailMid()
+    MID_DETAIL_KEYS = ("lq_table_mid", "shift_share_table_mid")
+    detail_mid = {}
+    for pc, rec in all_prefs.items():
+        moved = {k: rec.pop(k) for k in MID_DETAIL_KEYS if k in rec}
+        if moved:
+            detail_mid[pc] = moved
+
+    if detail_mid:
+        detail_path = OUTPUT_DIR / "prefectures_detail_mid.json"
+        with open(detail_path, "w", encoding="utf-8") as f:
+            json.dump(detail_mid, f, ensure_ascii=False, separators=(",", ":"))
+        detail_kb = detail_path.stat().st_size / 1024
+        print(
+            f"\nWrote {detail_path} ({detail_kb:.1f} KB, {len(detail_mid)} prefectures — 遅延ロード)"
+        )
+
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(all_prefs, f, ensure_ascii=False, separators=(",", ":"))
     size_mb = out_path.stat().st_size / 1024 / 1024
-    print(f"\nWrote {out_path} ({size_mb:.1f} MB, {len(all_prefs)} prefectures)")
+    print(f"Wrote {out_path} ({size_mb:.1f} MB, {len(all_prefs)} prefectures)")
 
     # Write metro_summary.json (都市圏MSA相当)
     print("\nComputing metropolitan area summary...")

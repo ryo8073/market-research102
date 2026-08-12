@@ -1906,7 +1906,7 @@ function DashboardContent() {
                 {pref.shift_share_table.length > 0 ? (
                   <ShiftShareTab
                     precomputed={pref.shift_share_table}
-                    precomputedMid={pref.shift_share_table_mid}
+                    precomputedMid={prefDetailMid?.shift_share_table_mid ?? pref.shift_share_table_mid}
                     topRsIndustry={pref.top_rs_industry}
                     topRsValue={pref.top_rs_value}
                     topRsIndustryMid={pref.top_rs_industry_mid}
