@@ -51,6 +51,215 @@ function ScatterTooltip({ active, payload }: any) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  賃料インデックスセクション（SMTRI × アットホーム）                   */
+/* ------------------------------------------------------------------ */
+
+interface RentTsPoint { period: string; value: number }
+interface RentIndexArea {
+  key: string;
+  label: string;
+  pref_code: number;
+  timeseries: Record<string, RentTsPoint[]>;
+}
+interface RentIndexData {
+  source: string;
+  period_range: string;
+  latest_period: string;
+  base: string;
+  types_legend: Record<string, string>;
+  areas: RentIndexArea[];
+}
+
+const RENT_TYPE_COLORS: Record<string, string> = {
+  single: "#E76F51",
+  compact: "#2A9D8F",
+  family: "#6366F1",
+  total: "#1B2A4A",
+};
+const RENT_TYPE_LABELS: Record<string, string> = {
+  single: "シングル（18-30m²）",
+  compact: "コンパクト（30-60m²）",
+  family: "ファミリー（60-100m²）",
+  total: "総合",
+};
+
+function RentIndexSection({ prefCode }: { prefCode: number }) {
+  const [data, setData] = useState<RentIndexData | null>(null);
+  useEffect(() => {
+    fetch("/data/rent_index.json")
+      .then((r) => r.json())
+      .then((d) => setData(d))
+      .catch(() => {});
+  }, []);
+
+  const matchedAreas = data?.areas.filter((a) => a.pref_code === prefCode) ?? [];
+
+  // 折れ線チャート用データ: period → { period, single, compact, family, total }
+  const chartDataByArea = useMemo(() => {
+    if (!matchedAreas.length) return [];
+    return matchedAreas.map((area) => {
+      const periodMap: Record<string, Record<string, number>> = {};
+      for (const [type, ts] of Object.entries(area.timeseries)) {
+        for (const pt of ts) {
+          if (!periodMap[pt.period]) periodMap[pt.period] = {};
+          periodMap[pt.period][type] = pt.value;
+        }
+      }
+      const sorted = Object.entries(periodMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([period, vals]) => ({ period, ...vals }));
+      return { area, chartData: sorted };
+    });
+  }, [matchedAreas]);
+
+  // 最新四半期のサマリー
+  const latestSummary = useMemo(() => {
+    return matchedAreas.map((area) => {
+      const types: Record<string, { latest: number; prev: number; yoyPrev: number }> = {};
+      for (const [type, ts] of Object.entries(area.timeseries)) {
+        if (ts.length < 2) continue;
+        const latest = ts[ts.length - 1];
+        const prev = ts[ts.length - 2];
+        const yoyPrev = ts.length >= 5 ? ts[ts.length - 5] : null;
+        types[type] = {
+          latest: latest.value,
+          prev: prev.value,
+          yoyPrev: yoyPrev?.value ?? 0,
+        };
+      }
+      return { area, types };
+    });
+  }, [matchedAreas]);
+
+  if (!data || matchedAreas.length === 0) return null;
+
+  // X軸ラベル: 年だけ表示（Q1のみ表示）
+  const formatXAxis = (period: string) => {
+    if (period.endsWith("Q1")) return period.replace("Q1", "");
+    return "";
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          マンション賃料インデックス
+          <span className="text-xs font-normal text-muted-foreground">
+            {data.base}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {chartDataByArea.map(({ area, chartData }) => (
+          <div key={area.key} className="space-y-3">
+            <h4 className="text-sm font-semibold">{area.label}</h4>
+
+            {/* 時系列折れ線チャート */}
+            <div className="h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="period" tickFormatter={formatXAxis} tick={{ fontSize: 10 }} interval={3} />
+                  <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    labelFormatter={(label) => String(label)}
+                    formatter={(value, name) => [
+                      Number(value).toFixed(2),
+                      RENT_TYPE_LABELS[String(name)] ?? String(name),
+                    ]}
+                  />
+                  <Legend
+                    formatter={(value) => RENT_TYPE_LABELS[String(value)] ?? String(value)}
+                    wrapperStyle={{ fontSize: 11 }}
+                  />
+                  {(["single", "compact", "family", "total"] as const).map((type) => (
+                    <Line
+                      key={type}
+                      type="monotone"
+                      dataKey={type}
+                      stroke={RENT_TYPE_COLORS[type]}
+                      strokeWidth={type === "total" ? 2.5 : 1.5}
+                      dot={false}
+                      strokeDasharray={type === "total" ? undefined : ""}
+                    />
+                  ))}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 最新四半期サマリーテーブル */}
+            {latestSummary
+              .filter((s) => s.area.key === area.key)
+              .map((s) => (
+                <div key={s.area.key} className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="p-2 text-left">タイプ</th>
+                        <th className="p-2 text-right">最新値（{data.latest_period}）</th>
+                        <th className="p-2 text-right">前期比</th>
+                        <th className="p-2 text-right">前年同期比</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(["single", "compact", "family", "total"] as const).map((type) => {
+                        const t = s.types[type];
+                        if (!t) return null;
+                        const qoq = t.latest - t.prev;
+                        const yoy = t.yoyPrev > 0 ? t.latest - t.yoyPrev : 0;
+                        const isTotal = type === "total";
+                        const arrow = (v: number) => v > 3 ? "↑↑" : v > 0 ? "↑" : v > -0.5 ? "→" : v > -3 ? "↓" : "↓↓";
+                        const color = (v: number) => v > 3 ? "text-red-600" : v > 0 ? "text-orange-500" : v > -0.5 ? "text-gray-500" : "text-blue-600";
+                        return (
+                          <tr key={type} className={`border-b ${isTotal ? "font-semibold bg-muted/30" : "hover:bg-muted/20"}`}>
+                            <td className="p-2">{RENT_TYPE_LABELS[type]}</td>
+                            <td className="p-2 text-right font-mono">{t.latest.toFixed(2)}</td>
+                            <td className={`p-2 text-right font-mono ${color(qoq)}`}>
+                              {arrow(qoq)} {qoq >= 0 ? "+" : ""}{qoq.toFixed(2)}
+                            </td>
+                            <td className={`p-2 text-right font-mono ${color(yoy)}`}>
+                              {t.yoyPrev > 0 ? `${arrow(yoy)} ${yoy >= 0 ? "+" : ""}${yoy.toFixed(2)}` : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+          </div>
+        ))}
+
+        {/* 投資示唆 */}
+        <div className="rounded-lg bg-muted/30 p-3 text-xs space-y-1">
+          <p className="font-semibold">投資判断への示唆</p>
+          {latestSummary.map(({ area, types }) => {
+            const total = types.total;
+            if (!total) return null;
+            const yoy = total.yoyPrev > 0 ? total.latest - total.yoyPrev : 0;
+            const trend = yoy > 5 ? "上昇基調" : yoy > 0 ? "緩やかな上昇" : yoy > -3 ? "横ばい" : "下落傾向";
+            const implication = yoy > 5
+              ? "賃料上昇は賃貸投資のインカムゲインに直結。ただし入居者負担増による空室リスクにも注意。"
+              : yoy > 0
+              ? "安定的な賃料上昇はインカムリターンの底堅さを示します。"
+              : "賃料の停滞・下落局面では、空室率とあわせてエリアの需給バランスを精査してください。";
+            return (
+              <p key={area.key}>
+                <span className="font-medium">{area.label}</span>: {trend}（前年同期比{yoy >= 0 ? "+" : ""}{yoy.toFixed(1)}）。{implication}
+              </p>
+            );
+          })}
+        </div>
+
+        <p className="text-[10px] text-muted-foreground">
+          出典: {data.source}。{data.base}。成約賃料のヘドニック品質調整済み指数。無断転載禁止。
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function RealEstateTab({ prefCode, cityCode }: Props) {
   const [year, setYear] = useState(2024);
   const [quarter, setQuarter] = useState(1);
@@ -418,6 +627,9 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
           </div>
         </>
       )}
+
+      {/* 賃料インデックス */}
+      <RentIndexSection prefCode={prefCode} />
 
       {/* Educational content */}
       <details open className="rounded-lg border p-4 text-sm text-muted-foreground">
