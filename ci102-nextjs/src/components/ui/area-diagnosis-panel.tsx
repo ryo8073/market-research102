@@ -135,6 +135,15 @@ export function AreaDiagnosisPanel({
   const hh2020 = hhDenom > 0 ? Math.round(resolvedHouseholds / hhDenom) : resolvedHouseholds;
   const hhDelta = resolvedHouseholds - hh2020;
 
+  // 空き家率（市区町村 or 経済圏の場合はeconZoneから）
+  const housing = city?.housing ?? null;
+  const vacancyRatePct = useEzPop && econZone?.population
+    // 経済圏: 個別市区町村のhousingはDecisionHubTab側で集計済みだが、ここでは単純参照不可
+    // → city が null の場合はデータなし（DecisionHubTab の econZoneSpatial が担当）
+    ? null
+    : housing?.vacancy_rate_pct ?? null;
+  const rentalVacancyRatePct = housing?.rental_vacancy_rate_pct ?? null;
+
   // 借家世帯比率（経済圏集約 or 市区町村 or 都道府県）
   const ht = useEzPop && econZone?.rented_pct != null
     ? { total: 0, owned_pct: 100 - econZone.rented_pct, rented_pct: econZone.rented_pct, rented_private_pct: econZone.rented_private_pct ?? 0, source: "経済圏集約（2020年国勢調査）" }
@@ -652,6 +661,22 @@ export function AreaDiagnosisPanel({
                   : ht.rented_pct >= 30
                     ? "借家比率は標準的 — 賃貸市場は安定しているが競争も存在"
                     : "持ち家中心の街 — 賃貸需要は限定的。ファミリー向け分譲の方が適する可能性"
+                }
+                tag="実測"
+              />
+            )}
+            {vacancyRatePct != null && (
+              <MetricRow
+                label="空き家率"
+                value={`${vacancyRatePct.toFixed(1)}%`}
+                unit={rentalVacancyRatePct != null ? `賃貸用 ${rentalVacancyRatePct.toFixed(1)}%` : undefined}
+                meaning={vacancyRatePct < 10
+                  ? "空き家率が低い — 住宅需要が堅調で供給不足の可能性。新規供給に追い風"
+                  : vacancyRatePct < 15
+                    ? "空き家率は標準的 — 需給バランスは取れている。立地選定が鍵"
+                    : vacancyRatePct < 20
+                      ? "空き家率がやや高い — 供給過剰の兆候。差別化（築浅・設備）が必要"
+                      : "空き家率が高い — 供給過剰。賃貸投資はテナント確保リスクに注意"
                 }
                 tag="実測"
               />

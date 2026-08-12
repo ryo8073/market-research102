@@ -54,6 +54,7 @@ function ScatterTooltip({ active, payload }: any) {
 export default function RealEstateTab({ prefCode, cityCode }: Props) {
   const [year, setYear] = useState(2024);
   const [quarter, setQuarter] = useState(1);
+  const [priceClass, setPriceClass] = useState<"" | "01" | "02">("");  // ""=全て, 01=取引, 02=成約
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
       quarter: String(quarter),
     });
     if (cityCode) params.set("cityCode", String(cityCode));
+    if (priceClass) params.set("priceClassification", priceClass);
 
     fetch(`/api/mlit?${params}`)
       .then((r) => r.json())
@@ -80,7 +82,7 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [prefCode, year, quarter, cityCode]);
+  }, [prefCode, year, quarter, cityCode, priceClass]);
 
   const numericData = useMemo(() => {
     return data.map((d: any) => ({
@@ -239,6 +241,16 @@ export default function RealEstateTab({ prefCode, cityCode }: Props) {
             {[1, 2, 3, 4].map((q) => (
               <option key={q} value={q}>Q{q}</option>
             ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="price-class-select" className="text-sm font-medium">価格区分</label>
+          <select id="price-class-select" value={priceClass} onChange={(e) => setPriceClass(e.target.value as "" | "01" | "02")}
+            aria-label="価格区分を選択"
+            className="ml-2 rounded border px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="">全て</option>
+            <option value="01">取引価格</option>
+            <option value="02">成約価格（レインズ）</option>
           </select>
         </div>
         {loading && <span className="text-sm text-muted-foreground animate-pulse">読込中...</span>}
