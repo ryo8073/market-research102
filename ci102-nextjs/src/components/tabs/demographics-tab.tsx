@@ -30,6 +30,170 @@ function estimateHousingDemand(pop: number, personsPerHH: number): number {
   return Math.round(pop / personsPerHH);
 }
 
+/* ------------------------------------------------------------------ */
+/*  住宅ストック構成セクション（住宅・土地統計調査 2023）               */
+/* ------------------------------------------------------------------ */
+
+function HousingStockSection({
+  municipalities,
+  prefName,
+}: {
+  municipalities: MunicipalityData[];
+  prefName: string;
+}) {
+  // 県全体を集計（housing を持つ市区町村のみ）
+  const agg = useMemo(() => {
+    const withData = municipalities.filter((m) => m.housing != null);
+    if (withData.length === 0) return null;
+    let totalDwellings = 0;
+    let owned = 0;
+    let rental = 0;
+    let vacancyTotal = 0;
+    let vacancyRental = 0;
+    let vacancySales = 0;
+    for (const m of withData) {
+      const h = m.housing!;
+      totalDwellings += h.total_dwellings;
+      owned += h.owned;
+      rental += h.rental;
+      vacancyTotal += h.vacancy_total;
+      vacancyRental += h.vacancy_rental;
+      vacancySales += h.vacancy_sales;
+    }
+    const occupied = owned + rental;
+    const vacancyOther = vacancyTotal - vacancyRental - vacancySales;
+    const vacancyRatePct = totalDwellings > 0 ? (vacancyTotal / totalDwellings) * 100 : 0;
+    const rentalVacancyRatePct = rental > 0 ? (vacancyRental / rental) * 100 : 0;
+    return {
+      totalDwellings,
+      owned,
+      rental,
+      occupied,
+      vacancyTotal,
+      vacancyRental,
+      vacancySales,
+      vacancyOther: Math.max(0, vacancyOther),
+      vacancyRatePct,
+      rentalVacancyRatePct,
+      ownedPct: totalDwellings > 0 ? (owned / totalDwellings) * 100 : 0,
+      rentalPct: totalDwellings > 0 ? (rental / totalDwellings) * 100 : 0,
+      muniCount: withData.length,
+    };
+  }, [municipalities]);
+
+  const chartData = useMemo(() => {
+    if (!agg) return [];
+    return [
+      { name: "居住中 持ち家", value: agg.owned, fill: "#2A9D8F" },
+      { name: "居住中 借家", value: agg.rental, fill: "#6366F1" },
+      { name: "空き家 賃貸用", value: agg.vacancyRental, fill: "#F59E0B" },
+      { name: "空き家 その他", value: agg.vacancyOther + agg.vacancySales, fill: "#94A3B8" },
+    ];
+  }, [agg]);
+
+  if (!agg) return null;
+
+  // 空き家率の閾値判定
+  const vacancyLevel = agg.vacancyRatePct >= 20
+    ? { label: "高水準", color: "text-red-600", comment: "空き家率が20%超で住宅ストック過剰が深刻です。新規供給は原則回避し、既存物件のリノベーション・コンバージョンに注力すべきです。" }
+    : agg.vacancyRatePct >= 15
+    ? { label: "警戒水準", color: "text-amber-600", comment: "空き家率15%超は全国平均を上回る過剰供給エリアです。立地・築年・管理状態で選別し、競争力のある物件のみ投資対象としてください。" }
+    : agg.vacancyRatePct >= 10
+    ? { label: "標準的", color: "text-gray-600", comment: "空き家率10-15%は全国平均並みです。人口動態と併せて今後の需給バランスを確認してください。" }
+    : { label: "低水準", color: "text-green-600", comment: "空き家率10%未満は需要が堅調なエリアです。賃貸用空き家率も併せて確認し、投資機会を検討できます。" };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">住宅ストック構成 — {prefName}（{agg.muniCount}市区町村集計）</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          出典: 住宅・土地統計調査（2023年）。住宅総数・空き家・所有関係の内訳
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* KPI カード群 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border text-center">
+            <p className="text-xs text-muted-foreground">住宅総数</p>
+            <p className="text-lg font-bold">{agg.totalDwellings.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">
+              持ち家 {agg.ownedPct.toFixed(1)}% / 借家 {agg.rentalPct.toFixed(1)}%
+            </p>
+          </div>
+          <div className={`p-3 rounded-lg border text-center ${
+            agg.vacancyRatePct >= 15 ? "bg-red-50 dark:bg-red-950/20 border-red-200" : "bg-gray-50 dark:bg-gray-800"
+          }`}>
+            <p className="text-xs text-muted-foreground">空き家率</p>
+            <p className={`text-lg font-bold ${vacancyLevel.color}`}>
+              {agg.vacancyRatePct.toFixed(1)}%
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {agg.vacancyTotal.toLocaleString()}戸
+            </p>
+          </div>
+          <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border text-center">
+            <p className="text-xs text-muted-foreground">賃貸用空き家率</p>
+            <p className="text-lg font-bold text-amber-600">
+              {agg.rentalVacancyRatePct.toFixed(1)}%
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {agg.vacancyRental.toLocaleString()}戸
+            </p>
+          </div>
+          <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border text-center">
+            <p className="text-xs text-muted-foreground">売却用空き家</p>
+            <p className="text-lg font-bold">
+              {agg.vacancySales.toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground">戸</p>
+          </div>
+        </div>
+
+        {/* バーチャート */}
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 5, left: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis tickFormatter={(v) => v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toLocaleString()} />
+            <Tooltip
+              formatter={(value) => [`${Number(value).toLocaleString()}戸`, "戸数"]}
+            />
+            <Bar dataKey="value" name="戸数">
+              {chartData.map((entry, i) => (
+                <Cell key={i} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <div className="flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#2A9D8F] inline-block rounded" />居住中 持ち家</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#6366F1] inline-block rounded" />居住中 借家</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#F59E0B] inline-block rounded" />空き家 賃貸用</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#94A3B8] inline-block rounded" />空き家 その他</span>
+        </div>
+
+        {/* 閾値ベースの解釈テキスト */}
+        <div className={`rounded-lg p-3 ${
+          agg.vacancyRatePct >= 20 ? "bg-red-50 dark:bg-red-950/20" :
+          agg.vacancyRatePct >= 15 ? "bg-amber-50 dark:bg-amber-950/20" :
+          agg.vacancyRatePct >= 10 ? "bg-gray-50 dark:bg-gray-800" :
+          "bg-green-50 dark:bg-green-950/20"
+        }`}>
+          <p className="text-xs font-semibold mb-1">
+            空き家率 {agg.vacancyRatePct.toFixed(1)}% — <span className={vacancyLevel.color}>{vacancyLevel.label}</span>
+          </p>
+          <p className="text-xs">{vacancyLevel.comment}</p>
+          {agg.rentalVacancyRatePct > 20 && (
+            <p className="text-xs text-red-600 mt-1">
+              賃貸用空き家率が{agg.rentalVacancyRatePct.toFixed(1)}%と高く、賃貸住宅市場は過当競争の可能性があります。新規賃貸開発は慎重に。
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DemographicsTab({ prefCode, prefName, pref, allData }: Props) {
   const { data: municipalities } = useMunicipalityData(prefCode);
 
@@ -140,6 +304,9 @@ export default function DemographicsTab({ prefCode, prefName, pref, allData }: P
       {pref.census2025 && (
         <PopulationMomentumCard area={prefName} c={pref.census2025} />
       )}
+
+      {/* 住宅統計セクション — 市区町村データがある場合のみ */}
+      <HousingStockSection municipalities={municipalities} prefName={prefName} />
 
       {/* So What? — 結論サマリー */}
       {hasData && (

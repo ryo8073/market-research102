@@ -53,13 +53,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `都道府県コード ${prefCode} が見つかりません` }, { status: 404 });
     }
 
-    // 市区町村データ（指定時）
+    // 市区町村データを取得（housing集計にも使うため常にfetch）
     let city = null;
-    if (cityCode) {
+    let allMunis: Array<Record<string, unknown>> = [];
+    {
       const muniRes = await fetch(`${baseUrl}/data/municipalities/${prefCode}.json`);
       if (muniRes.ok) {
-        const munis = await muniRes.json();
-        city = (munis as Array<{ area_code: string }>).find((m) => m.area_code === cityCode) ?? null;
+        allMunis = await muniRes.json();
+        if (cityCode) {
+          city = allMunis.find((m) => m.area_code === cityCode) ?? null;
+        }
       }
     }
 
@@ -119,6 +122,45 @@ export async function GET(request: NextRequest) {
     // 0-100 にクランプ（浸水率>33% で負値になり物件スコアを引き下げる不具合を防止・P2）
     const floodSafe = Math.max(0, Math.min(100, 100 - (pref.flood_risk_avg_pct ?? 0) * 3));
 
+    // 空き家率データ（housing）
+    interface HousingData {
+      total_dwellings?: number;
+      vacancy_rate_pct?: number;
+      rental_vacancy_rate_pct?: number;
+    }
+    let vacancyRatePct: number | null = null;
+    let rentalVacancyRatePct: number | null = null;
+    let totalDwellings: number | null = null;
+    if (cityCode && city) {
+      // 市区町村指定時: その市区町村のhousingデータ
+      const h = (city as Record<string, unknown>).housing as HousingData | undefined;
+      if (h) {
+        vacancyRatePct = h.vacancy_rate_pct ?? null;
+        rentalVacancyRatePct = h.rental_vacancy_rate_pct ?? null;
+        totalDwellings = h.total_dwellings ?? null;
+      }
+    } else if (allMunis.length > 0) {
+      // 都道府県モード: 全市区町村のhousing加重平均
+      let sumDwellings = 0;
+      let sumVacancy = 0;
+      let sumRentalVacancy = 0;
+      let hasData = false;
+      for (const m of allMunis) {
+        const h = m.housing as HousingData | undefined;
+        if (!h || !h.total_dwellings) continue;
+        hasData = true;
+        const dw = h.total_dwellings;
+        sumDwellings += dw;
+        if (h.vacancy_rate_pct != null) sumVacancy += dw * h.vacancy_rate_pct / 100;
+        if (h.rental_vacancy_rate_pct != null) sumRentalVacancy += dw * h.rental_vacancy_rate_pct / 100;
+      }
+      if (hasData && sumDwellings > 0) {
+        totalDwellings = sumDwellings;
+        vacancyRatePct = Math.round((sumVacancy / sumDwellings) * 1000) / 10;
+        rentalVacancyRatePct = Math.round((sumRentalVacancy / sumDwellings) * 1000) / 10;
+      }
+    }
+
     return NextResponse.json({
       area,
       overall: overallFinal,
@@ -132,6 +174,9 @@ export async function GET(request: NextRequest) {
       basicRatio: econBasicRatio != null ? Math.round(econBasicRatio * 10) / 10 : parseFloat(score.basicRatio),
       population: score._population,
       popChangePct: score._popChangePct,
+      vacancyRatePct,
+      rentalVacancyRatePct,
+      totalDwellings,
       propertyScores: [
         { type: "residential", label: "住居系", score: Math.round(0.15 * eH + 0.30 * score.demand + 0.20 * floodSafe + 0.20 * transit + 0.15 * score.future), verdict: "" },
         // demand の二重計上を解消（旧: 0.12+0.10 の2項）。重複分は経済基盤健全度(eH)へ振替（P2）
