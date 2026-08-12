@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const year = Number(searchParams.get("year") ?? 2024);
   const quarter = Number(searchParams.get("quarter") ?? 1);
   const cityCode = searchParams.get("cityCode");
+  const priceClass = searchParams.get("priceClassification"); // 01=取引価格, 02=成約価格
 
   if (!prefCode) {
     return NextResponse.json({ error: "prefCode required" }, { status: 400 });
@@ -32,6 +33,9 @@ export async function GET(request: NextRequest) {
     });
     if (cityCode) {
       params.set("city", cityCode.padStart(5, "0"));
+    }
+    if (priceClass === "01" || priceClass === "02") {
+      params.set("priceClassification", priceClass);
     }
 
     const res = await fetch(`${MLIT_BASE}?${params}`, {

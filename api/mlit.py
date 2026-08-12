@@ -59,6 +59,7 @@ class MLITClient(CachedAPIClient):
         to_period: str,
         city_code: str | None = None,
         property_type: int | None = None,
+        price_classification: str | None = None,
     ) -> pd.DataFrame:
         """不動産取引価格情報を取得。
 
@@ -69,6 +70,7 @@ class MLITClient(CachedAPIClient):
         to_period : 終了期間 (YYYYQ 形式, e.g. "20234")
         city_code : 市区町村コード（省略時は県全体）
         property_type : 物件種別コード（1-5, 省略時は全種別）
+        price_classification : 価格情報区分（"01"=取引価格, "02"=成約価格）
 
         Returns
         -------
@@ -85,6 +87,8 @@ class MLITClient(CachedAPIClient):
             params["area"] = city_code
         if property_type:
             params["propertyType"] = property_type
+        if price_classification in ("01", "02"):
+            params["priceClassification"] = price_classification
 
         resp = self.get("XIT001", params)
         data = resp.get("data", [])

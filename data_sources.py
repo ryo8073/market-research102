@@ -180,8 +180,13 @@ class MlitReinfolibClient:
         quarter: int,
         pref_code: int,
         city_code: Optional[int] = None,
+        price_classification: Optional[str] = None,
     ) -> Optional[pd.DataFrame]:
         """取引価格情報（XIT001）を取得（キャッシュ優先）。
+
+        Parameters
+        ----------
+        price_classification : "01"=取引価格, "02"=成約価格（レインズ由来）
 
         Returns DataFrame with columns from MLIT response:
         Type, Region, MunicipalityCode, Prefecture, Municipality, DistrictName,
@@ -190,10 +195,11 @@ class MlitReinfolibClient:
         if not self.available:
             return None
 
-        # 1. キャッシュから読み込み
-        cached = self._read_cache(year, quarter, pref_code, city_code)
-        if cached is not None:
-            return cached
+        # 1. キャッシュから読み込み（成約価格はキャッシュキーに含めない = 混在OK）
+        if price_classification is None:
+            cached = self._read_cache(year, quarter, pref_code, city_code)
+            if cached is not None:
+                return cached
 
         # 2. API リクエスト
         try:
@@ -204,6 +210,8 @@ class MlitReinfolibClient:
             }
             if city_code is not None:
                 params["city"] = f"{city_code:05d}"
+            if price_classification in ("01", "02"):
+                params["priceClassification"] = price_classification
             r = requests.get(
                 f"{self.base_url}/XIT001",
                 params=params,
@@ -218,7 +226,8 @@ class MlitReinfolibClient:
             df = pd.DataFrame(data)
 
             # 3. キャッシュに保存
-            self._write_cache(df, year, quarter, pref_code, city_code)
+            if price_classification is None:
+                self._write_cache(df, year, quarter, pref_code, city_code)
             return df
         except requests.RequestException:
             return None
