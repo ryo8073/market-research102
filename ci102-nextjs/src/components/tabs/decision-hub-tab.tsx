@@ -102,6 +102,8 @@ interface EconZoneSpatial {
   hasLocationPlan: boolean;
   hasResidentialZone: boolean;
   hasFunctionZone: boolean;
+  vacancyRatePct: number | null;
+  rentalVacancyRatePct: number | null;
 }
 
 /** 経済圏の空間データを集計する */
@@ -113,6 +115,7 @@ function aggregateEconZoneSpatial(
   const prices: number[] = [];
   let carDepSum = 0, carDepCount = 0;
   let hasLoc = false, hasRes = false, hasFunc = false;
+  let vacDwellings = 0, vacTotal = 0, vacRental = 0, vacRentalBase = 0, vacCount = 0;
   for (const m of municipalities) {
     if (!codes.has(m.area_code)) continue;
     stations += m.num_stations ?? 0;
@@ -123,6 +126,13 @@ function aggregateEconZoneSpatial(
     if (m.has_location_plan) hasLoc = true;
     if (m.has_residential_zone) hasRes = true;
     if (m.has_function_zone) hasFunc = true;
+    if (m.housing) {
+      vacDwellings += m.housing.total_dwellings;
+      vacTotal += m.housing.vacancy_total;
+      vacRental += m.housing.vacancy_rental;
+      vacRentalBase += m.housing.rental;
+      vacCount++;
+    }
   }
   return {
     numStations: stations,
@@ -133,6 +143,8 @@ function aggregateEconZoneSpatial(
     hasLocationPlan: hasLoc,
     hasResidentialZone: hasRes,
     hasFunctionZone: hasFunc,
+    vacancyRatePct: vacCount > 0 && vacDwellings > 0 ? Math.round(vacTotal / vacDwellings * 1000) / 10 : null,
+    rentalVacancyRatePct: vacCount > 0 && vacRentalBase > 0 ? Math.round(vacRental / vacRentalBase * 1000) / 10 : null,
   };
 }
 
@@ -206,16 +218,22 @@ function calculatePropertyScores(pref: PrefectureData, city: MunicipalityData | 
   );
   const hasMedical = lqIndustries.some(i => i.industry === "医療，福祉" && i.lq > 1.05);
 
+  // 空き家率（住宅・土地統計調査2023）
+  const vacancyRate = econZoneSpatial?.vacancyRatePct ?? city?.housing?.vacancy_rate_pct ?? null;
+  const rentalVacancyRate = econZoneSpatial?.rentalVacancyRatePct ?? city?.housing?.rental_vacancy_rate_pct ?? null;
+  const vacancyScore = vacancyRate != null ? Math.max(0, Math.min(100, 100 - vacancyRate * 3)) : 50;
+
   // ====== 1. 住居系 ======
   const residentialFactors = [
-    { label: "経済基盤", score: economicHealth, weight: 0.15, source: "EBM/基盤雇用比率", interpretation: `EBM ${ebm.toFixed(1)} / 基盤率 ${basicRatio.toFixed(1)}%` },
-    { label: "人口動態", score: popDynScore, weight: 0.30, source: "国勢2025実測+社人研推計", interpretation: popDynInterp },
-    { label: "災害リスク", score: flood, weight: 0.20, source: "国土数値情報 A31", interpretation: `浸水面積率 ${floodRisk.toFixed(1)}%` },
-    { label: "交通アクセス", score: accessScore, weight: 0.20, source: "OSRM + 鉄道駅", interpretation: city?.nearest_station_min != null ? `最寄り駅まで${city.nearest_station_min}分` : `車依存度 ${carDep}` },
+    { label: "経済基盤", score: economicHealth, weight: 0.12, source: "EBM/基盤雇用比率", interpretation: `EBM ${ebm.toFixed(1)} / 基盤率 ${basicRatio.toFixed(1)}%` },
+    { label: "人口動態", score: popDynScore, weight: 0.25, source: "国勢2025実測+社人研推計", interpretation: popDynInterp },
+    { label: "空き家率", score: vacancyScore, weight: 0.15, source: "住宅・土地統計調査2023", interpretation: vacancyRate != null ? `空き家率${vacancyRate.toFixed(1)}%${rentalVacancyRate != null ? `（賃貸用${rentalVacancyRate.toFixed(1)}%）` : ""}` : "データなし" },
+    { label: "災害リスク", score: flood, weight: 0.18, source: "国土数値情報 A31", interpretation: `浸水面積率 ${floodRisk.toFixed(1)}%` },
+    { label: "交通アクセス", score: accessScore, weight: 0.17, source: "OSRM + 鉄道駅", interpretation: city?.nearest_station_min != null ? `最寄り駅まで${city.nearest_station_min}分` : `車依存度 ${carDep}` },
     {
       label: "立地適正化",
       score: hasResidentialZone ? 100 : hasLocationPlan ? 70 : 50,
-      weight: 0.15,
+      weight: 0.13,
       source: "国土数値情報 A35/A50",
       interpretation: hasResidentialZone ? "✓ 居住誘導区域あり(住宅投資追い風)" :
                       hasFunctionZone ? "都市機能誘導のみ(住宅は限定的)" :

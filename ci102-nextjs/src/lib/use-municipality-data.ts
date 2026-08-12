@@ -75,6 +75,20 @@ export interface MunicipalityData {
     rented_private_pct: number;
     source: string;
   };
+  // 住宅数・空き家（2023年 住宅・土地統計調査）
+  housing?: {
+    total_dwellings: number;
+    owned: number;
+    rental: number;
+    owned_pct: number;
+    rental_pct: number;
+    vacancy_total: number;
+    vacancy_rental: number;
+    vacancy_sales: number;
+    vacancy_rate_pct: number;
+    rental_vacancy_rate_pct: number;
+    source: string;
+  };
   // 中分類95業種の完全LQテーブル
   lq_table_mid?: Array<{
     industry: string;
