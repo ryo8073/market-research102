@@ -22,17 +22,21 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { calcPrefScore, ebmHealthScore } from "@/lib/calc-score";
+import { calcPrefScore, ebmHealthScore, economicBaseScore } from "@/lib/calc-score";
 
 export async function GET(request: NextRequest) {
   const prefCode = request.nextUrl.searchParams.get("pref");
   const cityCode = request.nextUrl.searchParams.get("city");
+  const zoneParam = request.nextUrl.searchParams.get("zone");
 
   if (!prefCode || !/^\d{1,2}$/.test(prefCode)) {
     return NextResponse.json({ error: "pref パラメータが必要です（1-47の数字）" }, { status: 400 });
   }
   if (cityCode && !/^\d{5}$/.test(cityCode)) {
     return NextResponse.json({ error: "city パラメータは5桁の数字で指定してください" }, { status: 400 });
+  }
+  if (zoneParam && !/^\d{5}(,\d{5})*$/.test(zoneParam)) {
+    return NextResponse.json({ error: "zone パラメータは5桁コードのカンマ区切りで指定してください" }, { status: 400 });
   }
 
   const baseUrl = request.nextUrl.origin;
@@ -65,24 +69,67 @@ export async function GET(request: NextRequest) {
     const agg = pref.aggregate_gap_factor ?? 0;
     const area = city ? `${pref.pref_name} ${(city as any).area_name}` : pref.pref_name;
 
+    // 経済圏（複数市区町村合算）モード: 中分類マトリクスからEBM/基盤比率を集計（改善⑥）
+    let econEbm: number | null = null;
+    let econBasicRatio: number | null = null;
+    let econTotalEmp: number | null = null;
+    let econSupply: number | null = null;
+    if (zoneParam) {
+      const codes = zoneParam.split(",").filter((s) => /^\d{5}$/.test(s));
+      const mRes = await fetch(`${baseUrl}/data/muni_industry_matrix_mid.json`);
+      if (mRes.ok && codes.length > 0) {
+        const matrix = (await mRes.json()) as Record<string, { employment: Record<string, number> }>;
+        const national = matrix["00000"]?.employment ?? {};
+        const totalNational = Object.values(national).reduce((s, v) => s + Number(v), 0);
+        const local: Record<string, number> = {};
+        for (const code of codes) {
+          const emp = matrix[code]?.employment;
+          if (!emp) continue;
+          for (const [ind, cnt] of Object.entries(emp)) local[ind] = (local[ind] ?? 0) + Number(cnt);
+        }
+        const totalLocal = Object.values(local).reduce((s, v) => s + v, 0);
+        if (totalLocal > 0 && totalNational > 0) {
+          let totalBasic = 0;
+          for (const [ind, e] of Object.entries(local)) {
+            const E = national[ind] ?? 0;
+            if (!E) continue;
+            const lq = (e / totalLocal) / (E / totalNational);
+            if (lq > 1) totalBasic += e * (1 - 1 / lq);
+          }
+          econTotalEmp = totalLocal;
+          econEbm = totalBasic > 0 ? totalLocal / totalBasic : 0;
+          econBasicRatio = (totalBasic / totalLocal) * 100;
+          econSupply = economicBaseScore(econEbm, econBasicRatio, totalLocal);
+        }
+      }
+    }
+
+    // 経済基盤スコア（zone優先）と、それに整合する総合スコア・スタンス
+    const supplyFinal = econSupply ?? score.supply;
+    const overallFinal = econSupply != null
+      ? Math.round(0.4 * score.demand + 0.3 * supplyFinal + 0.3 * score.future)
+      : score.overall;
+    const stanceFinal = overallFinal >= 70 ? "積極取得" : overallFinal >= 55 ? "選別取得" : overallFinal >= 40 ? "様子見" : "見送り";
+
     // 物件タイプ別スコア（共通モジュールの中間値を使用）
-    const eH = score._ebmHealth;
-    const rS = score._ratioScore;
-    const sS = score._scaleScore;
+    const eH = econEbm != null ? ebmHealthScore(econEbm) : score._ebmHealth;
+    const rS = econBasicRatio != null ? Math.min(100, Math.max(0, econBasicRatio * 4)) : score._ratioScore;
+    const sS = econTotalEmp != null ? Math.min(100, Math.max(0, Math.log10(Math.max(1, econTotalEmp)) * 20 - 20)) : score._scaleScore;
     const transit = Math.min(100, (pref.total_daily_riders ?? 0) / 500);
     // 0-100 にクランプ（浸水率>33% で負値になり物件スコアを引き下げる不具合を防止・P2）
     const floodSafe = Math.max(0, Math.min(100, 100 - (pref.flood_risk_avg_pct ?? 0) * 3));
 
     return NextResponse.json({
       area,
-      overall: score.overall,
+      overall: overallFinal,
       demand: score.demand,
-      economicBase: score.supply,
-      supply: score.supply,
+      economicBase: supplyFinal,
+      supply: supplyFinal,
       future: score.future,
-      stance: score.stance,
-      ebm: parseFloat(score.ebm),
-      basicRatio: parseFloat(score.basicRatio),
+      stance: stanceFinal,
+      scope: zoneParam ? "経済圏（複数市区町村合算）" : cityCode ? "市区町村" : "都道府県",
+      ebm: econEbm != null ? Math.round(econEbm * 100) / 100 : parseFloat(score.ebm),
+      basicRatio: econBasicRatio != null ? Math.round(econBasicRatio * 10) / 10 : parseFloat(score.basicRatio),
       population: score._population,
       popChangePct: score._popChangePct,
       propertyScores: [

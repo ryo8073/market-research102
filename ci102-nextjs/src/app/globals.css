@@ -163,8 +163,16 @@
   body.printing-decision-hub [role="tablist"],
   body.printing-decision-hub button,
   body.printing-decision-hub [role="dialog"],
-  body.printing-decision-hub details:not([open]) {
+  body.printing-decision-hub .no-print-only {
     display: none !important;
+  }
+
+  /* 印刷時はアコーディオン(details)を全展開して明細欠落を防ぐ（改善⑦） */
+  body.printing-decision-hub details > summary {
+    display: list-item !important;
+  }
+  body.printing-decision-hub details:not([open]) > *:not(summary) {
+    display: block !important;
   }
 
   /* タブナビゲーション以外を非表示 — 開いているタブ内容のみ */

@@ -1,12 +1,30 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useRef, useState } from "react";
 import type { PrefectureData } from "@/lib/use-prefecture-data";
 import type { MunicipalityData } from "@/lib/use-municipality-data";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine,
 } from "recharts";
 import { economicBaseScore, currentDemandScore, futureOutlookScore } from "@/lib/calc-score";
+
+/** 画面内に入ったら true（重いチャートの初期描画を遅延させ初期表示を高速化・改善④） */
+function useInView<T extends HTMLElement>(rootMargin = "250px") {
+  const ref = useRef<T | null>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || inView) return;
+    if (typeof IntersectionObserver === "undefined") { setInView(true); return; }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { setInView(true); io.disconnect(); }
+    }, { rootMargin });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [inView, rootMargin]);
+  return { ref, inView };
+}
 
 function rating(score: number): { label: string; color: string } {
   if (score >= 75) return { label: "強い", color: "#16A34A" };
@@ -95,6 +113,8 @@ export function AreaDiagnosisPanel({
   city?: MunicipalityData | null;
   econZone?: EconZoneOverride | null;
 }) {
+  // フックは早期returnより前で呼ぶ（Rules of Hooks）
+  const chart = useInView<HTMLDivElement>();
   // モメンタム: 市区町村の速報があれば細分、なければ都道府県
   const c = city?.census2025 ?? pref.census2025;
   if (!c) return null;
@@ -173,12 +193,24 @@ export function AreaDiagnosisPanel({
   const perScopeValid = !useEconZone || useEzPop;
   const perLocal = perScopeValid && totalEmp > 0 ? resolvedPop / totalEmp : (pref.per ?? 0);
 
-  // 将来需要予測（社人研 2025→2050・都道府県）→ 世帯・住宅戸数へ換算
-  const pp = pref.pop_projection;
-  const pop2025 = pp?.["2025"] ?? pref.population;
-  const pop2035 = pp?.["2035"] ?? null;
-  const pop2050 = pp?.["2050"] ?? null;
+  // 将来需要予測: 市区町村の pop_2030/pop_2050 があれば優先、無ければ都道府県 pop_projection（改善①）
   const pph = pref.persons_per_household || 0;
+  const cityHasProj = city?.pop_2030 != null && city?.pop_2050 != null;
+  const projScope = cityHasProj ? "市区町村推計" : "都道府県推計";
+  const pp = pref.pop_projection;
+  // 年→人口の解決マップ。市区町村は2030/2050が実推計、中間年はCAGRで補間
+  const projMap: Record<string, number> = (() => {
+    if (cityHasProj) {
+      const p25 = resolvedPop, p50 = city!.pop_2050!;
+      const cagr = p25 > 0 && p50 > 0 ? Math.pow(p50 / p25, 1 / 25) - 1 : 0;
+      const at = (y: number) => Math.round(p25 * Math.pow(1 + cagr, y - 2025));
+      return { "2025": p25, "2030": city!.pop_2030!, "2035": at(2035), "2040": at(2040), "2045": at(2045), "2050": p50 };
+    }
+    return pp ?? {};
+  })();
+  const pop2025 = projMap["2025"] ?? resolvedPop;
+  const pop2035 = projMap["2035"] ?? null;
+  const pop2050 = projMap["2050"] ?? null;
   let fd: { dPop: number; dHH: number; dPct: number } | null = null;
   if (pop2035 && pph > 0) {
     const dPop = pop2035 - pop2025;
@@ -189,12 +221,13 @@ export function AreaDiagnosisPanel({
 
   // 将来推計データを時系列チャートに追加（2030〜2050、5年刻み）
   const projYears = [2030, 2035, 2040, 2045, 2050] as const;
+  const hasProjMap = Object.keys(projMap).length > 0;
   const tsWithProjection = (() => {
-    if (!pp) return tsWithRate;
+    if (!hasProjMap) return tsWithRate;
     const combined = [...tsWithRate];
-    let prevPop = pp["2025"] ?? resolvedPop;
+    let prevPop = projMap["2025"] ?? resolvedPop;
     for (const y of projYears) {
-      const popY = pp[String(y)];
+      const popY = projMap[String(y)];
       if (!popY) continue;
       const rate = ((popY - prevPop) / prevPop) * 100;
       combined.push({
@@ -211,7 +244,7 @@ export function AreaDiagnosisPanel({
     }
     return combined;
   })();
-  const hasProjection = pp && projYears.some((y) => pp[String(y)]);
+  const hasProjection = hasProjMap && projYears.some((y) => projMap[String(y)]);
 
   // 25年後（2050年）の推計
   let fd50: { dPop: number; dPct: number } | null = null;
@@ -263,7 +296,7 @@ export function AreaDiagnosisPanel({
     .filter((i) => i.regional_shift > 0)
     .slice(0, 3);
 
-  const projTxt = dPct != null ? `${fmtPct(dPct)}（2025→2035推計・都道府県）` : "—";
+  const projTxt = dPct != null ? `${fmtPct(dPct)}（2025→2035推計・${projScope}）` : "—";
   const lqNames = lq.length ? lq.map((i) => `${i.industry}(LQ ${i.lq.toFixed(2)})`).join("、") : "際立った特化産業なし";
 
   /* ── この街をひとことで ── */
@@ -541,7 +574,7 @@ export function AreaDiagnosisPanel({
             <p><strong>総合スコア</strong> = 需要×40% + 経済基盤×30% + 将来性×30%</p>
             <p><strong>需要</strong>（現在の水準）: 人口変化×55% + 世帯変化×30% + 小売需給×15%。連続スコア化し閾値ジャンプを排除。</p>
             <p><strong>経済基盤</strong>（構造）: EBM健全度（3-6が最高）×50% + 基盤比率×35% + 雇用規模×15%。全画面で単一定義を共用。</p>
-            <p><strong>将来性</strong>（方向）: 産業競争力（RS/雇用比）+ 長期人口推計（都道府県）。下振れ側をやや厚く評価（保守的設計）。</p>
+            <p><strong>将来性</strong>（方向）: 産業競争力（RS/雇用比）+ 長期人口推計（市区町村推計を優先、無ければ都道府県）。下振れ側をやや厚く評価（保守的設計）。</p>
             <p className="mt-1 text-[11px]">※ 需要は「絶対水準」、将来性は「競争力＋長期方向」と役割を分離し、人口動態の二重計上を回避しています（両者は相関しますが同一入力の重複加点はしません）。RS・長期推計は都道府県値で、市区町村選択時も適用します。</p>
             <p className="mt-1">データ出典: 経済センサス2021 / 国勢調査2025速報 / 社人研推計 / e-Stat</p>
           </div>
@@ -598,7 +631,7 @@ export function AreaDiagnosisPanel({
             <MetricRow
               label="長期人口見通し（10年後）"
               value={dPct != null ? fmtPct(dPct) : "—"}
-              unit="2025→2035・都道府県推計"
+              unit={`2025→2035・${projScope}`}
               meaning={dPct != null
                 ? dPct >= 0
                   ? "人口増加が続く見込み — 中長期の投資に適した市場"
@@ -736,7 +769,7 @@ export function AreaDiagnosisPanel({
             <MetricRow
               label="10年後の人口推計"
               value={dPct != null ? fmtPct(dPct) : "—"}
-              unit="2025→2035・都道府県推計"
+              unit={`2025→2035・${projScope}`}
               meaning={dPct != null
                 ? fd!.dHH >= 0
                   ? `世帯が約${fd!.dHH.toLocaleString()}増 → 新規住宅の純需要あり`
@@ -749,7 +782,7 @@ export function AreaDiagnosisPanel({
               <MetricRow
                 label="25年後の人口推計"
                 value={fmtPct(fd50.dPct)}
-                unit="2025→2050・都道府県推計"
+                unit={`2025→2050・${projScope}`}
                 meaning={fd50.dPct >= -10
                   ? "長期的にも大きな縮小はない — 出口戦略の選択肢が広い"
                   : fd50.dPct >= -20
@@ -770,7 +803,7 @@ export function AreaDiagnosisPanel({
           </p>
           {(useCity || useEconZone) && (
             <p className="text-xs text-muted-foreground mt-1.5">
-              ※ 長期人口推計（社人研）と産業競争力（RS）は<strong>都道府県値</strong>を適用しています（市区町村別の公式推計・RSが未提供のため）。衰退県内の成長都市などでは実力より辛めに出る場合があります。
+              ※ 産業競争力（RS）{cityHasProj ? "" : "および長期人口推計"}は<strong>都道府県値</strong>を適用しています（市区町村別の公式{cityHasProj ? "RS" : "推計・RS"}が未提供のため）。{cityHasProj ? "長期人口推計は市区町村の2030/2050推計を使用（中間年はCAGR補間）。" : ""}衰退県内の成長都市などでは実力より辛めに出る場合があります。
             </p>
           )}
         </details>
@@ -806,7 +839,8 @@ export function AreaDiagnosisPanel({
             <p className="text-xs text-muted-foreground mt-0.5 mb-2">
               実績（2000〜2025 国勢調査）と将来推計（社人研 2030〜2050）を1つのチャートで。変化率の加速度が投資判断の鍵。
             </p>
-            <div className="h-[240px] w-full">
+            <div ref={chart.ref} className="h-[240px] w-full">
+              {chart.inView ? (
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={tsWithProjection} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -857,6 +891,9 @@ export function AreaDiagnosisPanel({
                   )}
                 </ComposedChart>
               </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full animate-pulse rounded bg-slate-100 dark:bg-slate-800" aria-hidden="true" />
+              )}
             </div>
             {/* 加速度の解釈 */}
             {tsWithRate.length >= 3 && (() => {
@@ -884,7 +921,7 @@ export function AreaDiagnosisPanel({
               );
             })()}
             <p className="text-xs text-muted-foreground mt-2">
-              2000〜2025: <DataBadge tag="実測" /> 国勢調査確定値 ｜ 2030〜2050: <DataBadge tag="推計" /> 国立社会保障・人口問題研究所。
+              2000〜2025: <DataBadge tag="実測" /> 国勢調査確定値 ｜ 2030〜2050: <DataBadge tag="推計" /> {cityHasProj ? "市区町村2030/2050推計（中間年はCAGR補間）" : "国立社会保障・人口問題研究所（都道府県）"}。
               {tsWithRate.some((d) => d.agingRate != null) && " 高齢化率 = 65歳以上人口 ÷ 総人口（2025年は速報のため年齢別未公表）。"}
             </p>
           </div>
@@ -921,7 +958,7 @@ export function AreaDiagnosisPanel({
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              ※ RSがプラス＝「全国平均を上回る地域固有の競争力で雇用が純増」。将来の基盤雇用の増減を示す先行シグナル。<strong>期間は2016→2021の1期間</strong>（経済センサス）。
+              ※ RSがプラス＝「全国平均を上回る地域固有の競争力で雇用が純増」。将来の基盤雇用の増減を示す先行シグナル。<strong>期間は2016→2021の1期間</strong>（経済センサス）。<span className="text-amber-700 dark:text-amber-400">単期のため景気局面（コロナ等）の影響を受けます。次回センサスでの複数期トレンドと併せた解釈を推奨。</span>
             </p>
           </details>
         )}
@@ -1018,20 +1055,38 @@ export function AreaDiagnosisPanel({
             <a href="?tab=demographics" className="rounded border bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-bold hover:bg-blue-100 transition-colors">👥 人口の30年推計</a>
             <button
               onClick={() => {
-                const rows = [
+                const q = (s: string) => `"${String(s).replace(/"/g, '""')}"`; // CSVエスケープ
+                const rows: Array<[string, string]> = [
                   ["指標", "値"],
                   ["エリア", area],
+                  ["分析スコープ", scopeTag],
                   ["総合スコア", String(overall)],
-                  ["需要", String(demand)],
-                  ["経済基盤", String(supply)],
-                  ["将来性", String(future)],
                   ["投資スタンス", st.label],
+                  ["需要スコア", String(demand)],
+                  ["経済基盤スコア", String(supply)],
+                  ["将来性スコア", String(future)],
+                  ["人口(最新)", String(resolvedPopulation)],
+                  ["人口(2020)", String(pop2020)],
+                  ["人口変化率(%)", resolvedPopChangePct.toFixed(1)],
+                  ["全国比モメンタム(pt)", gap.toFixed(1)],
+                  ["世帯数(最新)", String(resolvedHouseholds)],
+                  ["世帯変化率(%)", resolvedHhChangePct.toFixed(1)],
+                  ["借家率(%)", ht?.rented_pct != null ? String(ht.rented_pct) : "—"],
                   ["EBM", ebmMid.toFixed(2)],
-                  ["基盤比率", basicRatioMid.toFixed(1) + "%"],
-                  ["人口変化率", resolvedPopChangePct.toFixed(1) + "%"],
-                  ["借家率", ht?.rented_pct ? ht.rented_pct + "%" : "—"],
+                  ["基盤雇用比率(%)", basicRatioMid.toFixed(1)],
+                  ["基盤雇用(人)", String(basicMid)],
+                  ["総雇用(人)", String(totalEmp)],
+                  ["RS(都道府県,人)", String(Math.round(rs))],
+                  ["RS雇用比(%)", rsShare.toFixed(2)],
+                  ["小売需給ギャップ", agg.toFixed(1)],
+                  ["小売漏損業種数", String(leak)],
+                  ["人口推計10年(%)", dPct != null ? dPct.toFixed(1) : "—"],
+                  ["人口推計25年(%)", fd50 ? fd50.dPct.toFixed(1) : "—"],
+                  ["推計スコープ", projScope],
+                  ["特化産業(LQ)", baseInd.map((i) => `${i.industry}:${i.lq.toFixed(2)}`).join(" / ") || "—"],
+                  ["出力日時", new Date().toISOString()],
                 ];
-                const csv = rows.map(r => r.join(",")).join("\n");
+                const csv = rows.map(r => r.map(q).join(",")).join("\r\n");
                 const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");

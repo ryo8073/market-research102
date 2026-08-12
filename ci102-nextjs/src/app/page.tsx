@@ -1521,7 +1521,11 @@ function DashboardContent() {
     return 13;
   });
   const [cityCode, setCityCode] = useState<string>(() => searchParams.get("city") ?? "");
-  const [compareCodes, setCompareCodes] = useState<number[]>([]);
+  const [compareCodes, setCompareCodes] = useState<number[]>(() => {
+    const raw = searchParams.get("compare");
+    if (!raw) return [];
+    return raw.split(",").map((s) => Number(s)).filter((n) => Number.isInteger(n) && n >= 1 && n <= 47).slice(0, 3);
+  });
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   useEffect(() => { if (typeof window !== "undefined" && !localStorage.getItem("ci102_visited")) setShowWelcomeBanner(true); }, []);
   const [activeTab, setActiveTab] = useState<TabValue>(() => {
@@ -1549,8 +1553,10 @@ function DashboardContent() {
       // zone=がまだ設定されていない間はcenterを保持（Proformer連携用）
       params.set("center", centerCode);
     }
+    // 比較セットを共有URLへ反映（改善⑥）
+    if (compareCodes.length > 0) params.set("compare", compareCodes.join(","));
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [prefCode, cityCode, activeTab, pageEconZoneCodes, centerCode, router]);
+  }, [prefCode, cityCode, activeTab, pageEconZoneCodes, centerCode, compareCodes, router]);
   const { data: pref, allData, loading, error: prefError } = usePrefectureData(prefCode);
   const { detail: prefDetailMid } = usePrefDetailMid(prefCode);
   const lqTableMid = prefDetailMid?.lq_table_mid ?? pref?.lq_table_mid;
@@ -1573,6 +1579,29 @@ function DashboardContent() {
   }, [hasEconZone, pageMatrixMid, pageEconZoneCodes]);
   const { data: municipalities, error: muniError } = useMunicipalityData(prefCode);
   const selectedCity = cityCode ? municipalities.find((m) => m.area_code === cityCode) ?? null : null;
+
+  // エリア検索（インクリメンタル）: 都道府県名 + 現在の都道府県の市区町村を候補化（改善③）
+  const [areaQuery, setAreaQuery] = useState("");
+  const searchOptions = useMemo(() => {
+    const opts: Array<{ label: string; prefCode: number; cityCode?: string }> = [];
+    for (const [code, name] of Object.entries(PREFECTURES)) {
+      opts.push({ label: `${String(code).padStart(2, "0")} ${name}`, prefCode: Number(code) });
+    }
+    for (const m of municipalities) {
+      opts.push({ label: `${PREFECTURES[prefCode as keyof typeof PREFECTURES] ?? ""} ${m.area_name}`, prefCode, cityCode: m.area_code });
+    }
+    return opts;
+  }, [municipalities, prefCode]);
+  const applyAreaSearch = (value: string) => {
+    const v = value.trim();
+    if (!v) return;
+    const exact = searchOptions.find((o) => o.label === v);
+    const hit = exact ?? searchOptions.find((o) => o.label.includes(v));
+    if (!hit) return;
+    if (hit.prefCode !== prefCode) { setPrefCode(hit.prefCode); setCityCode(""); setAiResult(null); }
+    if (hit.cityCode) setCityCode(hit.cityCode); else if (hit.prefCode !== prefCode) setCityCode("");
+    setAreaQuery("");
+  };
 
   // Proformer state
   const [pfId, setPfId] = useState("");
@@ -1648,6 +1677,21 @@ function DashboardContent() {
               <p className="text-xs text-white/60 mt-0.5">データ: 経済センサス2021 ｜ 国勢調査2025速報 ｜ 不動産取引2026Q1 ｜ 社人研推計2050</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
+              <input
+                type="search"
+                list="area-search-list"
+                value={areaQuery}
+                onChange={(e) => { setAreaQuery(e.target.value); applyAreaSearch(e.target.value); }}
+                onKeyDown={(e) => { if (e.key === "Enter") applyAreaSearch((e.target as HTMLInputElement).value); }}
+                placeholder="エリア検索（都道府県・市区町村）"
+                aria-label="エリアを検索"
+                className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 w-full md:w-[220px] focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+              <datalist id="area-search-list">
+                {searchOptions.map((o) => (
+                  <option key={`${o.prefCode}-${o.cityCode ?? "pref"}`} value={o.label} />
+                ))}
+              </datalist>
               <select value={prefCode} onChange={(e) => { setPrefCode(Number(e.target.value)); setCityCode(""); setAiResult(null); }}
                 aria-label="都道府県を選択"
                 className="rounded px-3 py-1.5 text-sm text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 max-w-full md:max-w-[180px] focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -1692,6 +1736,19 @@ function DashboardContent() {
           <div className="mb-4 rounded-lg border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950 p-3 text-sm text-red-800 dark:text-red-300">
             {prefError && <p>都道府県データ読込エラー: {prefError}</p>}
             {muniError && <p>市区町村データ読込エラー: {muniError}</p>}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
+                className="rounded bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700"
+              >再読み込み</button>
+              {muniError && !prefError && (
+                <button
+                  onClick={() => setCityCode("")}
+                  className="rounded border border-red-400 px-3 py-1 text-xs font-bold hover:bg-red-100"
+                >都道府県のみで続行</button>
+              )}
+              <span className="text-xs text-red-700/80 dark:text-red-300/80">通信環境をご確認のうえ再試行してください。</span>
+            </div>
           </div>
         )}
         {loading ? (

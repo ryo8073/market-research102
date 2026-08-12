@@ -27,3 +27,7 @@ data/nlni/processors/__pycache__/
 ci102-nextjs/public/data/nlni/*.geojson
 ci102-nextjs/public/data/nlni_topo/
 ci102-nextjs/public/data/nlni_lite/
+
+# ローカル/一時生成物（共有しない）
+.wrangler/
+tmp_proformer_handoff/
